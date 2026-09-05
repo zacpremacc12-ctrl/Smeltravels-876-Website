@@ -49,7 +49,7 @@ export const QuickSearchModal: React.FC<QuickSearchModalProps> = ({ onClose }) =
     results.faqs.length > 0;
 
   const handleSelectTrip = (slug: string) => {
-    navigateTo('trips', slug);
+    navigateTo('trip-detail', slug);
     onClose();
   };
 

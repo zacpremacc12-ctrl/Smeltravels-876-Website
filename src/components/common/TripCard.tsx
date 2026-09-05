@@ -47,7 +47,11 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, highlight2026 }) => {
       id={`trip-card-${trip.id}`}
     >
       {/* Top Media Banner */}
-      <div className="relative h-56 w-full overflow-hidden bg-neutral-900">
+      <div
+        onClick={() => navigateTo('trip-detail', trip.slug)}
+        className="relative h-56 w-full overflow-hidden bg-neutral-900 cursor-pointer"
+        title={`View full package details for ${trip.name}`}
+      >
         <img
           src={trip.featuredImage}
           alt={`${trip.name} - ${trip.destination}`}
@@ -94,7 +98,7 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, highlight2026 }) => {
               </span>
             )}
           </div>
-          <h3 className="text-xl font-bold font-['Outfit',sans-serif] text-white tracking-tight mt-0.5 leading-snug">
+          <h3 className="text-xl font-bold font-['Outfit',sans-serif] text-white tracking-tight mt-0.5 leading-snug hover:text-[#FFC72C] transition-colors">
             {trip.name}
           </h3>
         </div>
@@ -162,11 +166,12 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, highlight2026 }) => {
         {/* Action CTAs */}
         <div className="pt-2 grid grid-cols-2 gap-2">
           <button
-            onClick={() => navigateTo('trips', trip.slug)}
-            className="w-full bg-[#2E0249] hover:bg-[#3B185F] text-white font-bold text-xs py-2.5 px-3 rounded-xl transition-colors flex items-center justify-center gap-1"
+            onClick={() => navigateTo('trip-detail', trip.slug)}
+            className="w-full bg-[#2E0249] hover:bg-[#3B185F] text-white font-bold text-xs py-2.5 px-3 rounded-xl transition-colors flex items-center justify-center gap-1 cursor-pointer"
             id={`view-trip-${trip.id}`}
+            title={`View full details & package inclusions for ${trip.name}`}
           >
-            <span>View Trip</span>
+            <span>View Package</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
 

@@ -117,8 +117,8 @@ export const DestinationsPage: React.FC<DestinationsPageProps> = ({ initialSlug 
                             <span className="text-lg font-black text-neutral-900">${rt.price.toLocaleString()} JMD</span>
                           </div>
                           <button
-                            onClick={() => navigateTo('trips', rt.slug)}
-                            className="bg-[#2E0249] text-[#FFC72C] hover:bg-[#3B185F] text-xs font-bold px-4 py-2.5 rounded-xl transition-all"
+                            onClick={() => navigateTo('trip-detail', rt.slug)}
+                            className="bg-[#2E0249] text-[#FFC72C] hover:bg-[#3B185F] text-xs font-bold px-4 py-2.5 rounded-xl transition-all cursor-pointer"
                           >
                             View Package
                           </button>

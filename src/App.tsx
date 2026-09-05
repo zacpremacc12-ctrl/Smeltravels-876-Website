@@ -66,7 +66,7 @@ const MainContent: React.FC = () => {
         return <TripsPage initialFilterParam={pageParam} />;
 
       case 'trip-detail':
-        return <TripDetailPage slug={pageParam || 'panama-group-trip-part-2-2026'} />;
+        return <TripDetailPage slug={pageParam || 'panama-2026'} />;
 
       case 'destinations':
         return <DestinationsPage initialSlug={pageParam} />;

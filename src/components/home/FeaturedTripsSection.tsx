@@ -94,8 +94,8 @@ export const FeaturedTripsSection: React.FC = () => {
 
                   <div className="flex items-center gap-3">
                     <button
-                      onClick={() => navigateTo('trips', panamaTrip.slug)}
-                      className="bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-bold text-sm px-6 py-3 rounded-xl shadow-md transition-all"
+                      onClick={() => navigateTo('trip-detail', panamaTrip.slug)}
+                      className="bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-bold text-sm px-6 py-3 rounded-xl shadow-md transition-all cursor-pointer"
                     >
                       View Panama Package
                     </button>

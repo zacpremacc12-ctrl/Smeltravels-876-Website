@@ -209,6 +209,41 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
                       <p className="text-sm font-semibold text-neutral-900">{trip.baggageInfo}</p>
                     </div>
                   </div>
+
+                  {/* What's Included Highlight Section */}
+                  <div className="pt-6 border-t border-neutral-100 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-base sm:text-lg font-bold text-neutral-900 font-['Outfit',sans-serif] flex items-center gap-2">
+                          <Check className="w-5 h-5 text-emerald-600" />
+                          <span>What is Included in This Package</span>
+                        </h4>
+                        <p className="text-xs text-neutral-500">
+                          Covered in your total package rate ({formatPriceJMD(trip.price)})
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setActiveTab('inclusions')}
+                        className="text-xs font-bold text-[#2E0249] hover:text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        Inclusions & Exclusions →
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                      {trip.packageInclusions.map((inc, i) => (
+                        <div
+                          key={i}
+                          className="flex items-start gap-2.5 p-3 rounded-xl bg-emerald-50/70 border border-emerald-200/70 text-xs sm:text-sm text-neutral-800 shadow-2xs"
+                        >
+                          <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                            <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                          </div>
+                          <span className="font-medium leading-snug">{inc}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Photo Gallery Grid */}

@@ -170,8 +170,8 @@ export const Footer: React.FC<FooterProps> = ({ onOpenLegal, onOpenAdmin }) => {
             <ul className="space-y-2.5 text-xs text-neutral-400">
               <li>
                 <button
-                  onClick={() => navigateTo('trips', 'panama-2026')}
-                  className="hover:text-[#FFC72C] transition-colors text-left group"
+                  onClick={() => navigateTo('trip-detail', 'panama-2026')}
+                  className="hover:text-[#FFC72C] transition-colors text-left group cursor-pointer"
                 >
                   <div className="font-semibold text-white group-hover:text-[#FFC72C] flex items-center gap-1">
                     <span>🇵🇦 Panama 2026 Part 2</span>
@@ -181,8 +181,8 @@ export const Footer: React.FC<FooterProps> = ({ onOpenLegal, onOpenAdmin }) => {
               </li>
               <li>
                 <button
-                  onClick={() => navigateTo('trips', 'antigua-2027')}
-                  className="hover:text-[#FFC72C] transition-colors text-left group"
+                  onClick={() => navigateTo('trip-detail', 'antigua-2027')}
+                  className="hover:text-[#FFC72C] transition-colors text-left group cursor-pointer"
                 >
                   <div className="font-semibold text-white group-hover:text-[#FFC72C]">
                     🇦🇬 Antigua Jolly Beach
@@ -192,8 +192,8 @@ export const Footer: React.FC<FooterProps> = ({ onOpenLegal, onOpenAdmin }) => {
               </li>
               <li>
                 <button
-                  onClick={() => navigateTo('trips', 'germany-italy-2027')}
-                  className="hover:text-[#FFC72C] transition-colors text-left group"
+                  onClick={() => navigateTo('trip-detail', 'germany-italy-2027')}
+                  className="hover:text-[#FFC72C] transition-colors text-left group cursor-pointer"
                 >
                   <div className="font-semibold text-white group-hover:text-[#FFC72C]">
                     🇩🇪🇮🇹 Germany + Italy
@@ -203,8 +203,8 @@ export const Footer: React.FC<FooterProps> = ({ onOpenLegal, onOpenAdmin }) => {
               </li>
               <li>
                 <button
-                  onClick={() => navigateTo('trips', 'punta-cana-2027')}
-                  className="hover:text-[#FFC72C] transition-colors text-left group"
+                  onClick={() => navigateTo('trip-detail', 'punta-cana-2027')}
+                  className="hover:text-[#FFC72C] transition-colors text-left group cursor-pointer"
                 >
                   <div className="font-semibold text-white group-hover:text-[#FFC72C]">
                     🇩🇴 Punta Cana Riu Bambu
@@ -214,8 +214,8 @@ export const Footer: React.FC<FooterProps> = ({ onOpenLegal, onOpenAdmin }) => {
               </li>
               <li>
                 <button
-                  onClick={() => navigateTo('trips', 'medellin-2027')}
-                  className="hover:text-[#FFC72C] transition-colors text-left group"
+                  onClick={() => navigateTo('trip-detail', 'medellin-2027')}
+                  className="hover:text-[#FFC72C] transition-colors text-left group cursor-pointer"
                 >
                   <div className="font-semibold text-white group-hover:text-[#FFC72C]">
                     🇨🇴 Medellín NH Collection

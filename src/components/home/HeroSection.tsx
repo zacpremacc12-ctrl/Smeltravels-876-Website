@@ -172,8 +172,8 @@ export const HeroSection: React.FC = () => {
 
                 <div className="pt-2 flex items-center gap-3">
                   <button
-                    onClick={() => navigateTo('trips', 'panama-2026')}
-                    className="flex-1 bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-bold text-sm py-3 rounded-xl text-center shadow-md transition-all"
+                    onClick={() => navigateTo('trip-detail', 'panama-2026')}
+                    className="flex-1 bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-bold text-sm py-3 rounded-xl text-center shadow-md transition-all cursor-pointer"
                   >
                     View Package Details
                   </button>
