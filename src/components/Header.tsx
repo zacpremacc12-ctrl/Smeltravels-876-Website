@@ -15,8 +15,9 @@ import {
   User,
   LogIn,
   UserPlus,
+  ArrowRight,
 } from 'lucide-react';
-import { useApp } from '../context/AppContext';
+import { useApp, formatPriceJMD } from '../context/AppContext';
 import { BrandLogo } from './common/BrandLogo';
 
 interface HeaderProps {
@@ -27,6 +28,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => {
   const {
     settings,
+    trips,
     navigateTo,
     activePage,
     isAdminLoggedIn,
@@ -38,6 +40,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isTripsDropdownOpen, setIsTripsDropdownOpen] = useState(false);
+  const [isMobileTripsOpen, setIsMobileTripsOpen] = useState(false);
 
   const handleOpenSearch = onOpenSearch || (() => setIsSearchOpen(true));
   const handleOpenAdmin = onOpenAdmin || (() => navigateTo('admin'));
@@ -172,69 +175,181 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
               onMouseLeave={() => setIsTripsDropdownOpen(false)}
             >
               <button
-                onClick={() => handleNav('trips')}
-                className={`inline-flex items-center gap-1 text-sm font-semibold transition-colors py-1 ${
-                  activePage === 'trips' ? 'text-[#FFC72C]' : 'text-neutral-200 hover:text-white'
+                onClick={() => setIsTripsDropdownOpen((prev) => !prev)}
+                className={`inline-flex items-center gap-1.5 text-sm font-semibold transition-colors py-1 cursor-pointer ${
+                  activePage === 'trips' || activePage === 'trip-detail'
+                    ? 'text-[#FFC72C]'
+                    : 'text-neutral-200 hover:text-white'
                 }`}
                 id="nav-trips-btn"
+                aria-expanded={isTripsDropdownOpen}
+                title="Browse group trips and packages"
               >
                 <span>TRIPS</span>
-                <ChevronDown className="w-4 h-4" />
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform duration-200 ${
+                    isTripsDropdownOpen ? 'rotate-180 text-[#FFC72C]' : ''
+                  }`}
+                />
               </button>
 
               {isTripsDropdownOpen && (
-                <div className="absolute top-full left-0 w-64 pt-2 z-50">
-                  <div className="bg-[#1A1824] rounded-xl shadow-2xl border border-purple-800/40 p-2 text-sm text-neutral-200">
-                    <button
-                      onClick={() => handleNav('trips')}
-                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-[#3B185F] hover:text-[#FFC72C] font-medium flex items-center justify-between"
-                    >
-                      <span>All Group Trips</span>
-                      <span className="text-xs text-neutral-400">View All</span>
-                    </button>
-                    <div className="my-1 border-t border-neutral-800"></div>
-                    <div className="px-3 py-1 text-[11px] font-bold text-[#FFC72C] uppercase tracking-wider">
-                      2026 Featured
+                <div className="absolute top-full left-0 w-80 sm:w-[420px] pt-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="bg-[#1A1824]/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-purple-800/60 p-3.5 text-sm text-neutral-200 max-h-[82vh] overflow-y-auto space-y-2.5">
+                    {/* Header bar */}
+                    <div className="flex items-center justify-between px-1.5 pb-2 border-b border-purple-800/40">
+                      <div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-[#FFC72C]">
+                        <Sparkles className="w-3.5 h-3.5 text-[#FFC72C] fill-current" />
+                        <span>Select Trip to View Package</span>
+                      </div>
+                      <button
+                        onClick={() => handleNav('trips')}
+                        className="text-[11px] text-neutral-300 hover:text-[#FFC72C] font-bold transition-colors flex items-center gap-1 hover:underline cursor-pointer"
+                      >
+                        <span>Full Catalog</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
                     </div>
-                    <button
-                      onClick={() => handleNav('trips', '2026')}
-                      className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-[#3B185F] text-xs flex items-center justify-between"
-                    >
-                      <span>🇵🇦 Panama 2026 Part 2</span>
-                      <span className="text-[10px] bg-[#FFC72C]/20 text-[#FFC72C] px-1 rounded">Oct '26</span>
-                    </button>
 
-                    <div className="mt-2 px-3 py-1 text-[11px] font-bold text-[#FFC72C] uppercase tracking-wider">
-                      2027 Group Trips
+                    {/* 2026 Featured Section */}
+                    {trips.filter((t) => t.year === 2026 || t.is2026Featured).length > 0 && (
+                      <div className="space-y-1">
+                        <div className="px-2 pt-0.5 text-[10px] font-extrabold text-[#FFC72C] uppercase tracking-wider flex items-center justify-between">
+                          <span>★ 2026 Featured Trip Packages</span>
+                          <span className="text-[9px] bg-[#FFC72C]/20 text-[#FFC72C] px-1.5 py-0.2 rounded font-bold">Limited Spots</span>
+                        </div>
+                        {trips
+                          .filter((t) => t.year === 2026 || t.is2026Featured)
+                          .map((t) => (
+                            <button
+                              key={t.id}
+                              onClick={() => handleNav('trip-detail', t.slug)}
+                              className="w-full text-left p-2.5 rounded-xl hover:bg-[#3B185F] transition-all group flex items-center justify-between gap-3 border border-purple-900/20 hover:border-purple-600/50 cursor-pointer bg-purple-950/20"
+                              id={`dropdown-trip-${t.slug}`}
+                              title={`View package for ${t.name}`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-neutral-700 bg-neutral-800">
+                                  <img src={t.featuredImage} alt={t.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                  {t.tripLogo && (
+                                    <img src={t.tripLogo} alt="" className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded bg-white p-0.5 object-contain" />
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <span className="font-bold text-white text-xs group-hover:text-[#FFC72C] transition-colors truncate block">
+                                    {t.countryFlag} {t.name}
+                                  </span>
+                                  <span className="text-[10px] text-neutral-400 block truncate">
+                                    {t.dates} • <strong className="text-neutral-200">{formatPriceJMD(t.price)}</strong>
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="shrink-0 flex items-center gap-1 text-[10px] font-extrabold bg-[#FFC72C]/20 text-[#FFC72C] group-hover:bg-[#FFC72C] group-hover:text-[#2E0249] px-2.5 py-1.5 rounded-lg transition-all shadow-sm">
+                                <span>View Package</span>
+                                <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                              </div>
+                            </button>
+                          ))}
+                      </div>
+                    )}
+
+                    {/* 2027 Group Trips Collection */}
+                    {trips.filter((t) => t.year === 2027 || t.is2027Collection).length > 0 && (
+                      <div className="space-y-1 pt-1.5 border-t border-purple-800/30">
+                        <div className="px-2 pt-0.5 text-[10px] font-extrabold text-[#FFC72C] uppercase tracking-wider flex items-center justify-between">
+                          <span>✈ 2027 Group Trips Collection</span>
+                          <span className="text-[9px] text-neutral-400 font-medium">Reserve Early</span>
+                        </div>
+                        {trips
+                          .filter((t) => t.year === 2027 || t.is2027Collection)
+                          .map((t) => (
+                            <button
+                              key={t.id}
+                              onClick={() => handleNav('trip-detail', t.slug)}
+                              className="w-full text-left p-2.5 rounded-xl hover:bg-[#3B185F] transition-all group flex items-center justify-between gap-3 border border-transparent hover:border-purple-600/50 cursor-pointer"
+                              id={`dropdown-trip-${t.slug}`}
+                              title={`View package for ${t.name}`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-neutral-700 bg-neutral-800">
+                                  <img src={t.featuredImage} alt={t.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                  {t.tripLogo && (
+                                    <img src={t.tripLogo} alt="" className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded bg-white p-0.5 object-contain" />
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <span className="font-bold text-white text-xs group-hover:text-[#FFC72C] transition-colors truncate block">
+                                    {t.countryFlag} {t.name}
+                                  </span>
+                                  <span className="text-[10px] text-neutral-400 block truncate">
+                                    {t.dates} • <strong className="text-neutral-200">{formatPriceJMD(t.price)}</strong>
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="shrink-0 flex items-center gap-1 text-[10px] font-extrabold bg-[#FFC72C]/20 text-[#FFC72C] group-hover:bg-[#FFC72C] group-hover:text-[#2E0249] px-2.5 py-1.5 rounded-lg transition-all shadow-sm">
+                                <span>View Package</span>
+                                <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                              </div>
+                            </button>
+                          ))}
+                      </div>
+                    )}
+
+                    {/* Other Custom or Newly Added Trips */}
+                    {trips.filter(
+                      (t) => !(t.year === 2026 || t.is2026Featured) && !(t.year === 2027 || t.is2027Collection)
+                    ).length > 0 && (
+                      <div className="space-y-1 pt-1.5 border-t border-purple-800/30">
+                        <div className="px-2 pt-0.5 text-[10px] font-extrabold text-[#FFC72C] uppercase tracking-wider">
+                          More Group Adventures
+                        </div>
+                        {trips
+                          .filter(
+                            (t) => !(t.year === 2026 || t.is2026Featured) && !(t.year === 2027 || t.is2027Collection)
+                          )
+                          .map((t) => (
+                            <button
+                              key={t.id}
+                              onClick={() => handleNav('trip-detail', t.slug)}
+                              className="w-full text-left p-2.5 rounded-xl hover:bg-[#3B185F] transition-all group flex items-center justify-between gap-3 border border-transparent hover:border-purple-600/50 cursor-pointer"
+                              id={`dropdown-trip-${t.slug}`}
+                              title={`View package for ${t.name}`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-neutral-700 bg-neutral-800">
+                                  <img src={t.featuredImage} alt={t.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                </div>
+                                <div className="min-w-0">
+                                  <span className="font-bold text-white text-xs group-hover:text-[#FFC72C] transition-colors truncate block">
+                                    {t.countryFlag} {t.name}
+                                  </span>
+                                  <span className="text-[10px] text-neutral-400 block truncate">
+                                    {t.dates} • <strong className="text-neutral-200">{formatPriceJMD(t.price)}</strong>
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="shrink-0 flex items-center gap-1 text-[10px] font-extrabold bg-[#FFC72C]/20 text-[#FFC72C] group-hover:bg-[#FFC72C] group-hover:text-[#2E0249] px-2.5 py-1.5 rounded-lg transition-all shadow-sm">
+                                <span>View Package</span>
+                                <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                              </div>
+                            </button>
+                          ))}
+                      </div>
+                    )}
+
+                    {/* Bottom Catalog Bar */}
+                    <div className="pt-2 border-t border-purple-800/40">
+                      <button
+                        onClick={() => handleNav('trips')}
+                        className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-[#2E0249] to-[#3B185F] hover:from-[#3B185F] hover:to-[#2E0249] border border-[#FFC72C]/30 text-[#FFC72C] text-xs font-extrabold text-center transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer group"
+                      >
+                        <Plane className="w-4 h-4 text-[#FFC72C] group-hover:translate-x-0.5 transition-transform" />
+                        <span>Browse All Group Packages Catalog (Full Grid)</span>
+                      </button>
                     </div>
-                    <button
-                      onClick={() => handleNav('trips', '2027')}
-                      className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-[#3B185F] text-xs flex items-center justify-between"
-                    >
-                      <span>🇦🇬 Antigua Jolly Beach</span>
-                      <span className="text-[10px] text-neutral-400">Jan '27</span>
-                    </button>
-                    <button
-                      onClick={() => handleNav('trips', '2027')}
-                      className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-[#3B185F] text-xs flex items-center justify-between"
-                    >
-                      <span>🇩🇪🇮🇹 Germany + Italy</span>
-                      <span className="text-[10px] text-neutral-400">Feb '27</span>
-                    </button>
-                    <button
-                      onClick={() => handleNav('trips', '2027')}
-                      className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-[#3B185F] text-xs flex items-center justify-between"
-                    >
-                      <span>🇩🇴 Punta Cana Riu Bambu</span>
-                      <span className="text-[10px] text-neutral-400">Mar '27</span>
-                    </button>
-                    <button
-                      onClick={() => handleNav('trips', '2027')}
-                      className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-[#3B185F] text-xs flex items-center justify-between"
-                    >
-                      <span>🇨🇴 Medellín NH Collection</span>
-                      <span className="text-[10px] text-neutral-400">May '27</span>
-                    </button>
                   </div>
                 </div>
               )}
@@ -336,14 +451,64 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
             >
               HOME
             </button>
-            <button
-              onClick={() => handleNav('trips')}
-              className={`block w-full text-left px-3 py-2.5 rounded-lg text-base font-semibold ${
-                activePage === 'trips' ? 'bg-[#3B185F] text-[#FFC72C]' : 'hover:bg-neutral-800'
-              }`}
-            >
-              TRIPS (2026 & 2027 Packages)
-            </button>
+            {/* Mobile Trips Accordion */}
+            <div className="rounded-xl border border-purple-900/30 overflow-hidden bg-purple-950/20">
+              <button
+                onClick={() => setIsMobileTripsOpen((prev) => !prev)}
+                className={`w-full flex items-center justify-between px-3 py-2.5 text-base font-semibold ${
+                  activePage === 'trips' || activePage === 'trip-detail'
+                    ? 'bg-[#3B185F] text-[#FFC72C]'
+                    : 'text-white hover:bg-neutral-800'
+                }`}
+                id="mobile-nav-trips-btn"
+              >
+                <div className="flex items-center gap-2">
+                  <Plane className="w-4 h-4 text-[#FFC72C]" />
+                  <span>TRIPS (Packages)</span>
+                </div>
+                <ChevronDown
+                  className={`w-4 h-4 text-neutral-400 transition-transform duration-200 ${
+                    isMobileTripsOpen ? 'rotate-180 text-[#FFC72C]' : ''
+                  }`}
+                />
+              </button>
+
+              {isMobileTripsOpen && (
+                <div className="p-2 space-y-1.5 bg-[#151320] border-t border-purple-900/30">
+                  <button
+                    onClick={() => handleNav('trips')}
+                    className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold text-[#FFC72C] bg-purple-900/30 hover:bg-[#3B185F] flex items-center justify-between border border-purple-800/40"
+                  >
+                    <span>Browse All Packages Catalog</span>
+                    <span className="flex items-center gap-1">All Trips <ArrowRight className="w-3 h-3" /></span>
+                  </button>
+
+                  <div className="px-2 pt-1.5 text-[10px] font-black text-[#FFC72C] uppercase tracking-wider">
+                    Select a Package to View:
+                  </div>
+
+                  {trips.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => handleNav('trip-detail', t.slug)}
+                      className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-[#3B185F] text-xs text-neutral-200 flex items-center justify-between group transition-colors border border-transparent hover:border-purple-700/40"
+                      id={`mobile-trip-option-${t.slug}`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0 pr-2">
+                        <span className="text-base shrink-0">{t.countryFlag}</span>
+                        <div className="min-w-0">
+                          <span className="font-bold text-white block truncate">{t.name}</span>
+                          <span className="text-[10px] text-neutral-400 block truncate">{t.dates} • {formatPriceJMD(t.price)}</span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold bg-[#FFC72C] text-[#2E0249] px-2 py-0.5 rounded-md shrink-0 whitespace-nowrap">
+                        View Package
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <button
               onClick={() => handleNav('destinations')}
               className={`block w-full text-left px-3 py-2.5 rounded-lg text-base font-semibold ${
