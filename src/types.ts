@@ -33,6 +33,7 @@ export interface TripPackage {
   excursions: string[];
   baggageInfo: string;
   paymentPlanInfo: string;
+  tripLogo?: string;
   featuredImage: string;
   gallery: string[];
   status: TripStatus;

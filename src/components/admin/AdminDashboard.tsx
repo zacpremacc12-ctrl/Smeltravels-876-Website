@@ -30,8 +30,10 @@ import {
   LogOut,
 } from 'lucide-react';
 import { useApp, formatPriceJMD } from '../../context/AppContext';
-import { BookingInquiry, TripPackage, BlogPost, FAQItem, PromotionalOffer, TestimonialItem } from '../../types';
+import { BookingInquiry, TripPackage, BlogPost, FAQItem, PromotionalOffer, TestimonialItem, Destination } from '../../types';
 import { AdminLoginLock } from './AdminLoginLock';
+import { ImageUploader } from './ImageUploader';
+import { MultiGalleryUploader } from './MultiGalleryUploader';
 
 export const AdminDashboard: React.FC = () => {
   const {
@@ -42,6 +44,8 @@ export const AdminDashboard: React.FC = () => {
     saveTrip,
     deleteTrip,
     destinations,
+    saveDestination,
+    deleteDestination,
     blogPosts,
     saveBlogPost,
     faqs,
@@ -69,6 +73,9 @@ export const AdminDashboard: React.FC = () => {
 
   // Quick edit trip state
   const [editingTrip, setEditingTrip] = useState<TripPackage | null>(null);
+
+  // Quick edit destination state
+  const [editingDestination, setEditingDestination] = useState<Destination | null>(null);
 
   // Quick edit FAQ state
   const [editingFaq, setEditingFaq] = useState<FAQItem | null>(null);
@@ -438,8 +445,12 @@ export const AdminDashboard: React.FC = () => {
                     baggageInfo: '1 Carry-on + Personal item',
                     shortDescription: 'Exciting group trip package coordinated by SMELTRAVELS876.',
                     fullDescription: 'Comprehensive travel package with flights, hotel, transfers, and excursions.',
+                    tripLogo: '',
                     featuredImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80',
-                    gallery: [],
+                    gallery: [
+                      'https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=800&q=80',
+                      'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=800&q=80',
+                    ],
                     packageInclusions: ['Roundtrip flights', 'Hotel accommodation', 'Airport transfers'],
                     exclusions: ['Personal expenses', 'Travel insurance'],
                     itinerary: [{ day: 1, title: 'Arrival', description: 'Arrive at destination airport and meet transfer coordinator.' }],
@@ -451,10 +462,13 @@ export const AdminDashboard: React.FC = () => {
                   };
                   setEditingTrip(newTrip);
                 }}
-                className="bg-[#2E0249] text-[#FFC72C] text-xs font-bold px-4 py-2.5 rounded-xl shadow transition-all flex items-center gap-1.5"
+                className="bg-gradient-to-r from-[#2E0249] to-purple-900 hover:from-purple-900 hover:to-[#2E0249] text-[#FFC72C] text-xs font-bold px-4 py-2.5 rounded-xl shadow-md border border-[#FFC72C]/40 hover:border-[#FFC72C] transition-all flex items-center gap-2 cursor-pointer group"
+                id="admin-add-new-trip-btn"
               >
-                <Plus className="w-4 h-4" />
-                <span>Add New Trip</span>
+                <div className="w-5 h-5 rounded-lg bg-[#FFC72C]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Plus className="w-3.5 h-3.5 text-[#FFC72C]" />
+                </div>
+                <span className="font-extrabold tracking-wide">Add New Trip</span>
               </button>
             </div>
 
@@ -464,13 +478,28 @@ export const AdminDashboard: React.FC = () => {
                 <div key={t.id} className="bg-white rounded-2xl border border-neutral-200 p-5 shadow-sm space-y-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      <img src={t.featuredImage} alt={t.name} className="w-16 h-16 rounded-xl object-cover" />
+                      <div className="relative">
+                        <img src={t.featuredImage} alt={t.name} className="w-16 h-16 rounded-xl object-cover border border-neutral-200" />
+                        {t.tripLogo && (
+                          <img
+                            src={t.tripLogo}
+                            alt="Trip Logo"
+                            className="absolute -bottom-1 -right-1 w-6 h-6 rounded-md bg-white p-0.5 border border-purple-200 shadow object-contain"
+                            title="Custom Trip Logo"
+                          />
+                        )}
+                      </div>
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-base">{t.countryFlag}</span>
                           <span className="text-xs font-bold text-purple-900">{t.year}</span>
                           {t.is2026Featured && <span className="bg-[#FFC72C] text-[#2E0249] text-[9px] px-1.5 py-0.5 rounded font-black">2026 FEATURED</span>}
                           {t.is2027Collection && <span className="bg-purple-100 text-purple-900 text-[9px] px-1.5 py-0.5 rounded font-bold">2027 COLLECTION</span>}
+                          {t.gallery && t.gallery.length > 0 && (
+                            <span className="bg-neutral-100 text-neutral-600 text-[9px] px-1.5 py-0.5 rounded font-semibold">
+                              +{t.gallery.length} photos
+                            </span>
+                          )}
                         </div>
                         <h3 className="font-bold text-neutral-900 font-['Outfit',sans-serif] text-base">{t.name}</h3>
                         <p className="text-xs text-neutral-500">{t.dates} • {t.hotel}</p>
@@ -598,6 +627,51 @@ export const AdminDashboard: React.FC = () => {
                       />
                     </div>
 
+                    {/* Visual Branding & Photography Management */}
+                    <div className="p-4 bg-gradient-to-br from-purple-50/70 to-amber-50/40 rounded-2xl border border-purple-100/80 space-y-4">
+                      <div className="flex items-center justify-between pb-2 border-b border-purple-100">
+                        <div className="flex items-center gap-2 text-xs font-black text-purple-950">
+                          <Sparkles className="w-4 h-4 text-amber-500" />
+                          <span className="uppercase tracking-wider">Trip Logo & Photography Suite</span>
+                        </div>
+                        <span className="text-[10px] text-purple-900 bg-white px-2 py-0.5 rounded-full font-bold border border-purple-200">
+                          Upload, URL or Presets
+                        </span>
+                      </div>
+
+                      {/* 1. Trip Logo / Badge */}
+                      <ImageUploader
+                        label="Trip Logo / Emblem / Badge"
+                        value={editingTrip.tripLogo || ''}
+                        onChange={(url) => setEditingTrip({ ...editingTrip, tripLogo: url })}
+                        helperText="Upload or link a custom trip badge or emblem (e.g. Jamaica 2026 seal, crest, or tour logo). Displays on trip cards and hero banner."
+                        aspectRatio="square"
+                        presets={[
+                          { label: 'Jamaica Seal', url: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=300&q=80' },
+                          { label: 'Tropical Emblem', url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=300&q=80' },
+                          { label: 'World Compass', url: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=300&q=80' },
+                          { label: 'Gold Badge', url: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=300&q=80' },
+                        ]}
+                      />
+
+                      {/* 2. Main Hero / Cover Image */}
+                      <ImageUploader
+                        label="Main Featured / Hero Cover Photo"
+                        value={editingTrip.featuredImage || ''}
+                        onChange={(url) => setEditingTrip({ ...editingTrip, featuredImage: url })}
+                        helperText="Primary banner image shown on home page, cards, and trip detail hero."
+                        aspectRatio="landscape"
+                      />
+
+                      {/* 3. Additional Gallery Images */}
+                      <MultiGalleryUploader
+                        label="Additional Trip Images (Resorts, Excursions, Itinerary Highlights)"
+                        images={editingTrip.gallery || []}
+                        onChange={(imgs) => setEditingTrip({ ...editingTrip, gallery: imgs })}
+                        helperText="Add multiple photos showing hotel suites, excursion adventures, dining experiences, and landmark spots."
+                      />
+                    </div>
+
                     <div className="flex items-center gap-4">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -648,24 +722,194 @@ export const AdminDashboard: React.FC = () => {
         {/* TAB 3: DESTINATIONS */}
         {activeTab === 'destinations' && (
           <div className="space-y-6">
-            <h2 className="text-xl font-bold text-neutral-900 font-['Outfit',sans-serif]">
-              Destination Directory Management
-            </h2>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-neutral-900 font-['Outfit',sans-serif]">
+                  Destination Directory Management
+                </h2>
+                <p className="text-xs text-neutral-500">
+                  Add, update or delete travel destinations, photography, and visiting advice.
+                </p>
+              </div>
+
+              <button
+                onClick={() => {
+                  const newDest: Destination = {
+                    id: `dest-${Date.now()}`,
+                    slug: `dest-${Date.now()}`,
+                    name: 'New Destination',
+                    country: 'Caribbean',
+                    countryCode: 'CB',
+                    countryFlag: '🌴',
+                    tagline: 'Tropical paradise awaits',
+                    description: 'Detailed overview of this incredible travel destination.',
+                    image: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=1200&q=80',
+                    heroImage: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=1600&q=80',
+                    popularExperiences: ['Beach Relaxation', 'Cultural Tours', 'Local Dining'],
+                    bestTimeToVisit: 'November to April',
+                    visaOverview: 'Jamaican passport requirements vary.',
+                    currencyInfo: 'Local currency accepted along with USD.',
+                    featured: true,
+                  };
+                  setEditingDestination(newDest);
+                }}
+                className="bg-gradient-to-r from-[#2E0249] to-purple-900 hover:from-purple-900 hover:to-[#2E0249] text-[#FFC72C] text-xs font-bold px-4 py-2.5 rounded-xl shadow-md border border-[#FFC72C]/40 hover:border-[#FFC72C] transition-all flex items-center gap-2 cursor-pointer group"
+                id="admin-add-destination-btn"
+              >
+                <div className="w-5 h-5 rounded-lg bg-[#FFC72C]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Plus className="w-3.5 h-3.5 text-[#FFC72C]" />
+                </div>
+                <span className="font-extrabold tracking-wide">Add Destination</span>
+              </button>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {destinations.map((d) => (
-                <div key={d.id} className="bg-white rounded-2xl border border-neutral-200 overflow-hidden shadow-sm">
-                  <img src={d.image} alt={d.name} className="h-36 w-full object-cover" />
-                  <div className="p-4 space-y-2 text-xs">
-                    <span className="text-neutral-400 font-semibold">{d.country}</span>
-                    <h3 className="font-bold text-base text-neutral-900 font-['Outfit',sans-serif]">{d.name}</h3>
-                    <p className="text-neutral-600 line-clamp-2">{d.description}</p>
-                    <div className="pt-2 text-purple-900 font-semibold">
-                      Best time: {d.bestTimeToVisit}
+                <div key={d.id} className="bg-white rounded-2xl border border-neutral-200 overflow-hidden shadow-sm flex flex-col justify-between">
+                  <div>
+                    <div className="relative h-40 w-full bg-neutral-100">
+                      <img
+                        src={d.image}
+                        alt={d.name}
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80';
+                        }}
+                      />
+                      <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
+                        {d.country}
+                      </div>
+                    </div>
+                    <div className="p-4 space-y-2 text-xs">
+                      <h3 className="font-bold text-base text-neutral-900 font-['Outfit',sans-serif]">{d.name}</h3>
+                      <p className="text-neutral-600 line-clamp-2">{d.description}</p>
+                      <div className="pt-2 text-purple-900 font-semibold">
+                        Best time: {d.bestTimeToVisit}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 pt-0 border-t border-neutral-100 flex items-center justify-between text-xs mt-2">
+                    <span className="text-[10px] text-neutral-400 font-mono">ID: {d.id}</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingDestination(d)}
+                        className="p-1.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 rounded-lg transition-colors font-semibold"
+                      >
+                        Edit Details & Image
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm(`Delete destination "${d.name}"?`)) {
+                            deleteDestination(d.id);
+                            showNotification('Destination Deleted', `Removed "${d.name}".`);
+                          }
+                        }}
+                        className="p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors"
+                        title="Delete destination"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
+
+            {/* Destination Editor Modal */}
+            {editingDestination && (
+              <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 flex items-center justify-center p-4">
+                <div className="bg-white rounded-3xl max-w-xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+                  <div className="flex items-center justify-between pb-3 border-b border-neutral-200">
+                    <h3 className="text-lg font-bold font-['Outfit',sans-serif]">
+                      Edit Destination: {editingDestination.name}
+                    </h3>
+                    <button onClick={() => setEditingDestination(null)} className="p-1 text-neutral-400 hover:text-neutral-800">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-4 text-xs">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="font-bold text-neutral-700 block mb-1">Destination Name</label>
+                        <input
+                          type="text"
+                          value={editingDestination.name}
+                          onChange={(e) => setEditingDestination({ ...editingDestination, name: e.target.value })}
+                          className="w-full p-2 border border-neutral-300 rounded-xl"
+                        />
+                      </div>
+                      <div>
+                        <label className="font-bold text-neutral-700 block mb-1">Country / Region</label>
+                        <input
+                          type="text"
+                          value={editingDestination.country}
+                          onChange={(e) => setEditingDestination({ ...editingDestination, country: e.target.value })}
+                          className="w-full p-2 border border-neutral-300 rounded-xl"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-neutral-700 block mb-1">Best Time to Visit</label>
+                      <input
+                        type="text"
+                        value={editingDestination.bestTimeToVisit}
+                        onChange={(e) => setEditingDestination({ ...editingDestination, bestTimeToVisit: e.target.value })}
+                        className="w-full p-2 border border-neutral-300 rounded-xl"
+                        placeholder="e.g. November to April"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-neutral-700 block mb-1">Description</label>
+                      <textarea
+                        rows={3}
+                        value={editingDestination.description}
+                        onChange={(e) => setEditingDestination({ ...editingDestination, description: e.target.value })}
+                        className="w-full p-2 border border-neutral-300 rounded-xl"
+                      />
+                    </div>
+
+                    {/* Destination Cover Image */}
+                    <div className="p-4 bg-purple-50/50 rounded-2xl border border-purple-100 space-y-2">
+                      <ImageUploader
+                        label="Destination Cover Image"
+                        value={editingDestination.image}
+                        onChange={(url) => setEditingDestination({ ...editingDestination, image: url })}
+                        helperText="Upload or link high-resolution image for this destination."
+                        aspectRatio="landscape"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-neutral-200 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingDestination(null)}
+                      className="px-4 py-2 bg-neutral-100 text-neutral-700 rounded-xl text-xs font-semibold"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        saveDestination(editingDestination);
+                        setEditingDestination(null);
+                        showNotification('Destination Saved', `Updated "${editingDestination.name}"`);
+                      }}
+                      className="px-5 py-2 bg-[#2E0249] text-[#FFC72C] rounded-xl text-xs font-bold"
+                    >
+                      Save Changes
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

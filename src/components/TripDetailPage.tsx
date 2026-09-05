@@ -121,9 +121,23 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
                 )}
               </div>
 
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-black font-['Outfit',sans-serif] text-white leading-tight">
-                {trip.name}
-              </h1>
+              <div className="flex items-center gap-3">
+                {trip.tripLogo && (
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/95 backdrop-blur-md p-1.5 shadow-xl border border-white/50 shrink-0 overflow-hidden flex items-center justify-center">
+                    <img
+                      src={trip.tripLogo}
+                      alt={`${trip.name} Logo`}
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-black font-['Outfit',sans-serif] text-white leading-tight">
+                  {trip.name}
+                </h1>
+              </div>
 
               <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm text-neutral-300 pt-1">
                 <span className="flex items-center gap-1.5">

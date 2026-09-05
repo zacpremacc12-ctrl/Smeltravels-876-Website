@@ -7,7 +7,8 @@ import {
   Sparkles,
   Plane,
   ShieldAlert,
-  CreditCard
+  CreditCard,
+  Camera
 } from 'lucide-react';
 import { TripPackage } from '../../types';
 import { formatPriceJMD, useApp } from '../../context/AppContext';
@@ -82,10 +83,32 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, highlight2026 }) => {
         </div>
 
         {/* Dates Pill on Top Right */}
-        <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm text-white px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 border border-white/15">
-          <Calendar className="w-3.5 h-3.5 text-[#FFC72C]" />
-          <span>{trip.dates}</span>
+        <div className="absolute top-3 right-3 flex items-center gap-1.5">
+          {trip.tripLogo && (
+            <div className="w-8 h-8 rounded-lg bg-white/95 backdrop-blur-md p-1 border border-white/60 shadow-md flex items-center justify-center overflow-hidden">
+              <img
+                src={trip.tripLogo}
+                alt={`${trip.name} emblem`}
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+            </div>
+          )}
+          <div className="bg-black/70 backdrop-blur-sm text-white px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 border border-white/15">
+            <Calendar className="w-3.5 h-3.5 text-[#FFC72C]" />
+            <span>{trip.dates}</span>
+          </div>
         </div>
+
+        {/* Gallery Photos Counter Badge on Bottom Right */}
+        {trip.gallery && trip.gallery.length > 0 && (
+          <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1 border border-white/20">
+            <Camera className="w-3 h-3 text-[#FFC72C]" />
+            <span>+{trip.gallery.length} photos</span>
+          </div>
+        )}
 
         {/* Destination & Country at Bottom of Image */}
         <div className="absolute bottom-3 left-4 right-4 text-white">
