@@ -163,7 +163,20 @@ function setStoredItem<T>(key: string, val: T): void {
 }
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [settings, setSettings] = useState<SiteSettings>(() => getStoredItem('settings', INITIAL_SETTINGS));
+  const [settings, setSettings] = useState<SiteSettings>(() => {
+    const loaded = getStoredItem('settings', INITIAL_SETTINGS);
+    if (!loaded.ambassadors || !Array.isArray(loaded.ambassadors) || loaded.ambassadors.length === 0) {
+      return {
+        ...loaded,
+        ambassadors: INITIAL_SETTINGS.ambassadors,
+        requireAmbassadorSelection: true,
+      };
+    }
+    return {
+      ...loaded,
+      requireAmbassadorSelection: loaded.requireAmbassadorSelection ?? true,
+    };
+  });
   const [trips, setTrips] = useState<TripPackage[]>(() => {
     const loaded = getStoredItem('trips', INITIAL_TRIPS);
     return loaded.map((t) => {

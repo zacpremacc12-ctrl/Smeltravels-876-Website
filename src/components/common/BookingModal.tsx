@@ -23,6 +23,7 @@ import {
   User,
   Wallet,
   BadgeCheck,
+  UserCheck,
 } from 'lucide-react';
 import { TripPackage, TravelInterestType, TravelerDepositRecord } from '../../types';
 import { useApp, formatPriceJMD } from '../../context/AppContext';
@@ -57,6 +58,24 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
   const [travelInterestType, setTravelInterestType] = useState<TravelInterestType>('ready_to_book');
   const [specialRequests, setSpecialRequests] = useState('');
   const [preferredContactMethod, setPreferredContactMethod] = useState<'phone' | 'email' | 'whatsapp'>('whatsapp');
+
+  // Ambassador selection state
+  const ambassadorsList = settings.ambassadors && settings.ambassadors.length > 0
+    ? settings.ambassadors.filter((a) => a.isActive !== false)
+    : [
+        {
+          id: 'amb-1',
+          name: settings.ambassadorName || 'Zachary Buchanan',
+          title: settings.ambassadorTitle || 'Senior Travel Ambassador',
+          phone: settings.ambassadorPhone || '(876) 848-9772',
+          email: settings.ambassadorEmail || 'zbuchanan.smeltravels@gmail.com',
+          code: 'ZAC876',
+          isActive: true,
+          parishOrRegion: 'Kingston & St. Andrew',
+        },
+      ];
+  const [selectedAmbassadorId, setSelectedAmbassadorId] = useState<string>('');
+  const [ambassadorError, setAmbassadorError] = useState<string>('');
 
   // Checkout payment states
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'bank' | 'lynk' | 'office'>('card');
@@ -118,6 +137,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
       showNotification('Missing Information', 'Please complete your contact details first.', 'warning');
       return;
     }
+
+    const isMandatory = settings.requireAmbassadorSelection !== false;
+    if (isMandatory && !selectedAmbassadorId) {
+      setAmbassadorError('Please choose an assigned travel ambassador to proceed with your booking.');
+      showNotification('Ambassador Required', 'Please select a travel ambassador to manage your booking.', 'warning');
+      const elem = document.getElementById('ambassador-selection-section');
+      if (elem) {
+        elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+    setAmbassadorError('');
+
     if (!cardName) {
       setCardName(customerName.trim());
     }
@@ -136,6 +168,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
     }
 
     setIsSubmitting(true);
+
+    const chosenAmbassador = ambassadorsList.find((a) => a.id === selectedAmbassadorId) || ambassadorsList[0];
 
     const generatedTxn = `TXN-876-${Math.floor(100000 + Math.random() * 900000)}`;
     setTxnId(generatedTxn);
@@ -157,6 +191,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
       depositPaid: depositDue,
       totalPrice: totalPackagePrice,
       currency: activeTrip.currency || 'JMD',
+      ambassadorId: chosenAmbassador?.id,
+      ambassadorName: chosenAmbassador?.name,
+      ambassadorPhone: chosenAmbassador?.phone,
     });
 
     const paymentMethodLabels: Record<string, string> = {
@@ -402,6 +439,58 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                 </div>
               </div>
 
+              {/* Dedicated Assigned Ambassador Card */}
+              {(() => {
+                const assignedAmbassador = ambassadorsList.find((a) => a.id === selectedAmbassadorId) || ambassadorsList[0];
+                return (
+                  <div className="bg-purple-50/90 border border-purple-200 rounded-2xl p-4 max-w-md mx-auto text-left shadow-xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-purple-900 flex items-center gap-1.5">
+                        <UserCheck className="w-4 h-4 text-purple-700" />
+                        <span>Your Assigned Travel Ambassador</span>
+                      </span>
+                      {assignedAmbassador.code && (
+                        <span className="bg-[#2E0249] text-[#FFC72C] text-[10px] font-mono font-bold px-2 py-0.5 rounded-full">
+                          Code: {assignedAmbassador.code}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between gap-3 pt-1">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-10 h-10 rounded-full bg-[#2E0249] text-[#FFC72C] flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+                          {assignedAmbassador.name.split(' ').map((n) => n[0]).slice(0, 2).join('')}
+                        </div>
+                        <div>
+                          <h5 className="font-bold text-sm text-neutral-900 leading-tight">
+                            {assignedAmbassador.name}
+                          </h5>
+                          <p className="text-[11px] text-neutral-500">
+                            {assignedAmbassador.title}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right text-xs shrink-0">
+                        <a
+                          href={`tel:${assignedAmbassador.phone.replace(/[^0-9]/g, '')}`}
+                          className="font-bold text-[#2E0249] hover:underline block"
+                        >
+                          {assignedAmbassador.phone}
+                        </a>
+                        <a
+                          href={`mailto:${assignedAmbassador.email}`}
+                          className="text-[10px] text-neutral-500 hover:underline block truncate max-w-[140px]"
+                        >
+                          {assignedAmbassador.email}
+                        </a>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-purple-900 pt-1.5 border-t border-purple-200/80">
+                      {assignedAmbassador.name} will be your dedicated point of contact for trip onboarding and payment confirmation.
+                    </p>
+                  </div>
+                );
+              })()}
+
               {/* Next Steps Buttons */}
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
                 <a
@@ -495,6 +584,22 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                   </div>
                 </div>
               </div>
+
+              {/* Assigned Ambassador Banner in Checkout */}
+              {(() => {
+                const assignedAmbassador = ambassadorsList.find((a) => a.id === selectedAmbassadorId) || ambassadorsList[0];
+                return (
+                  <div className="bg-purple-50/90 border border-purple-200 rounded-2xl p-3 sm:p-3.5 px-4 flex items-center justify-between text-xs shadow-xs">
+                    <span className="font-bold text-[#2E0249] flex items-center gap-2">
+                      <UserCheck className="w-4 h-4 text-purple-700 shrink-0" />
+                      <span>Assigned Travel Ambassador: <strong>{assignedAmbassador.name}</strong></span>
+                    </span>
+                    <span className="text-[11px] text-purple-900 font-mono font-bold bg-white px-2 py-0.5 rounded-md border border-purple-200 shrink-0">
+                      {assignedAmbassador.code ? `Code: ${assignedAmbassador.code}` : assignedAmbassador.phone}
+                    </span>
+                  </div>
+                );
+              })()}
 
               {/* Signed In vs Guest Account Tracking Notice */}
               {currentUser ? (
@@ -924,6 +1029,103 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                     className="w-full bg-neutral-50 border border-neutral-300 rounded-xl px-3.5 py-2.5 text-sm text-neutral-900 focus:outline-none focus:border-[#2E0249]"
                   />
                 </div>
+              </div>
+
+              {/* MANDATORY AMBASSADOR SELECTION */}
+              <div
+                id="ambassador-selection-section"
+                className={`p-4 sm:p-5 rounded-2xl border transition-all ${
+                  ambassadorError
+                    ? 'bg-red-50/80 border-red-300 ring-2 ring-red-400'
+                    : selectedAmbassadorId
+                    ? 'bg-purple-50/70 border-purple-300'
+                    : 'bg-gradient-to-br from-purple-50/50 via-amber-50/30 to-purple-50/50 border-purple-200'
+                }`}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#2E0249] flex items-center gap-1.5">
+                    <UserCheck className="w-4 h-4 text-purple-700" />
+                    <span>Choose Your Travel Ambassador *</span>
+                  </label>
+                  <span className="inline-flex items-center gap-1 bg-[#FFC72C] text-[#2E0249] text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider self-start sm:self-auto shadow-xs">
+                    Mandatory Selection
+                  </span>
+                </div>
+
+                <p className="text-xs text-neutral-600 mb-3">
+                  Please select a verified SMELTRAVELS876 ambassador who will be your designated agent for flight coordination, payment plans, and personalized itinerary guidance:
+                </p>
+
+                {/* Grid of ambassador cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 mb-2">
+                  {ambassadorsList.map((amb) => {
+                    const isSelected = selectedAmbassadorId === amb.id;
+                    return (
+                      <button
+                        type="button"
+                        key={amb.id}
+                        onClick={() => {
+                          setSelectedAmbassadorId(amb.id);
+                          setAmbassadorError('');
+                        }}
+                        className={`p-3 rounded-xl border text-left cursor-pointer transition-all flex items-start gap-2.5 relative ${
+                          isSelected
+                            ? 'bg-white border-[#2E0249] ring-2 ring-[#2E0249] shadow-sm'
+                            : 'bg-white/90 border-neutral-200 hover:border-purple-300 hover:bg-white'
+                        }`}
+                      >
+                        <div
+                          className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+                            isSelected ? 'bg-[#2E0249] text-[#FFC72C]' : 'bg-purple-100 text-purple-900'
+                          }`}
+                        >
+                          {amb.name
+                            .split(' ')
+                            .map((n) => n[0])
+                            .slice(0, 2)
+                            .join('')}
+                        </div>
+                        <div className="flex-1 min-w-0 pr-5">
+                          <span className="font-bold text-xs text-neutral-900 truncate block">
+                            {amb.name}
+                          </span>
+                          <p className="text-[11px] text-neutral-500 truncate">{amb.title}</p>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-neutral-500 mt-1">
+                            <span>{amb.phone}</span>
+                            {amb.code && (
+                              <span className="font-mono font-bold bg-neutral-100 text-neutral-600 px-1 py-0.2 rounded text-[9px]">
+                                {amb.code}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div
+                          className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 absolute top-3 right-3 ${
+                            isSelected ? 'border-[#2E0249] bg-[#2E0249] text-[#FFC72C]' : 'border-neutral-300 bg-white'
+                          }`}
+                        >
+                          {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {ambassadorError && (
+                  <div className="flex items-center gap-2 p-2.5 bg-red-100 text-red-800 text-xs font-semibold rounded-xl border border-red-300 animate-in fade-in duration-200 mt-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                    <span>{ambassadorError}</span>
+                  </div>
+                )}
+
+                {selectedAmbassadorId && (
+                  <div className="text-[11px] text-[#2E0249] bg-white/80 px-3 py-2 rounded-xl border border-purple-200 flex items-center gap-2 font-medium mt-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>
+                      Selected Ambassador: <strong>{ambassadorsList.find((a) => a.id === selectedAmbassadorId)?.name}</strong> will manage your booking.
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Traveler Counts & Date */}

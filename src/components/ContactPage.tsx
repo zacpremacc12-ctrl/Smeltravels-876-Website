@@ -163,38 +163,57 @@ export const ContactPage: React.FC = () => {
             </div>
 
             {/* Ambassador Dedicated Contact */}
-            <div className="bg-gradient-to-br from-[#2E0249] to-[#3B185F] text-white rounded-3xl p-6 sm:p-8 shadow-lg space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-[#FFC72C] text-[#2E0249] flex items-center justify-center font-black shadow">
-                  <UserCheck className="w-6 h-6" />
+            <div className="bg-gradient-to-br from-[#2E0249] to-[#3B185F] text-white rounded-3xl p-6 sm:p-7 shadow-lg space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-[#FFC72C] text-[#2E0249] flex items-center justify-center font-black shadow">
+                    <UserCheck className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#FFC72C] block">
+                      Agency Ambassadors
+                    </span>
+                    <h3 className="text-lg font-bold font-['Outfit',sans-serif]">
+                      Connect with an Ambassador
+                    </h3>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#FFC72C] block">
-                    {settings.ambassadorTitle}
-                  </span>
-                  <h3 className="text-xl font-bold font-['Outfit',sans-serif]">
-                    {settings.ambassadorName}
-                  </h3>
-                </div>
+                <span className="text-[10px] font-bold bg-white/10 px-2.5 py-1 rounded-full text-purple-200">
+                  Direct Support
+                </span>
               </div>
 
               <p className="text-xs text-neutral-200 leading-relaxed">
-                Need specialized assistance with group packages or payment plan scheduling? Connect directly with Zachary Buchanan.
+                Need specialized assistance with group packages, custom itineraries, or payment plan scheduling? Connect directly with any of our verified ambassadors:
               </p>
 
-              <div className="space-y-2 pt-2 border-t border-purple-800/80 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-neutral-300">Ambassador Phone:</span>
-                  <a href={`tel:${settings.ambassadorPhone.replace(/[^0-9]/g, '')}`} className="font-bold text-[#FFC72C] hover:underline">
-                    {settings.ambassadorPhone}
-                  </a>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-neutral-300">Ambassador Email:</span>
-                  <a href={`mailto:${settings.ambassadorEmail}`} className="font-medium text-white hover:underline truncate max-w-[200px]">
-                    {settings.ambassadorEmail}
-                  </a>
-                </div>
+              <div className="space-y-2.5 pt-2 border-t border-purple-800/80 text-xs">
+                {(settings.ambassadors && settings.ambassadors.length > 0
+                  ? settings.ambassadors.filter((a) => a.isActive !== false)
+                  : [
+                      {
+                        id: 'amb-default',
+                        name: settings.ambassadorName || 'Zachary Buchanan',
+                        title: settings.ambassadorTitle || 'Senior Travel Ambassador',
+                        phone: settings.ambassadorPhone || '(876) 848-9772',
+                        email: settings.ambassadorEmail || 'zbuchanan.smeltravels@gmail.com',
+                        parishOrRegion: 'Kingston & St. Andrew',
+                      },
+                    ]
+                ).map((amb) => (
+                  <div key={amb.id} className="bg-purple-950/50 p-3 rounded-xl border border-purple-800/60 flex items-center justify-between gap-2">
+                    <div>
+                      <div className="font-bold text-white text-xs">{amb.name}</div>
+                      <div className="text-[10px] text-purple-300">{amb.title}{amb.parishOrRegion ? ` • ${amb.parishOrRegion}` : ''}</div>
+                    </div>
+                    <a
+                      href={`tel:${amb.phone.replace(/[^0-9]/g, '')}`}
+                      className="text-xs font-bold text-[#FFC72C] hover:underline shrink-0 bg-[#2E0249] px-2.5 py-1 rounded-lg border border-purple-700"
+                    >
+                      {amb.phone}
+                    </a>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

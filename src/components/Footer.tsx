@@ -251,22 +251,29 @@ export const Footer: React.FC<FooterProps> = ({ onOpenLegal, onOpenAdmin }) => {
               </div>
 
               <div className="pt-2 border-t border-neutral-800">
-                <span className="text-neutral-400 block text-[11px] font-semibold uppercase">Ambassador Contact</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-neutral-400 block text-[11px] font-semibold uppercase">Ambassador Network</span>
+                  {settings.ambassadors && settings.ambassadors.length > 1 && (
+                    <span className="text-[10px] text-[#FFC72C] font-mono font-bold">
+                      {settings.ambassadors.length} Agents
+                    </span>
+                  )}
+                </div>
                 <div className="font-medium text-white flex items-center gap-1.5 mt-0.5">
                   <UserCheck className="w-3.5 h-3.5 text-[#FFC72C]" />
-                  <span>{settings.ambassadorName}</span>
+                  <span>{settings.ambassadorName || (settings.ambassadors?.[0]?.name ?? 'Zachary Buchanan')}</span>
                 </div>
                 <a
-                  href={`tel:${settings.ambassadorPhone.replace(/[^0-9]/g, '')}`}
+                  href={`tel:${(settings.ambassadorPhone || (settings.ambassadors?.[0]?.phone ?? '(876) 848-9772')).replace(/[^0-9]/g, '')}`}
                   className="text-neutral-300 hover:text-[#FFC72C] block mt-0.5"
                 >
-                  {settings.ambassadorPhone}
+                  {settings.ambassadorPhone || (settings.ambassadors?.[0]?.phone ?? '(876) 848-9772')}
                 </a>
                 <a
-                  href={`mailto:${settings.ambassadorEmail}`}
+                  href={`mailto:${settings.ambassadorEmail || (settings.ambassadors?.[0]?.email ?? 'zbuchanan.smeltravels@gmail.com')}`}
                   className="text-neutral-400 hover:text-white block mt-0.5 truncate"
                 >
-                  {settings.ambassadorEmail}
+                  {settings.ambassadorEmail || (settings.ambassadors?.[0]?.email ?? 'zbuchanan.smeltravels@gmail.com')}
                 </a>
               </div>
 

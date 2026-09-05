@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Layers,
   Inbox,
@@ -21,6 +21,9 @@ import {
   Phone,
   Mail,
   UserCheck,
+  User,
+  CheckCircle2,
+  AlertCircle,
   Search,
   ExternalLink,
   Building2,
@@ -30,7 +33,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import { useApp, formatPriceJMD } from '../../context/AppContext';
-import { BookingInquiry, TripPackage, BlogPost, FAQItem, PromotionalOffer, TestimonialItem, Destination } from '../../types';
+import { BookingInquiry, TripPackage, BlogPost, FAQItem, PromotionalOffer, TestimonialItem, Destination, Ambassador } from '../../types';
 import { AdminLoginLock } from './AdminLoginLock';
 import { ImageUploader } from './ImageUploader';
 import { MultiGalleryUploader } from './MultiGalleryUploader';
@@ -85,6 +88,150 @@ export const AdminDashboard: React.FC = () => {
 
   // Settings form state
   const [localSettings, setLocalSettings] = useState(settings);
+
+  useEffect(() => {
+    setLocalSettings(settings);
+  }, [settings]);
+
+  // Ambassador Modal & Management State
+  const [ambassadorModalOpen, setAmbassadorModalOpen] = useState(false);
+  const [editingAmbassadorId, setEditingAmbassadorId] = useState<string | null>(null);
+  const [ambassadorForm, setAmbassadorForm] = useState<Omit<Ambassador, 'id'>>({
+    name: '',
+    title: 'Senior Travel Ambassador',
+    phone: '(876) ',
+    email: '',
+    code: '',
+    parishOrRegion: '',
+    isActive: true,
+  });
+
+  const openNewAmbassadorModal = () => {
+    setEditingAmbassadorId(null);
+    setAmbassadorForm({
+      name: '',
+      title: 'Travel Ambassador',
+      phone: '(876) ',
+      email: '',
+      code: `AMB${Math.floor(100 + Math.random() * 900)}`,
+      parishOrRegion: 'Kingston & St. Andrew',
+      isActive: true,
+    });
+    setAmbassadorModalOpen(true);
+  };
+
+  const openEditAmbassadorModal = (amb: Ambassador) => {
+    setEditingAmbassadorId(amb.id);
+    setAmbassadorForm({
+      name: amb.name,
+      title: amb.title,
+      phone: amb.phone,
+      email: amb.email,
+      code: amb.code || '',
+      parishOrRegion: amb.parishOrRegion || '',
+      isActive: amb.isActive !== false,
+    });
+    setAmbassadorModalOpen(true);
+  };
+
+  const handleSaveAmbassadorModal = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ambassadorForm.name.trim() || !ambassadorForm.phone.trim()) {
+      showNotification('Missing Information', 'Ambassador Name and Phone are required.', 'warning');
+      return;
+    }
+
+    const currentAmbassadors = localSettings.ambassadors || [];
+    let updatedAmbassadors: Ambassador[];
+
+    if (editingAmbassadorId) {
+      updatedAmbassadors = currentAmbassadors.map((a) =>
+        a.id === editingAmbassadorId
+          ? {
+              ...a,
+              name: ambassadorForm.name.trim(),
+              title: ambassadorForm.title.trim(),
+              phone: ambassadorForm.phone.trim(),
+              email: ambassadorForm.email.trim(),
+              code: ambassadorForm.code?.trim().toUpperCase(),
+              parishOrRegion: ambassadorForm.parishOrRegion?.trim(),
+              isActive: ambassadorForm.isActive,
+            }
+          : a
+      );
+    } else {
+      const newAmbassador: Ambassador = {
+        id: `amb-${Date.now()}`,
+        name: ambassadorForm.name.trim(),
+        title: ambassadorForm.title.trim() || 'Travel Ambassador',
+        phone: ambassadorForm.phone.trim(),
+        email: ambassadorForm.email.trim(),
+        code: ambassadorForm.code?.trim().toUpperCase() || `AMB${Math.floor(100 + Math.random() * 900)}`,
+        parishOrRegion: ambassadorForm.parishOrRegion?.trim(),
+        isActive: ambassadorForm.isActive,
+      };
+      updatedAmbassadors = [...currentAmbassadors, newAmbassador];
+    }
+
+    const newSettings = {
+      ...localSettings,
+      ambassadors: updatedAmbassadors,
+      ...(currentAmbassadors.length === 0
+        ? {
+            ambassadorName: ambassadorForm.name.trim(),
+            ambassadorTitle: ambassadorForm.title.trim(),
+            ambassadorPhone: ambassadorForm.phone.trim(),
+            ambassadorEmail: ambassadorForm.email.trim(),
+          }
+        : {}),
+    };
+
+    setLocalSettings(newSettings);
+    updateSettings(newSettings);
+    setAmbassadorModalOpen(false);
+    showNotification(
+      editingAmbassadorId ? 'Ambassador Updated' : 'Ambassador Added',
+      `${ambassadorForm.name} has been ${editingAmbassadorId ? 'updated' : 'added to the roster'}.`
+    );
+  };
+
+  const handleDeleteAmbassador = (id: string) => {
+    const amb = (localSettings.ambassadors || []).find((a) => a.id === id);
+    if (!window.confirm(`Are you sure you want to remove ambassador "${amb?.name || 'this ambassador'}"?`)) {
+      return;
+    }
+    const updated = (localSettings.ambassadors || []).filter((a) => a.id !== id);
+    const newSettings = {
+      ...localSettings,
+      ambassadors: updated,
+    };
+    setLocalSettings(newSettings);
+    updateSettings(newSettings);
+    showNotification('Ambassador Removed', 'Ambassador has been removed from the agency roster.');
+  };
+
+  const handleToggleAmbassadorActive = (id: string) => {
+    const updated = (localSettings.ambassadors || []).map((a) =>
+      a.id === id ? { ...a, isActive: a.isActive === false ? true : false } : a
+    );
+    const newSettings = { ...localSettings, ambassadors: updated };
+    setLocalSettings(newSettings);
+    updateSettings(newSettings);
+    showNotification('Status Updated', 'Ambassador availability status updated.');
+  };
+
+  const handleSetPrimaryAmbassador = (amb: Ambassador) => {
+    const newSettings = {
+      ...localSettings,
+      ambassadorName: amb.name,
+      ambassadorTitle: amb.title,
+      ambassadorPhone: amb.phone,
+      ambassadorEmail: amb.email,
+    };
+    setLocalSettings(newSettings);
+    updateSettings(newSettings);
+    showNotification('Primary Ambassador Set', `${amb.name} is now designated as the primary agency ambassador.`);
+  };
 
   // Filter bookings
   const filteredBookings = bookings.filter((b) => {
@@ -266,6 +413,7 @@ export const AdminDashboard: React.FC = () => {
                     <tr>
                       <th className="p-4">Reference</th>
                       <th className="p-4">Customer & Contact</th>
+                      <th className="p-4">Assigned Ambassador</th>
                       <th className="p-4">Trip Package</th>
                       <th className="p-4">Travelers / Stage</th>
                       <th className="p-4">Status</th>
@@ -284,6 +432,21 @@ export const AdminDashboard: React.FC = () => {
                             <div className="font-bold text-neutral-900">{b.customerName}</div>
                             <div className="text-neutral-500">{b.phone} • {b.email}</div>
                             <div className="text-[11px] text-neutral-400">{b.countryOrParish}</div>
+                          </td>
+                          <td className="p-4">
+                            {b.ambassadorName ? (
+                              <div className="flex items-center gap-1.5">
+                                <UserCheck className="w-3.5 h-3.5 text-purple-700 shrink-0" />
+                                <div>
+                                  <span className="font-bold text-[#2E0249] block">{b.ambassadorName}</span>
+                                  {b.ambassadorPhone && (
+                                    <span className="text-[11px] text-neutral-500">{b.ambassadorPhone}</span>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-neutral-400 italic text-[11px]">Direct Agency Booking</span>
+                            )}
                           </td>
                           <td className="p-4">
                             <div className="font-semibold text-neutral-800">{b.tripName}</div>
@@ -344,7 +507,7 @@ export const AdminDashboard: React.FC = () => {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={7} className="p-8 text-center text-neutral-500">
+                        <td colSpan={8} className="p-8 text-center text-neutral-500">
                           No inquiries found matching current search criteria.
                         </td>
                       </tr>
@@ -373,6 +536,29 @@ export const AdminDashboard: React.FC = () => {
                   </div>
 
                   <div className="space-y-3 text-xs text-neutral-700">
+                    {/* Chosen Ambassador Box */}
+                    <div className="bg-purple-50 p-3 rounded-xl border border-purple-200">
+                      <span className="font-bold block text-purple-900 text-[10px] uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                        <UserCheck className="w-3.5 h-3.5 text-purple-700" />
+                        <span>Assigned Travel Ambassador</span>
+                      </span>
+                      {selectedInquiry.ambassadorName ? (
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-bold text-neutral-900 text-sm">{selectedInquiry.ambassadorName}</p>
+                            {selectedInquiry.ambassadorPhone && (
+                              <p className="text-neutral-600 text-[11px]">{selectedInquiry.ambassadorPhone}</p>
+                            )}
+                          </div>
+                          <span className="text-[10px] font-bold bg-[#FFC72C] text-[#2E0249] px-2 py-0.5 rounded font-mono">
+                            Assigned
+                          </span>
+                        </div>
+                      ) : (
+                        <p className="text-neutral-500 italic">No specific ambassador assigned (General Inquiries Pool)</p>
+                      )}
+                    </div>
+
                     <div>
                       <span className="font-bold block text-neutral-500">Traveler Details</span>
                       <p className="font-semibold text-neutral-900 text-sm">{selectedInquiry.customerName}</p>
@@ -1163,93 +1349,295 @@ export const AdminDashboard: React.FC = () => {
 
         {/* TAB 8: AGENCY SETTINGS */}
         {activeTab === 'settings' && (
-          <div className="max-w-2xl bg-white rounded-3xl p-6 sm:p-8 border border-neutral-200 shadow-sm space-y-6">
-            <h2 className="text-xl font-bold text-neutral-900 font-['Outfit',sans-serif]">
-              Official Agency & Contact Settings
-            </h2>
-
-            <form onSubmit={handleSaveSettings} className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="font-bold text-neutral-700 block mb-1">Agency Phone</label>
-                  <input
-                    type="text"
-                    value={localSettings.primaryPhone}
-                    onChange={(e) => setLocalSettings({ ...localSettings, primaryPhone: e.target.value })}
-                    className="w-full p-2.5 border border-neutral-300 rounded-xl"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold text-neutral-700 block mb-1">Agency Email</label>
-                  <input
-                    type="email"
-                    value={localSettings.primaryEmail}
-                    onChange={(e) => setLocalSettings({ ...localSettings, primaryEmail: e.target.value })}
-                    className="w-full p-2.5 border border-neutral-300 rounded-xl"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="font-bold text-neutral-700 block mb-1">Ambassador Name</label>
-                  <input
-                    type="text"
-                    value={localSettings.ambassadorName}
-                    onChange={(e) => setLocalSettings({ ...localSettings, ambassadorName: e.target.value })}
-                    className="w-full p-2.5 border border-neutral-300 rounded-xl"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold text-neutral-700 block mb-1">Ambassador Phone</label>
-                  <input
-                    type="text"
-                    value={localSettings.ambassadorPhone}
-                    onChange={(e) => setLocalSettings({ ...localSettings, ambassadorPhone: e.target.value })}
-                    className="w-full p-2.5 border border-neutral-300 rounded-xl"
-                  />
-                </div>
-              </div>
-
+          <div className="max-w-4xl bg-white rounded-3xl p-6 sm:p-8 border border-neutral-200 shadow-sm space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-neutral-200">
               <div>
-                <label className="font-bold text-neutral-700 block mb-1">Ambassador Email</label>
-                <input
-                  type="email"
-                  value={localSettings.ambassadorEmail}
-                  onChange={(e) => setLocalSettings({ ...localSettings, ambassadorEmail: e.target.value })}
-                  className="w-full p-2.5 border border-neutral-300 rounded-xl"
-                />
+                <h2 className="text-xl font-black text-neutral-900 font-['Outfit',sans-serif]">
+                  Agency & Ambassador Settings
+                </h2>
+                <p className="text-xs text-neutral-500">
+                  Configure agency contact lines, banking information, and registered travel ambassadors.
+                </p>
               </div>
+              <button
+                type="button"
+                onClick={handleSaveSettings}
+                className="bg-[#2E0249] text-[#FFC72C] font-bold text-xs py-2.5 px-5 rounded-xl shadow transition-all hover:bg-[#3B185F] self-start sm:self-auto cursor-pointer"
+              >
+                Save All Changes
+              </button>
+            </div>
 
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSaveSettings} className="space-y-8 text-xs">
+              {/* SECTION: GENERAL CONTACT INFO */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-neutral-800 uppercase tracking-wider flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-purple-700" />
+                  <span>Official Agency Communication</span>
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="font-bold text-neutral-700 block mb-1">Agency Phone</label>
+                    <input
+                      type="text"
+                      value={localSettings.primaryPhone}
+                      onChange={(e) => setLocalSettings({ ...localSettings, primaryPhone: e.target.value })}
+                      className="w-full p-2.5 border border-neutral-300 rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-neutral-700 block mb-1">Agency Email</label>
+                    <input
+                      type="email"
+                      value={localSettings.primaryEmail}
+                      onChange={(e) => setLocalSettings({ ...localSettings, primaryEmail: e.target.value })}
+                      className="w-full p-2.5 border border-neutral-300 rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-neutral-700 block mb-1">WhatsApp Chat Number (Digits only)</label>
+                    <input
+                      type="text"
+                      value={localSettings.whatsappNumber}
+                      onChange={(e) => setLocalSettings({ ...localSettings, whatsappNumber: e.target.value })}
+                      className="w-full p-2.5 border border-neutral-300 rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-neutral-700 block mb-1">Operating Base</label>
+                    <input
+                      type="text"
+                      value={localSettings.operatingBase}
+                      onChange={(e) => setLocalSettings({ ...localSettings, operatingBase: e.target.value })}
+                      className="w-full p-2.5 border border-neutral-300 rounded-xl"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="font-bold text-neutral-700 block mb-1">WhatsApp Chat Number (Digits only)</label>
-                  <input
-                    type="text"
-                    value={localSettings.whatsappNumber}
-                    onChange={(e) => setLocalSettings({ ...localSettings, whatsappNumber: e.target.value })}
+                  <label className="font-bold text-neutral-700 block mb-1">WhatsApp Default Message Template</label>
+                  <textarea
+                    rows={2}
+                    value={localSettings.whatsappMessageTemplate}
+                    onChange={(e) => setLocalSettings({ ...localSettings, whatsappMessageTemplate: e.target.value })}
                     className="w-full p-2.5 border border-neutral-300 rounded-xl"
                   />
                 </div>
-                <div>
-                  <label className="font-bold text-neutral-700 block mb-1">Operating Base</label>
-                  <input
-                    type="text"
-                    value={localSettings.operatingBase}
-                    onChange={(e) => setLocalSettings({ ...localSettings, operatingBase: e.target.value })}
-                    className="w-full p-2.5 border border-neutral-300 rounded-xl"
-                  />
-                </div>
               </div>
 
-              <div>
-                <label className="font-bold text-neutral-700 block mb-1">WhatsApp Default Message Template</label>
-                <textarea
-                  rows={2}
-                  value={localSettings.whatsappMessageTemplate}
-                  onChange={(e) => setLocalSettings({ ...localSettings, whatsappMessageTemplate: e.target.value })}
-                  className="w-full p-2.5 border border-neutral-300 rounded-xl"
-                />
+              {/* SECTION: MULTIPLE AMBASSADORS ROSTER & MANDATORY SELECTION */}
+              <div className="pt-6 border-t border-neutral-200 space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-black text-[#2E0249] flex items-center gap-2 font-['Outfit',sans-serif]">
+                      <UserCheck className="w-5 h-5 text-purple-700" />
+                      <span>Travel Ambassadors Program ({localSettings.ambassadors?.length || 0})</span>
+                    </h3>
+                    <p className="text-xs text-neutral-500">
+                      Add, update, or remove agency ambassadors. Travelers will pick from active ambassadors when reserving packages.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={openNewAmbassadorModal}
+                    className="bg-[#2E0249] text-[#FFC72C] font-bold text-xs px-4 py-2.5 rounded-xl hover:bg-[#3B185F] transition-colors flex items-center gap-1.5 self-start sm:self-auto shadow-xs cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Ambassador</span>
+                  </button>
+                </div>
+
+                {/* Mandatory Selection Rule Setting Card */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-purple-50/70 border border-purple-200 rounded-2xl">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-[#2E0249]">Mandatory Customer Selection</span>
+                      <span
+                        className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                          localSettings.requireAmbassadorSelection !== false
+                            ? 'bg-[#FFC72C] text-[#2E0249]'
+                            : 'bg-neutral-200 text-neutral-600'
+                        }`}
+                      >
+                        {localSettings.requireAmbassadorSelection !== false ? 'Enforced / Mandatory' : 'Optional'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-neutral-600 max-w-xl">
+                      When enabled, customers <strong>must</strong> choose an ambassador from the roster before proceeding to deposit checkout and completing their booking.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updatedValue = localSettings.requireAmbassadorSelection === false ? true : false;
+                      const updatedSettings = {
+                        ...localSettings,
+                        requireAmbassadorSelection: updatedValue,
+                      };
+                      setLocalSettings(updatedSettings);
+                      updateSettings(updatedSettings);
+                      showNotification(
+                        updatedValue ? 'Mandatory Selection Enabled' : 'Mandatory Selection Disabled',
+                        updatedValue
+                          ? 'Customers are now strictly required to choose an ambassador.'
+                          : 'Ambassador selection is now optional.'
+                      );
+                    }}
+                    className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      localSettings.requireAmbassadorSelection !== false ? 'bg-[#2E0249]' : 'bg-neutral-300'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        localSettings.requireAmbassadorSelection !== false ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Ambassador Cards Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  {(localSettings.ambassadors || []).map((amb) => {
+                    const isPrimary =
+                      localSettings.ambassadorName &&
+                      localSettings.ambassadorName.trim().toLowerCase() === amb.name.trim().toLowerCase();
+                    const isActive = amb.isActive !== false;
+
+                    return (
+                      <div
+                        key={amb.id}
+                        className={`p-4 rounded-2xl border transition-all ${
+                          isPrimary
+                            ? 'bg-purple-50/50 border-purple-300 ring-1 ring-purple-300'
+                            : 'bg-white border-neutral-200 hover:border-neutral-300'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3 mb-2.5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-11 h-11 rounded-full bg-[#2E0249] text-[#FFC72C] flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+                              {amb.name
+                                .split(' ')
+                                .map((n) => n[0])
+                                .slice(0, 2)
+                                .join('')}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <h4 className="font-bold text-sm text-neutral-900">{amb.name}</h4>
+                                {amb.code && (
+                                  <span className="font-mono text-[10px] font-bold bg-neutral-100 text-neutral-600 px-1.5 py-0.2 rounded border border-neutral-200">
+                                    {amb.code}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-neutral-500">{amb.title}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            {isPrimary && (
+                              <span className="bg-[#FFC72C] text-[#2E0249] text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                Primary
+                              </span>
+                            )}
+                            <span
+                              className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                                isActive
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : 'bg-neutral-100 text-neutral-500'
+                              }`}
+                            >
+                              {isActive ? 'Active' : 'Inactive'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1 text-[11px] text-neutral-600 py-2 border-y border-neutral-100 mb-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-neutral-400">Phone:</span>
+                            <span className="font-semibold text-neutral-800">{amb.phone}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-neutral-400">Email:</span>
+                            <span className="text-neutral-700 truncate max-w-[200px]">{amb.email}</span>
+                          </div>
+                          {amb.parishOrRegion && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-neutral-400">Territory:</span>
+                              <span className="font-medium text-neutral-700">{amb.parishOrRegion}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2 pt-0.5">
+                          {!isPrimary ? (
+                            <button
+                              type="button"
+                              onClick={() => handleSetPrimaryAmbassador(amb)}
+                              className="text-[11px] font-bold text-purple-900 hover:text-purple-950 hover:underline cursor-pointer"
+                            >
+                              Make Primary
+                            </button>
+                          ) : (
+                            <span className="text-[10px] text-purple-800 font-semibold italic">
+                              Default agency contact
+                            </span>
+                          )}
+
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleAmbassadorActive(amb.id)}
+                              className={`text-[10px] font-bold px-2 py-1 rounded-lg transition-colors ${
+                                isActive
+                                  ? 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                                  : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                              }`}
+                            >
+                              {isActive ? 'Deactivate' : 'Activate'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openEditAmbassadorModal(amb)}
+                              className="p-1.5 text-neutral-600 hover:text-[#2E0249] bg-neutral-50 hover:bg-purple-50 rounded-lg transition-colors"
+                              title="Edit details"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteAmbassador(amb.id)}
+                              className="p-1.5 text-rose-500 hover:text-rose-700 bg-rose-50/50 hover:bg-rose-100 rounded-lg transition-colors"
+                              title="Delete ambassador"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {(!localSettings.ambassadors || localSettings.ambassadors.length === 0) && (
+                  <div className="p-8 text-center bg-neutral-50 rounded-2xl border border-dashed border-neutral-300">
+                    <UserCheck className="w-8 h-8 text-neutral-400 mx-auto mb-2" />
+                    <p className="font-bold text-neutral-700">No Ambassadors Registered</p>
+                    <p className="text-xs text-neutral-500 mb-3">
+                      Add your agency ambassadors so travelers can select their preferred agent during checkout.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={openNewAmbassadorModal}
+                      className="bg-[#2E0249] text-[#FFC72C] font-bold text-xs px-4 py-2 rounded-xl"
+                    >
+                      + Register First Ambassador
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Company Bank Account & Deposit Payout Settings */}
@@ -1552,6 +1940,152 @@ export const AdminDashboard: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* AMBASSADOR MODAL (Add / Edit) */}
+      {ambassadorModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 space-y-5 border border-neutral-300 shadow-2xl my-8">
+            <div className="flex items-center justify-between pb-3 border-b border-neutral-200">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-900 flex items-center justify-center">
+                  <UserCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-neutral-900 font-['Outfit',sans-serif]">
+                    {editingAmbassadorId ? 'Edit Ambassador' : 'Add New Ambassador'}
+                  </h3>
+                  <p className="text-[11px] text-neutral-500">
+                    {editingAmbassadorId ? 'Update contact & assignment details' : 'Register a new agent for customer bookings'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAmbassadorModalOpen(false)}
+                className="p-1.5 text-neutral-400 hover:text-neutral-700 rounded-lg hover:bg-neutral-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveAmbassadorModal} className="space-y-4 text-xs">
+              <div>
+                <label className="font-bold text-neutral-700 block mb-1">
+                  Ambassador Full Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Kerry-Ann Gordon"
+                  value={ambassadorForm.name}
+                  onChange={(e) => setAmbassadorForm({ ...ambassadorForm, name: e.target.value })}
+                  className="w-full p-2.5 border border-neutral-300 rounded-xl focus:border-purple-600 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-neutral-700 block mb-1">
+                    Official Title <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Senior Ambassador"
+                    value={ambassadorForm.title}
+                    onChange={(e) => setAmbassadorForm({ ...ambassadorForm, title: e.target.value })}
+                    className="w-full p-2.5 border border-neutral-300 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-neutral-700 block mb-1">
+                    Staff / Agent Code
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. KAG876"
+                    value={ambassadorForm.code}
+                    onChange={(e) => setAmbassadorForm({ ...ambassadorForm, code: e.target.value.toUpperCase() })}
+                    className="w-full p-2.5 border border-neutral-300 rounded-xl font-mono uppercase"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-neutral-700 block mb-1">
+                    Phone / WhatsApp <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="(876) 555-0199"
+                    value={ambassadorForm.phone}
+                    onChange={(e) => setAmbassadorForm({ ...ambassadorForm, phone: e.target.value })}
+                    className="w-full p-2.5 border border-neutral-300 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-neutral-700 block mb-1">
+                    Parish / Territory
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. St. Ann & Ochi"
+                    value={ambassadorForm.parishOrRegion}
+                    onChange={(e) => setAmbassadorForm({ ...ambassadorForm, parishOrRegion: e.target.value })}
+                    className="w-full p-2.5 border border-neutral-300 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-neutral-700 block mb-1">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  placeholder="e.g. kerry@smeltravels876.com"
+                  value={ambassadorForm.email}
+                  onChange={(e) => setAmbassadorForm({ ...ambassadorForm, email: e.target.value })}
+                  className="w-full p-2.5 border border-neutral-300 rounded-xl"
+                />
+              </div>
+
+              <div className="pt-2">
+                <label className="flex items-center gap-2 p-3 bg-neutral-50 rounded-xl border border-neutral-200 cursor-pointer hover:bg-neutral-100 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={ambassadorForm.isActive}
+                    onChange={(e) => setAmbassadorForm({ ...ambassadorForm, isActive: e.target.checked })}
+                    className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                  />
+                  <div>
+                    <span className="font-bold text-neutral-800 block text-xs">Active on Booking Screen</span>
+                    <span className="text-[11px] text-neutral-500">Travelers can select this ambassador when making reservations</span>
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-neutral-200">
+                <button
+                  type="button"
+                  onClick={() => setAmbassadorModalOpen(false)}
+                  className="px-4 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-[#2E0249] text-[#FFC72C] hover:bg-[#3B185F] rounded-xl font-bold transition-all shadow cursor-pointer"
+                >
+                  {editingAmbassadorId ? 'Save Changes' : 'Add Ambassador'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

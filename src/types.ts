@@ -97,6 +97,9 @@ export interface BookingSubmission {
   depositPaid: number;
   totalPrice: number;
   currency: string;
+  ambassadorId?: string;
+  ambassadorName?: string;
+  ambassadorPhone?: string;
   internalNotes: string[];
   createdAt: string;
   updatedAt: string;
@@ -262,6 +265,18 @@ export interface CompanyBankingSettings {
   paymentInstructions?: string;
 }
 
+export interface Ambassador {
+  id: string;
+  name: string;
+  title: string;
+  phone: string;
+  email: string;
+  code?: string;
+  isActive: boolean;
+  avatar?: string;
+  parishOrRegion?: string;
+}
+
 export interface SiteSettings {
   siteName: string;
   tagline: string;
@@ -271,6 +286,8 @@ export interface SiteSettings {
   ambassadorTitle: string;
   ambassadorPhone: string;
   ambassadorEmail: string;
+  ambassadors: Ambassador[];
+  requireAmbassadorSelection: boolean;
   whatsappNumber: string;
   whatsappMessageTemplate: string;
   addressSummary: string;

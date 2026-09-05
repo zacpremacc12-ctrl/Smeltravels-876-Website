@@ -127,42 +127,93 @@ export const AboutPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Ambassador Spotlight */}
-        <div className="bg-white rounded-3xl p-8 border border-neutral-200 shadow-sm">
-          <div className="flex flex-col sm:flex-row items-center gap-6">
-            <div className="w-24 h-24 rounded-2xl bg-purple-100 border-2 border-purple-200 flex items-center justify-center text-[#2E0249] shrink-0">
-              <UserCheck className="w-12 h-12" />
-            </div>
-
-            <div className="space-y-2 text-center sm:text-left flex-1">
+        {/* Agency Ambassadors Section */}
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-neutral-200 shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-neutral-100">
+            <div>
               <span className="text-xs font-bold uppercase tracking-wider text-purple-900 bg-purple-50 px-2.5 py-1 rounded">
-                AMBASSADOR SPOTLIGHT
+                MEET OUR AMBASSADORS
               </span>
-              <h3 className="text-2xl font-bold text-neutral-900 font-['Outfit',sans-serif]">
-                {settings.ambassadorName}
+              <h3 className="text-2xl font-black text-neutral-900 font-['Outfit',sans-serif] mt-1.5">
+                Official Agency Ambassadors
               </h3>
-              <p className="text-xs text-neutral-500 font-semibold">{settings.ambassadorTitle}</p>
-              <p className="text-xs sm:text-sm text-neutral-600 max-w-xl leading-relaxed">
-                Connect directly with Zachary for one-on-one inquiries about upcoming 2026 and 2027 package details, group bookings, payment plans, and travel document requirements.
+              <p className="text-xs text-neutral-500 max-w-xl">
+                Our certified ambassadors provide one-on-one travel support, customized group plans, and seamless booking coordination across Jamaica.
               </p>
-
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 pt-2 text-xs">
-                <a
-                  href={`tel:${settings.ambassadorPhone.replace(/[^0-9]/g, '')}`}
-                  className="font-bold text-[#2E0249] hover:underline flex items-center gap-1.5"
-                >
-                  <Phone className="w-3.5 h-3.5" />
-                  <span>{settings.ambassadorPhone}</span>
-                </a>
-                <a
-                  href={`mailto:${settings.ambassadorEmail}`}
-                  className="font-medium text-neutral-600 hover:text-neutral-900 flex items-center gap-1.5"
-                >
-                  <Mail className="w-3.5 h-3.5" />
-                  <span>{settings.ambassadorEmail}</span>
-                </a>
-              </div>
             </div>
+            <span className="bg-[#FFC72C]/20 text-[#2E0249] text-xs font-bold px-3 py-1.5 rounded-xl self-start sm:self-auto border border-[#FFC72C]/40">
+              Verified Representatives
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {(settings.ambassadors && settings.ambassadors.length > 0
+              ? settings.ambassadors.filter((a) => a.isActive !== false)
+              : [
+                  {
+                    id: 'amb-default',
+                    name: settings.ambassadorName || 'Zachary Buchanan',
+                    title: settings.ambassadorTitle || 'Senior Travel Ambassador',
+                    phone: settings.ambassadorPhone || '(876) 848-9772',
+                    email: settings.ambassadorEmail || 'zbuchanan.smeltravels@gmail.com',
+                    code: 'ZAC876',
+                    parishOrRegion: 'Kingston & St. Andrew',
+                  },
+                ]
+            ).map((amb) => (
+              <div
+                key={amb.id}
+                className="bg-neutral-50 rounded-2xl p-5 border border-neutral-200 hover:border-purple-300 transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-12 h-12 rounded-2xl bg-[#2E0249] text-[#FFC72C] flex items-center justify-center font-bold text-base shadow-xs shrink-0">
+                      {amb.name
+                        .split(' ')
+                        .map((n) => n[0])
+                        .slice(0, 2)
+                        .join('')}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h4 className="font-bold text-neutral-900 text-sm">{amb.name}</h4>
+                        {amb.code && (
+                          <span className="font-mono text-[9px] font-bold bg-white text-purple-900 px-1.5 py-0.5 rounded border border-purple-200">
+                            {amb.code}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-neutral-500">{amb.title}</p>
+                    </div>
+                  </div>
+
+                  {amb.parishOrRegion && (
+                    <div className="text-[11px] text-purple-900 font-semibold bg-purple-50 px-2 py-0.5 rounded inline-block mb-3">
+                      📍 {amb.parishOrRegion}
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-3 border-t border-neutral-200/80 space-y-1.5 text-xs">
+                  <a
+                    href={`tel:${amb.phone.replace(/[^0-9]/g, '')}`}
+                    className="flex items-center gap-1.5 font-bold text-[#2E0249] hover:underline"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-purple-700 shrink-0" />
+                    <span>{amb.phone}</span>
+                  </a>
+                  {amb.email && (
+                    <a
+                      href={`mailto:${amb.email}`}
+                      className="flex items-center gap-1.5 text-neutral-600 hover:text-neutral-900 truncate"
+                    >
+                      <Mail className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                      <span className="truncate">{amb.email}</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
