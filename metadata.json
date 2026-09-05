@@ -1,0 +1,6 @@
+{
+  "name": "SMELTRAVELS876",
+  "description": "SMELTRAVELS876 - Travel More. Worry Less. Premier Jamaican travel agency specializing in organized group trips, destination packages, and hassle-free international travel planning.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
