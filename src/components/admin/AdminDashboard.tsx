@@ -22,10 +22,16 @@ import {
   Mail,
   UserCheck,
   Search,
-  ExternalLink
+  ExternalLink,
+  Building2,
+  CreditCard,
+  QrCode,
+  Lock,
+  LogOut,
 } from 'lucide-react';
 import { useApp, formatPriceJMD } from '../../context/AppContext';
 import { BookingInquiry, TripPackage, BlogPost, FAQItem, PromotionalOffer, TestimonialItem } from '../../types';
+import { AdminLoginLock } from './AdminLoginLock';
 
 export const AdminDashboard: React.FC = () => {
   const {
@@ -50,6 +56,10 @@ export const AdminDashboard: React.FC = () => {
     resetToInitialData,
     showNotification,
     navigateTo,
+    isAdminLoggedIn,
+    adminEmail,
+    currentAdminRole,
+    logoutAdmin,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'inquiries' | 'trips' | 'destinations' | 'guides' | 'faqs' | 'offers' | 'testimonials' | 'settings'>('inquiries');
@@ -99,6 +109,11 @@ export const AdminDashboard: React.FC = () => {
     showNotification('Settings Updated', 'Agency details and contact numbers updated.');
   };
 
+  // Enforce Admin Lock Protection
+  if (!isAdminLoggedIn) {
+    return <AdminLoginLock />;
+  }
+
   return (
     <div className="bg-neutral-100 min-h-screen pb-20">
       {/* Admin Header */}
@@ -117,22 +132,22 @@ export const AdminDashboard: React.FC = () => {
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-black font-['Outfit',sans-serif]">SMELTRAVELS876 CMS</h1>
                 <span className="text-[10px] bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 px-2 py-0.5 rounded font-mono font-bold">
-                  ACTIVE
+                  UNLOCKED
                 </span>
               </div>
               <p className="text-xs text-neutral-300">
-                Agency Back-Office • Trips, Inquiries, Content & Settings
+                Agency Back-Office • Administrator: <strong className="text-[#FFC72C]">{adminEmail || 'zbuchanan.smeltravels@gmail.com'}</strong>
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => navigateTo('home')}
               className="bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3.5 py-2 rounded-xl border border-white/20 transition-colors flex items-center gap-1.5"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              <span>View Live Website</span>
+              <span>Live Website</span>
             </button>
 
             <button
@@ -146,6 +161,17 @@ export const AdminDashboard: React.FC = () => {
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Reset Data</span>
+            </button>
+
+            {/* Lock Panel / Logout Button */}
+            <button
+              onClick={logoutAdmin}
+              id="admin-logout-btn"
+              className="bg-amber-400 text-[#2E0249] hover:bg-amber-300 text-xs font-bold px-3.5 py-2 rounded-xl border border-amber-300 transition-colors flex items-center gap-1.5 shadow"
+              title="Lock administrator portal"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>Lock Panel</span>
             </button>
           </div>
         </div>
@@ -982,11 +1008,301 @@ export const AdminDashboard: React.FC = () => {
                 />
               </div>
 
+              {/* Company Bank Account & Deposit Payout Settings */}
+              <div className="pt-6 border-t border-neutral-200 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-black text-[#2E0249] flex items-center gap-2">
+                      <Building2 className="w-5 h-5 text-purple-700" />
+                      <span>Company Bank Account & Deposit Payouts</span>
+                    </h3>
+                    <p className="text-xs text-neutral-500">
+                      All deposits paid by travelers online, via NCB bank transfer, or via Lynk display and credit these exact company account details.
+                    </p>
+                  </div>
+                  <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">
+                    Live In Checkout
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="font-bold text-neutral-700 block mb-1">Company Bank Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. National Commercial Bank (NCB) Jamaica"
+                      value={localSettings.companyBanking?.bankName || ''}
+                      onChange={(e) => setLocalSettings({
+                        ...localSettings,
+                        companyBanking: {
+                          bankName: e.target.value,
+                          accountName: localSettings.companyBanking?.accountName || '',
+                          accountNumber: localSettings.companyBanking?.accountNumber || '',
+                          accountType: localSettings.companyBanking?.accountType || 'Chequing Account',
+                          branch: localSettings.companyBanking?.branch || '',
+                          swiftOrRoutingCode: localSettings.companyBanking?.swiftOrRoutingCode || '',
+                          lynkHandle: localSettings.companyBanking?.lynkHandle || '',
+                          lynkPhone: localSettings.companyBanking?.lynkPhone || '',
+                          officeDepositAddress: localSettings.companyBanking?.officeDepositAddress || '',
+                          cardGatewayProvider: localSettings.companyBanking?.cardGatewayProvider || '',
+                          cardGatewayMerchantId: localSettings.companyBanking?.cardGatewayMerchantId || '',
+                          paymentInstructions: localSettings.companyBanking?.paymentInstructions || '',
+                        }
+                      })}
+                      className="w-full p-2.5 border border-neutral-300 rounded-xl"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-neutral-700 block mb-1">Company Account Name (Beneficiary)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. SMELTRAVELS876 LIMITED"
+                      value={localSettings.companyBanking?.accountName || ''}
+                      onChange={(e) => setLocalSettings({
+                        ...localSettings,
+                        companyBanking: {
+                          bankName: localSettings.companyBanking?.bankName || '',
+                          accountName: e.target.value,
+                          accountNumber: localSettings.companyBanking?.accountNumber || '',
+                          accountType: localSettings.companyBanking?.accountType || 'Chequing Account',
+                          branch: localSettings.companyBanking?.branch || '',
+                          swiftOrRoutingCode: localSettings.companyBanking?.swiftOrRoutingCode || '',
+                          lynkHandle: localSettings.companyBanking?.lynkHandle || '',
+                          lynkPhone: localSettings.companyBanking?.lynkPhone || '',
+                          officeDepositAddress: localSettings.companyBanking?.officeDepositAddress || '',
+                          cardGatewayProvider: localSettings.companyBanking?.cardGatewayProvider || '',
+                          cardGatewayMerchantId: localSettings.companyBanking?.cardGatewayMerchantId || '',
+                          paymentInstructions: localSettings.companyBanking?.paymentInstructions || '',
+                        }
+                      })}
+                      className="w-full p-2.5 border border-neutral-300 rounded-xl"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-neutral-700 block mb-1">Account Number</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 354-928-1029"
+                      value={localSettings.companyBanking?.accountNumber || ''}
+                      onChange={(e) => setLocalSettings({
+                        ...localSettings,
+                        companyBanking: {
+                          bankName: localSettings.companyBanking?.bankName || '',
+                          accountName: localSettings.companyBanking?.accountName || '',
+                          accountNumber: e.target.value,
+                          accountType: localSettings.companyBanking?.accountType || 'Chequing Account',
+                          branch: localSettings.companyBanking?.branch || '',
+                          swiftOrRoutingCode: localSettings.companyBanking?.swiftOrRoutingCode || '',
+                          lynkHandle: localSettings.companyBanking?.lynkHandle || '',
+                          lynkPhone: localSettings.companyBanking?.lynkPhone || '',
+                          officeDepositAddress: localSettings.companyBanking?.officeDepositAddress || '',
+                          cardGatewayProvider: localSettings.companyBanking?.cardGatewayProvider || '',
+                          cardGatewayMerchantId: localSettings.companyBanking?.cardGatewayMerchantId || '',
+                          paymentInstructions: localSettings.companyBanking?.paymentInstructions || '',
+                        }
+                      })}
+                      className="w-full p-2.5 border border-neutral-300 rounded-xl font-mono font-bold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-neutral-700 block mb-1">Account Type</label>
+                    <select
+                      value={localSettings.companyBanking?.accountType || 'Chequing Account'}
+                      onChange={(e) => setLocalSettings({
+                        ...localSettings,
+                        companyBanking: {
+                          bankName: localSettings.companyBanking?.bankName || '',
+                          accountName: localSettings.companyBanking?.accountName || '',
+                          accountNumber: localSettings.companyBanking?.accountNumber || '',
+                          accountType: e.target.value,
+                          branch: localSettings.companyBanking?.branch || '',
+                          swiftOrRoutingCode: localSettings.companyBanking?.swiftOrRoutingCode || '',
+                          lynkHandle: localSettings.companyBanking?.lynkHandle || '',
+                          lynkPhone: localSettings.companyBanking?.lynkPhone || '',
+                          officeDepositAddress: localSettings.companyBanking?.officeDepositAddress || '',
+                          cardGatewayProvider: localSettings.companyBanking?.cardGatewayProvider || '',
+                          cardGatewayMerchantId: localSettings.companyBanking?.cardGatewayMerchantId || '',
+                          paymentInstructions: localSettings.companyBanking?.paymentInstructions || '',
+                        }
+                      })}
+                      className="w-full p-2.5 border border-neutral-300 rounded-xl"
+                    >
+                      <option value="Chequing Account">Chequing Account (Business)</option>
+                      <option value="Savings Account">Savings Account (Business)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-neutral-700 block mb-1">Bank Branch</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Half-Way-Tree Branch, Kingston"
+                      value={localSettings.companyBanking?.branch || ''}
+                      onChange={(e) => setLocalSettings({
+                        ...localSettings,
+                        companyBanking: {
+                          bankName: localSettings.companyBanking?.bankName || '',
+                          accountName: localSettings.companyBanking?.accountName || '',
+                          accountNumber: localSettings.companyBanking?.accountNumber || '',
+                          accountType: localSettings.companyBanking?.accountType || 'Chequing Account',
+                          branch: e.target.value,
+                          swiftOrRoutingCode: localSettings.companyBanking?.swiftOrRoutingCode || '',
+                          lynkHandle: localSettings.companyBanking?.lynkHandle || '',
+                          lynkPhone: localSettings.companyBanking?.lynkPhone || '',
+                          officeDepositAddress: localSettings.companyBanking?.officeDepositAddress || '',
+                          cardGatewayProvider: localSettings.companyBanking?.cardGatewayProvider || '',
+                          cardGatewayMerchantId: localSettings.companyBanking?.cardGatewayMerchantId || '',
+                          paymentInstructions: localSettings.companyBanking?.paymentInstructions || '',
+                        }
+                      })}
+                      className="w-full p-2.5 border border-neutral-300 rounded-xl"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-neutral-700 block mb-1">SWIFT / Routing Code (Optional)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. JNCBJMKX"
+                      value={localSettings.companyBanking?.swiftOrRoutingCode || ''}
+                      onChange={(e) => setLocalSettings({
+                        ...localSettings,
+                        companyBanking: {
+                          bankName: localSettings.companyBanking?.bankName || '',
+                          accountName: localSettings.companyBanking?.accountName || '',
+                          accountNumber: localSettings.companyBanking?.accountNumber || '',
+                          accountType: localSettings.companyBanking?.accountType || 'Chequing Account',
+                          branch: localSettings.companyBanking?.branch || '',
+                          swiftOrRoutingCode: e.target.value,
+                          lynkHandle: localSettings.companyBanking?.lynkHandle || '',
+                          lynkPhone: localSettings.companyBanking?.lynkPhone || '',
+                          officeDepositAddress: localSettings.companyBanking?.officeDepositAddress || '',
+                          cardGatewayProvider: localSettings.companyBanking?.cardGatewayProvider || '',
+                          cardGatewayMerchantId: localSettings.companyBanking?.cardGatewayMerchantId || '',
+                          paymentInstructions: localSettings.companyBanking?.paymentInstructions || '',
+                        }
+                      })}
+                      className="w-full p-2.5 border border-neutral-300 rounded-xl font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-neutral-700 block mb-1">Lynk Jamaica Handle</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. @smeltravels876"
+                      value={localSettings.companyBanking?.lynkHandle || ''}
+                      onChange={(e) => setLocalSettings({
+                        ...localSettings,
+                        companyBanking: {
+                          bankName: localSettings.companyBanking?.bankName || '',
+                          accountName: localSettings.companyBanking?.accountName || '',
+                          accountNumber: localSettings.companyBanking?.accountNumber || '',
+                          accountType: localSettings.companyBanking?.accountType || 'Chequing Account',
+                          branch: localSettings.companyBanking?.branch || '',
+                          swiftOrRoutingCode: localSettings.companyBanking?.swiftOrRoutingCode || '',
+                          lynkHandle: e.target.value,
+                          lynkPhone: localSettings.companyBanking?.lynkPhone || '',
+                          officeDepositAddress: localSettings.companyBanking?.officeDepositAddress || '',
+                          cardGatewayProvider: localSettings.companyBanking?.cardGatewayProvider || '',
+                          cardGatewayMerchantId: localSettings.companyBanking?.cardGatewayMerchantId || '',
+                          paymentInstructions: localSettings.companyBanking?.paymentInstructions || '',
+                        }
+                      })}
+                      className="w-full p-2.5 border border-neutral-300 rounded-xl"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-neutral-700 block mb-1">Lynk Associated Phone Number</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. (876) 848-9772"
+                      value={localSettings.companyBanking?.lynkPhone || ''}
+                      onChange={(e) => setLocalSettings({
+                        ...localSettings,
+                        companyBanking: {
+                          bankName: localSettings.companyBanking?.bankName || '',
+                          accountName: localSettings.companyBanking?.accountName || '',
+                          accountNumber: localSettings.companyBanking?.accountNumber || '',
+                          accountType: localSettings.companyBanking?.accountType || 'Chequing Account',
+                          branch: localSettings.companyBanking?.branch || '',
+                          swiftOrRoutingCode: localSettings.companyBanking?.swiftOrRoutingCode || '',
+                          lynkHandle: localSettings.companyBanking?.lynkHandle || '',
+                          lynkPhone: e.target.value,
+                          officeDepositAddress: localSettings.companyBanking?.officeDepositAddress || '',
+                          cardGatewayProvider: localSettings.companyBanking?.cardGatewayProvider || '',
+                          cardGatewayMerchantId: localSettings.companyBanking?.cardGatewayMerchantId || '',
+                          paymentInstructions: localSettings.companyBanking?.paymentInstructions || '',
+                        }
+                      })}
+                      className="w-full p-2.5 border border-neutral-300 rounded-xl"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-bold text-neutral-700 block mb-1">Agency Office Address (In-Person Holds)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 12 Trafalgar Road, Suite 4B, Kingston 10, Jamaica"
+                    value={localSettings.companyBanking?.officeDepositAddress || ''}
+                    onChange={(e) => setLocalSettings({
+                      ...localSettings,
+                      companyBanking: {
+                        bankName: localSettings.companyBanking?.bankName || '',
+                        accountName: localSettings.companyBanking?.accountName || '',
+                        accountNumber: localSettings.companyBanking?.accountNumber || '',
+                        accountType: localSettings.companyBanking?.accountType || 'Chequing Account',
+                        branch: localSettings.companyBanking?.branch || '',
+                        swiftOrRoutingCode: localSettings.companyBanking?.swiftOrRoutingCode || '',
+                        lynkHandle: localSettings.companyBanking?.lynkHandle || '',
+                        lynkPhone: localSettings.companyBanking?.lynkPhone || '',
+                        officeDepositAddress: e.target.value,
+                        cardGatewayProvider: localSettings.companyBanking?.cardGatewayProvider || '',
+                        cardGatewayMerchantId: localSettings.companyBanking?.cardGatewayMerchantId || '',
+                        paymentInstructions: localSettings.companyBanking?.paymentInstructions || '',
+                      }
+                    })}
+                    className="w-full p-2.5 border border-neutral-300 rounded-xl"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-neutral-700 block mb-1">Payment Instructions / Notes for Traveler</label>
+                  <textarea
+                    rows={2}
+                    value={localSettings.companyBanking?.paymentInstructions || ''}
+                    onChange={(e) => setLocalSettings({
+                      ...localSettings,
+                      companyBanking: {
+                        bankName: localSettings.companyBanking?.bankName || '',
+                        accountName: localSettings.companyBanking?.accountName || '',
+                        accountNumber: localSettings.companyBanking?.accountNumber || '',
+                        accountType: localSettings.companyBanking?.accountType || 'Chequing Account',
+                        branch: localSettings.companyBanking?.branch || '',
+                        swiftOrRoutingCode: localSettings.companyBanking?.swiftOrRoutingCode || '',
+                        lynkHandle: localSettings.companyBanking?.lynkHandle || '',
+                        lynkPhone: localSettings.companyBanking?.lynkPhone || '',
+                        officeDepositAddress: localSettings.companyBanking?.officeDepositAddress || '',
+                        cardGatewayProvider: localSettings.companyBanking?.cardGatewayProvider || '',
+                        cardGatewayMerchantId: localSettings.companyBanking?.cardGatewayMerchantId || '',
+                        paymentInstructions: e.target.value,
+                      }
+                    })}
+                    className="w-full p-2.5 border border-neutral-300 rounded-xl"
+                  />
+                </div>
+              </div>
+
               <button
                 type="submit"
-                className="bg-[#2E0249] text-[#FFC72C] font-bold text-xs py-3 px-6 rounded-xl shadow transition-all"
+                className="bg-[#2E0249] text-[#FFC72C] font-bold text-xs py-3 px-6 rounded-xl shadow transition-all cursor-pointer hover:bg-[#3B185F]"
               >
-                Save Agency Settings
+                Save Agency & Bank Settings
               </button>
             </form>
           </div>

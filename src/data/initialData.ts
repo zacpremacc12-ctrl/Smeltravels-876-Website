@@ -25,6 +25,20 @@ export const INITIAL_SETTINGS: SiteSettings = {
   addressSummary: 'Kingston, Jamaica • Serving Caribbean & International Travelers',
   operatingBase: 'Kingston, Jamaica',
   businessHours: 'Monday - Saturday: 8:30 AM - 6:30 PM EST',
+  companyBanking: {
+    bankName: 'National Commercial Bank (NCB) Jamaica',
+    accountName: 'SMELTRAVELS876 LIMITED',
+    accountNumber: '354-928-1029',
+    accountType: 'Chequing Account',
+    branch: 'Half-Way-Tree Branch, Kingston',
+    swiftOrRoutingCode: 'JNCBJMKX',
+    lynkHandle: '@smeltravels876',
+    lynkPhone: '(876) 848-9772',
+    officeDepositAddress: '12 Trafalgar Road, Suite 4B, Kingston 10, Jamaica',
+    cardGatewayProvider: 'WiPay Caribbean / NCB eCommerce',
+    cardGatewayMerchantId: 'MERCHANT-876-SMEL',
+    paymentInstructions: 'Deposits directly credit the official SMELTRAVELS876 corporate operational account. Upload your transfer receipt or WhatsApp confirmation for real-time verification.',
+  },
   brandColors: {
     primaryPurple: '#3B185F', // Deep royal purple
     accentGold: '#FFC72C',   // Radiant golden yellow

@@ -117,16 +117,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
               <span className="hidden sm:inline text-neutral-600">|</span>
               <button
                 onClick={handleOpenAdmin}
-                className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded transition-colors ${
+                className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded transition-all ${
                   isAdminLoggedIn
-                    ? 'bg-purple-900/60 text-[#FFC72C] border border-[#FFC72C]/40'
-                    : 'text-neutral-400 hover:text-white'
+                    ? 'bg-purple-900/80 text-[#FFC72C] border border-[#FFC72C]/40 shadow-sm'
+                    : 'text-neutral-400 hover:text-white bg-white/5 hover:bg-white/10'
                 }`}
-                title="Open Travel Agency Administration"
+                title={isAdminLoggedIn ? "Open Admin Dashboard (Unlocked)" : "Open Admin Portal (Password Protected)"}
                 id="header-admin-btn"
               >
-                <Lock className="w-3 h-3" />
-                <span>{isAdminLoggedIn ? `${currentAdminRole} Active` : 'Admin'}</span>
+                <Lock className={`w-3 h-3 ${isAdminLoggedIn ? 'text-[#FFC72C]' : 'text-neutral-400'}`} />
+                <span className={isAdminLoggedIn ? "text-[#FFC72C] font-bold" : "text-neutral-300 font-medium"}>
+                  {isAdminLoggedIn ? `${currentAdminRole} Active` : 'Admin (Protected)'}
+                </span>
               </button>
             </div>
           </div>
@@ -444,9 +446,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
                     setIsMobileMenuOpen(false);
                     handleOpenAdmin();
                   }}
-                  className="text-[#FFC72C] underline flex items-center gap-1"
+                  className="text-[#FFC72C] underline flex items-center gap-1 font-semibold"
                 >
-                  <Lock className="w-3 h-3" /> Admin Portal
+                  <Lock className="w-3 h-3" /> {isAdminLoggedIn ? `${currentAdminRole} (Active)` : 'Admin (Protected)'}
                 </button>
               </div>
             </div>

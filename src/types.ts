@@ -133,6 +133,19 @@ export interface CustomerRecord {
   createdAt: string;
 }
 
+export interface TravelerDepositRecord {
+  id: string;
+  tripId: string;
+  tripName: string;
+  amount: number;
+  currency: string;
+  date: string;
+  bookingRef: string;
+  paymentMethod: string;
+  transactionId: string;
+  status: 'Confirmed' | 'Pending Review';
+}
+
 export interface TravelerUser {
   id: string;
   name: string;
@@ -140,6 +153,8 @@ export interface TravelerUser {
   phone?: string;
   homeParishOrCountry?: string;
   memberSince?: string;
+  firstDeposit?: TravelerDepositRecord;
+  deposits?: TravelerDepositRecord[];
 }
 
 export interface BlogPost {
@@ -231,6 +246,21 @@ export interface NewsletterSubscriber {
   source: string;
 }
 
+export interface CompanyBankingSettings {
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+  accountType: string;
+  branch: string;
+  swiftOrRoutingCode?: string;
+  lynkHandle: string;
+  lynkPhone: string;
+  officeDepositAddress: string;
+  cardGatewayProvider?: string;
+  cardGatewayMerchantId?: string;
+  paymentInstructions?: string;
+}
+
 export interface SiteSettings {
   siteName: string;
   tagline: string;
@@ -245,6 +275,7 @@ export interface SiteSettings {
   addressSummary: string;
   operatingBase?: string;
   businessHours?: string;
+  companyBanking?: CompanyBankingSettings;
   brandColors: {
     primaryPurple: string;
     accentGold: string;

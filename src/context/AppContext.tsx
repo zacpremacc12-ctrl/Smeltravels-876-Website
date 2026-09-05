@@ -15,6 +15,7 @@ import {
   AdminUser,
   AdminRole,
   TravelerUser,
+  TravelerDepositRecord,
 } from '../types';
 import {
   INITIAL_SETTINGS,
@@ -44,6 +45,7 @@ interface AppContextType {
   addDestination: (dest: Omit<Destination, 'id'>) => void;
   updateDestination: (id: string, dest: Partial<Destination>) => void;
   deleteDestination: (id: string) => void;
+  saveDestination: (dest: Destination) => void;
   
   bookings: BookingSubmission[];
   createBooking: (booking: Omit<BookingSubmission, 'id' | 'referenceNumber' | 'createdAt' | 'updatedAt' | 'internalNotes'>) => string;
@@ -87,15 +89,18 @@ interface AppContextType {
   
   // Admin & View State
   isAdminLoggedIn: boolean;
+  adminEmail: string | null;
   currentAdminRole: AdminRole;
   loginAdmin: (role?: AdminRole) => void;
-  logoutAdmin: (role?: AdminRole) => void;
+  loginAdminWithCredentials: (email: string, password: string) => { success: boolean; error?: string };
+  logoutAdmin: () => void;
 
   // Traveler Account Authentication
   currentUser: TravelerUser | null;
   loginUser: (email: string, name?: string, phone?: string) => boolean;
   signupUser: (name: string, email: string, phone?: string, homeParishOrCountry?: string) => boolean;
   logoutUser: () => void;
+  recordUserDeposit: (deposit: TravelerDepositRecord, userEmail?: string) => void;
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
   authModalMode: 'login' | 'signup';
@@ -183,6 +188,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Admin states
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => getStoredItem('admin_logged', false));
+  const [adminEmail, setAdminEmail] = useState<string | null>(() => getStoredItem('admin_email', null));
   const [currentAdminRole, setCurrentAdminRole] = useState<AdminRole>(() => getStoredItem('admin_role', 'Super Admin'));
 
   // Notification state
@@ -219,6 +225,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => { setStoredItem('media', mediaList); }, [mediaList]);
   useEffect(() => { setStoredItem('subscribers', subscribers); }, [subscribers]);
   useEffect(() => { setStoredItem('admin_logged', isAdminLoggedIn); }, [isAdminLoggedIn]);
+  useEffect(() => { setStoredItem('admin_email', adminEmail); }, [adminEmail]);
   useEffect(() => { setStoredItem('admin_role', currentAdminRole); }, [currentAdminRole]);
   useEffect(() => { setStoredItem('traveler_user', currentUser); }, [currentUser]);
 
@@ -521,16 +528,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showNotification('Unsubscribed', `${email} has been unsubscribed from travel updates.`, 'info');
   };
 
-  // Admin Auth
+  // Admin Auth - Email & Password Protected
+  const REQUIRED_ADMIN_EMAIL = 'zbuchanan.smeltravels@gmail.com';
+  const REQUIRED_ADMIN_PASSWORD = 'Jjrrss5521';
+
   const loginAdmin = (role: AdminRole = 'Super Admin') => {
     setIsAdminLoggedIn(true);
+    setAdminEmail(REQUIRED_ADMIN_EMAIL);
     setCurrentAdminRole(role);
     showNotification('Admin Authenticated', `Logged into SMELTRAVELS876 CMS as ${role}.`);
   };
 
+  const loginAdminWithCredentials = (email: string, password: string): { success: boolean; error?: string } => {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanPassword = (password || '').trim();
+
+    if (cleanEmail === REQUIRED_ADMIN_EMAIL.toLowerCase() && cleanPassword === REQUIRED_ADMIN_PASSWORD) {
+      setIsAdminLoggedIn(true);
+      setAdminEmail(REQUIRED_ADMIN_EMAIL);
+      setCurrentAdminRole('Super Admin');
+      showNotification('Access Granted', `Welcome back, Administrator (${REQUIRED_ADMIN_EMAIL}).`);
+      return { success: true };
+    } else {
+      showNotification('Access Denied', 'Invalid administrator email or password.', 'warning');
+      return { 
+        success: false, 
+        error: 'Invalid administrator email or password. Please verify your credentials.' 
+      };
+    }
+  };
+
   const logoutAdmin = () => {
     setIsAdminLoggedIn(false);
-    showNotification('Logged Out', 'Safely signed out of administrator console.', 'info');
+    setAdminEmail(null);
+    showNotification('Admin Panel Locked', 'Safely signed out. Admin panel is password protected.', 'info');
   };
 
   // Traveler Auth & Account Methods
@@ -604,6 +635,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showNotification('Signed Out', 'You have been safely signed out.');
   };
 
+  const recordUserDeposit = (deposit: TravelerDepositRecord, userEmail?: string) => {
+    const now = new Date();
+    setCurrentUser(prev => {
+      if (!prev) return null;
+      const isFirst = !prev.firstDeposit;
+      const prevDeposits = prev.deposits || [];
+      const updatedUser: TravelerUser = {
+        ...prev,
+        firstDeposit: isFirst ? deposit : prev.firstDeposit,
+        deposits: [deposit, ...prevDeposits],
+      };
+      setStoredItem('traveler_user', updatedUser);
+      return updatedUser;
+    });
+
+    // Also update in customers table
+    const targetEmail = (currentUser?.email || userEmail || deposit.bookingRef).toLowerCase();
+    setCustomers(prev =>
+      prev.map(c => {
+        if (c.email.toLowerCase() === targetEmail) {
+          return {
+            ...c,
+            totalSpent: (c.totalSpent || 0) + deposit.amount,
+            notes: [
+              ...c.notes,
+              `[${now.toLocaleDateString()}] Deposit recorded: $${deposit.amount.toLocaleString()} JMD for ${deposit.tripName} (Ref: ${deposit.bookingRef})`,
+            ],
+            status: 'Active Traveler',
+          };
+        }
+        return c;
+      })
+    );
+  };
+
   const deleteBooking = (id: string) => {
     setBookings(prev => prev.filter(b => b.id !== id));
     showNotification('Inquiry Removed', 'Booking inquiry deleted from records.', 'info');
@@ -618,6 +684,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return updated;
       }
       return [trip, ...prev];
+    });
+  };
+
+  const saveDestination = (dest: Destination) => {
+    setDestinations(prev => {
+      const idx = prev.findIndex(d => d.id === dest.id);
+      if (idx >= 0) {
+        const updated = [...prev];
+        updated[idx] = dest;
+        return updated;
+      }
+      return [dest, ...prev];
     });
   };
 
@@ -698,6 +776,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addDestination,
         updateDestination,
         deleteDestination,
+        saveDestination,
         bookings,
         createBooking,
         updateBookingStatus,
@@ -735,13 +814,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         subscribeNewsletter,
         unsubscribeNewsletter,
         isAdminLoggedIn,
+        adminEmail,
         currentAdminRole,
         loginAdmin,
+        loginAdminWithCredentials,
         logoutAdmin,
         currentUser,
         loginUser,
         signupUser,
         logoutUser,
+        recordUserDeposit,
         isAuthModalOpen,
         setIsAuthModalOpen,
         authModalMode,

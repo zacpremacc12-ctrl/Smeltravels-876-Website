@@ -189,6 +189,38 @@ export const AuthModal: React.FC = () => {
                 </p>
               </div>
 
+              {/* Tracked First Deposit */}
+              {currentUser.firstDeposit && (
+                <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-200 text-xs space-y-2">
+                  <div className="flex items-center justify-between font-bold text-emerald-900">
+                    <span className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>First Deposit Tracked</span>
+                    </span>
+                    <span className="bg-emerald-200/80 text-emerald-900 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
+                      {currentUser.firstDeposit.status}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between pt-1">
+                    <span className="text-neutral-800 font-bold">{currentUser.firstDeposit.tripName}</span>
+                    <span className="text-base font-black text-[#2E0249]">
+                      ${currentUser.firstDeposit.amount.toLocaleString()} JMD
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-neutral-600 flex items-center justify-between pt-0.5 border-t border-emerald-100">
+                    <span>
+                      Ref: <strong className="font-mono text-purple-950 font-bold">{currentUser.firstDeposit.bookingRef}</strong>
+                    </span>
+                    <span>Paid on {currentUser.firstDeposit.date}</span>
+                  </div>
+                  {currentUser.firstDeposit.paymentMethod && (
+                    <div className="text-[10px] text-neutral-500">
+                      Method: {currentUser.firstDeposit.paymentMethod} • Txn ID: <span className="font-mono">{currentUser.firstDeposit.transactionId}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* User Inquiries / Bookings */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
