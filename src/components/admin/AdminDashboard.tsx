@@ -105,8 +105,13 @@ export const AdminDashboard: React.FC = () => {
       <div className="bg-[#2E0249] text-white border-b border-purple-900 sticky top-16 z-20 shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#FFC72C] text-[#2E0249] flex items-center justify-center font-black">
-              <Layers className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-white p-0.5 flex items-center justify-center shadow overflow-hidden">
+              <img
+                src="/logo.png"
+                alt="SMELTRAVELS876 Logo"
+                className="w-9 h-9 object-contain rounded-lg"
+                referrerPolicy="no-referrer"
+              />
             </div>
             <div>
               <div className="flex items-center gap-2">

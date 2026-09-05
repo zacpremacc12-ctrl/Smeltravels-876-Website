@@ -17,6 +17,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { BrandLogo } from './common/BrandLogo';
 
 interface HeaderProps {
   onOpenSearch?: () => void;
@@ -144,25 +145,10 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
           {/* Logo & Tagline */}
           <div
             onClick={() => handleNav('home')}
-            className="cursor-pointer group flex items-center gap-3"
+            className="cursor-pointer group flex items-center"
             id="header-logo-link"
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FFC72C] to-[#E5A800] flex items-center justify-center text-[#2E0249] font-black shadow-md shadow-[#FFC72C]/20 group-hover:scale-105 transition-transform">
-              <Plane className="w-5 h-5 transform rotate-[-45deg] stroke-[2.5]" />
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-xl sm:text-2xl tracking-tight text-white font-['Outfit',sans-serif]">
-                  SMELTRAVELS<span className="text-[#FFC72C]">876</span>
-                </span>
-                <span className="text-xs bg-[#FFC72C]/20 text-[#FFC72C] px-1.5 py-0.2 rounded font-bold border border-[#FFC72C]/30 hidden sm:inline-block">
-                  JA 🇯🇲
-                </span>
-              </div>
-              <span className="text-[11px] font-semibold text-[#FFC72C] tracking-wider uppercase">
-                {settings.tagline}
-              </span>
-            </div>
+            <BrandLogo size="md" tagline={settings.tagline} />
           </div>
 
           {/* Desktop Navigation Links */}

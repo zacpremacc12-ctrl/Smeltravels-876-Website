@@ -15,6 +15,7 @@ import {
   UserCheck
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { BrandLogo } from './common/BrandLogo';
 
 interface FooterProps {
   onOpenLegal: (topic: string) => void;
@@ -55,19 +56,9 @@ export const Footer: React.FC<FooterProps> = ({ onOpenLegal, onOpenAdmin }) => {
           <div className="lg:col-span-2 space-y-4">
             <div
               onClick={() => navigateTo('home')}
-              className="cursor-pointer flex items-center gap-3"
+              className="cursor-pointer flex items-center group"
             >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FFC72C] to-[#E5A800] flex items-center justify-center text-[#2E0249] font-black shadow-md">
-                <Plane className="w-5 h-5 transform rotate-[-45deg] stroke-[2.5]" />
-              </div>
-              <div className="flex flex-col">
-                <span className="font-extrabold text-2xl tracking-tight text-white font-['Outfit',sans-serif]">
-                  SMELTRAVELS<span className="text-[#FFC72C]">876</span>
-                </span>
-                <span className="text-xs font-semibold text-[#FFC72C] tracking-wider uppercase">
-                  {settings.tagline}
-                </span>
-              </div>
+              <BrandLogo size="md" tagline={settings.tagline} />
             </div>
 
             <p className="text-neutral-400 text-sm leading-relaxed max-w-sm">

@@ -123,8 +123,13 @@ export const AuthModal: React.FC = () => {
           </button>
 
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-[#FFC72C] text-[#2E0249] flex items-center justify-center font-black shadow-md">
-              <Plane className="w-5 h-5 transform -rotate-45" />
+            <div className="w-11 h-11 rounded-2xl bg-white p-0.5 flex items-center justify-center shadow-md border border-white/20 overflow-hidden">
+              <img
+                src="/logo.png"
+                alt="SMELTRAVELS876 Logo"
+                className="w-10 h-10 object-contain rounded-xl"
+                referrerPolicy="no-referrer"
+              />
             </div>
             <div>
               <h2 className="text-xl font-black font-['Outfit',sans-serif] tracking-tight">
