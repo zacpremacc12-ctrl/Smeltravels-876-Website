@@ -209,6 +209,7 @@ export interface TestimonialItem {
   avatarUrl: string;
   isPublished: boolean;
   isSamplePlaceholder: boolean;
+  email?: string;
 }
 
 export type FAQCategory =

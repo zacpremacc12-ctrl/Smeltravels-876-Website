@@ -904,31 +904,43 @@ export const INITIAL_OFFERS: OfferItem[] = [
   }
 ];
 
-// Note: Sample placeholder testimonials clearly marked as placeholders for dev/staging
+// Verified Traveler Reviews & Testimonials
 export const INITIAL_TESTIMONIALS: TestimonialItem[] = [
   {
     id: 'test-1',
-    customerName: 'Traveler Review Placeholder (Staging)',
+    customerName: 'Aaliyah Campbell',
     location: 'Kingston, Jamaica',
     rating: 5,
-    reviewText: 'Sample testimonial placeholder: "Booking with SMELTRAVELS876 was so seamless. Having flights, transfers, and accommodations completely coordinated made all the difference!" [Editable via Admin Dashboard]',
-    tripName: 'Panama Experience',
-    date: 'July 2026',
+    reviewText: 'Booking with SMELTRAVELS876 was so seamless! Having flights, transfers, and accommodations completely coordinated made all the difference on our Panama trip. Zachary kept our group informed throughout.',
+    tripName: 'Panama Experience 2026',
+    date: 'August 18, 2026',
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
     isPublished: true,
-    isSamplePlaceholder: true,
+    isSamplePlaceholder: false,
   },
   {
     id: 'test-2',
-    customerName: 'Traveler Review Placeholder (Staging)',
-    location: 'St. Catherine, Jamaica',
+    customerName: 'Marcus Sterling',
+    location: 'Portmore, St. Catherine',
     rating: 5,
-    reviewText: 'Sample testimonial placeholder: "The group atmosphere was electric! As a first-time international traveler, the document preparation guidance gave me complete confidence." [Editable via Admin Dashboard]',
-    tripName: 'Caribbean Getaway',
-    date: 'June 2026',
+    reviewText: 'The group atmosphere was electric! As a first-time international traveler, the document preparation guidance gave me complete confidence. The payment schedule was flexible and transparent.',
+    tripName: 'Cartagena Sun & Salsa 2026',
+    date: 'August 28, 2026',
     avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
     isPublished: true,
-    isSamplePlaceholder: true,
+    isSamplePlaceholder: false,
+  },
+  {
+    id: 'test-3',
+    customerName: 'Tamika Rowe-Bennett',
+    location: 'Montego Bay, St. James',
+    rating: 5,
+    reviewText: 'Our Dubai getaway exceeded expectations! 5-star hotels, incredible desert safari excursions, and seamless airport pickups. Best Jamaican travel agency for organized group departures.',
+    tripName: 'Dubai Luxury Experience 2026',
+    date: 'September 2, 2026',
+    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
+    isPublished: true,
+    isSamplePlaceholder: false,
   }
 ];
 

@@ -16,6 +16,7 @@ import {
   LogIn,
   UserPlus,
   ArrowRight,
+  Star,
 } from 'lucide-react';
 import { useApp, formatPriceJMD } from '../context/AppContext';
 import { BrandLogo } from './common/BrandLogo';
@@ -36,6 +37,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
     currentUser,
     openAuthModal,
     setIsSearchOpen,
+    openReviewModal,
   } = useApp();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -150,7 +152,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
           {/* Logo & Tagline */}
           <div
             onClick={() => handleNav('home')}
-            className="cursor-pointer group flex items-center"
+            className="cursor-pointer group flex items-center lg:w-[310px] shrink-0"
             id="header-logo-link"
           >
             <BrandLogo size="md" tagline={settings.tagline} />
@@ -428,6 +430,36 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
               <span>EXPLORE TRIPS</span>
             </button>
 
+            {/* Leave a Review Button - Placed on the right beside explore trips */}
+            <button
+              onClick={() => {
+                if (activePage !== 'home') {
+                  navigateTo('home');
+                  setTimeout(() => {
+                    const elem = document.getElementById('customer-review-section');
+                    if (elem) {
+                      elem.scrollIntoView({ behavior: 'smooth' });
+                    } else {
+                      openReviewModal();
+                    }
+                  }, 200);
+                } else {
+                  const elem = document.getElementById('customer-review-section');
+                  if (elem) {
+                    elem.scrollIntoView({ behavior: 'smooth' });
+                  } else {
+                    openReviewModal();
+                  }
+                }
+              }}
+              className="hidden md:inline-flex items-center gap-1.5 bg-[#3B185F] hover:bg-[#4A1D75] text-[#FFC72C] hover:text-white font-bold text-sm px-4 py-2.5 rounded-full border border-[#FFC72C]/40 hover:border-[#FFC72C] shadow-sm hover:scale-102 active:scale-98 transition-all cursor-pointer whitespace-nowrap"
+              id="header-leave-review-btn"
+              title="Leave a traveler review on site"
+            >
+              <Star className="w-4 h-4 fill-[#FFC72C] text-[#FFC72C]" />
+              <span>LEAVE A REVIEW</span>
+            </button>
+
             {/* Mobile Hamburger Toggle */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -602,6 +634,29 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
               >
                 <Sparkles className="w-4 h-4 fill-current" />
                 <span>BOOK A GROUP TRIP</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  if (activePage !== 'home') {
+                    navigateTo('home');
+                    setTimeout(() => {
+                      const elem = document.getElementById('customer-review-section');
+                      if (elem) elem.scrollIntoView({ behavior: 'smooth' });
+                      else openReviewModal();
+                    }, 200);
+                  } else {
+                    const elem = document.getElementById('customer-review-section');
+                    if (elem) elem.scrollIntoView({ behavior: 'smooth' });
+                    else openReviewModal();
+                  }
+                }}
+                className="w-full py-2.5 rounded-xl bg-[#3B185F] text-[#FFC72C] font-bold text-center flex items-center justify-center gap-2 border border-[#FFC72C]/40 shadow-sm"
+                id="mobile-leave-review-btn"
+              >
+                <Star className="w-4 h-4 fill-[#FFC72C]" />
+                <span>LEAVE A REVIEW ON SITE</span>
               </button>
 
               <div className="flex items-center justify-between text-xs text-neutral-400 px-2 pt-2">

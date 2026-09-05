@@ -117,6 +117,12 @@ interface AppContextType {
   isSearchOpen: boolean;
   setIsSearchOpen: (open: boolean) => void;
 
+  // Review submission modal state
+  isReviewModalOpen: boolean;
+  setIsReviewModalOpen: (open: boolean) => void;
+  openReviewModal: () => void;
+  closeReviewModal: () => void;
+
   // Quick View modals
   selectedTripForBooking: TripPackage | null;
   setSelectedTripForBooking: (trip: TripPackage | null) => void;
@@ -209,6 +215,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Search modal state
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
+
+  // Review submission modal state
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState<boolean>(false);
+  const openReviewModal = () => setIsReviewModalOpen(true);
+  const closeReviewModal = () => setIsReviewModalOpen(false);
 
   // Traveler authentication state
   const [currentUser, setCurrentUser] = useState<TravelerUser | null>(() => {
@@ -848,6 +859,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearNotification,
         isSearchOpen,
         setIsSearchOpen,
+        isReviewModalOpen,
+        setIsReviewModalOpen,
+        openReviewModal,
+        closeReviewModal,
         selectedTripForBooking,
         setSelectedTripForBooking,
         selectedTripForInquiry,

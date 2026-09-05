@@ -70,9 +70,6 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
             >
               SMELTRAVELS<span className="text-[#FFC72C]">876</span>
             </span>
-            <span className="text-[10px] bg-[#FFC72C]/20 text-[#FFC72C] px-1.5 py-0.5 rounded font-bold border border-[#FFC72C]/30 hidden sm:inline-block">
-              JA 🇯🇲
-            </span>
           </div>
           {tagline && (
             <span className="text-[11px] font-semibold text-[#FFC72C] tracking-wider uppercase leading-tight">

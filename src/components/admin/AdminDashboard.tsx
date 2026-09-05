@@ -31,6 +31,7 @@ import {
   QrCode,
   Lock,
   LogOut,
+  Calendar,
 } from 'lucide-react';
 import { useApp, formatPriceJMD } from '../../context/AppContext';
 import { BookingInquiry, TripPackage, BlogPost, FAQItem, PromotionalOffer, TestimonialItem, Destination, Ambassador } from '../../types';
@@ -58,6 +59,9 @@ export const AdminDashboard: React.FC = () => {
     saveOffer,
     testimonials,
     saveTestimonial,
+    addTestimonial,
+    updateTestimonial,
+    deleteTestimonial,
     settings,
     updateSettings,
     resetToInitialData,
@@ -85,6 +89,29 @@ export const AdminDashboard: React.FC = () => {
 
   // Quick edit offer state
   const [editingOffer, setEditingOffer] = useState<PromotionalOffer | null>(null);
+
+  // Quick edit testimonial state
+  const [editingTestimonial, setEditingTestimonial] = useState<TestimonialItem | null>(null);
+  const [isCreatingTestimonial, setIsCreatingTestimonial] = useState(false);
+  const [testimonialForm, setTestimonialForm] = useState<{
+    customerName: string;
+    location: string;
+    tripName: string;
+    rating: number;
+    reviewText: string;
+    date: string;
+    isPublished: boolean;
+    isSamplePlaceholder: boolean;
+  }>({
+    customerName: '',
+    location: 'Kingston, Jamaica',
+    tripName: 'Panama Experience 2026',
+    rating: 5,
+    reviewText: '',
+    date: 'September 5, 2026',
+    isPublished: true,
+    isSamplePlaceholder: false,
+  });
 
   // Settings form state
   const [localSettings, setLocalSettings] = useState(settings);
@@ -1296,54 +1323,324 @@ export const AdminDashboard: React.FC = () => {
         {/* TAB 7: TESTIMONIALS */}
         {activeTab === 'testimonials' && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h2 className="text-xl font-bold text-neutral-900 font-['Outfit',sans-serif]">
                   Traveler Reviews & Testimonial Moderation
                 </h2>
                 <p className="text-xs text-neutral-500">
-                  Replace sample staging placeholders with verified reviews received from travelers.
+                  Manage traveler reviews, moderate customer feedback, edit review details, and display date sent.
                 </p>
               </div>
+
+              <button
+                onClick={() => {
+                  setTestimonialForm({
+                    customerName: '',
+                    location: 'Kingston, Jamaica',
+                    tripName: trips[0]?.name || 'Panama Experience 2026',
+                    rating: 5,
+                    reviewText: '',
+                    date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+                    isPublished: true,
+                    isSamplePlaceholder: false,
+                  });
+                  setEditingTestimonial(null);
+                  setIsCreatingTestimonial(true);
+                }}
+                className="bg-[#2E0249] text-[#FFC72C] font-bold text-xs py-2.5 px-4 rounded-xl shadow hover:bg-[#3B185F] transition-all flex items-center gap-2 cursor-pointer self-start sm:self-auto"
+                id="admin-add-review-btn"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Verified Review</span>
+              </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {testimonials.map((t) => (
-                <div key={t.id} className="bg-white rounded-2xl border border-neutral-200 p-5 shadow-sm space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1 text-amber-500">
-                      {[...Array(t.rating)].map((_, i) => (
-                        <Star key={i} className="w-3.5 h-3.5 fill-current" />
-                      ))}
+                <div key={t.id} className="bg-white rounded-2xl border border-neutral-200 p-5 shadow-sm space-y-3 relative flex flex-col justify-between">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-1 text-amber-500">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`w-3.5 h-3.5 ${
+                              i < t.rating ? 'text-[#FFC72C] fill-[#FFC72C]' : 'text-neutral-300'
+                            }`}
+                          />
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {/* Date of review sent */}
+                        <div className="flex items-center gap-1 text-[11px] text-neutral-600 font-semibold bg-neutral-100 px-2 py-0.5 rounded-full border border-neutral-200">
+                          <Calendar className="w-3 h-3 text-purple-700" />
+                          <span>Sent: {t.date || 'Recent'}</span>
+                        </div>
+
+                        {t.isSamplePlaceholder && (
+                          <span className="text-[10px] bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded font-mono">
+                            Placeholder
+                          </span>
+                        )}
+
+                        <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
+                          t.isPublished ? 'bg-emerald-100 text-emerald-800' : 'bg-neutral-100 text-neutral-500'
+                        }`}>
+                          {t.isPublished ? 'Published' : 'Hidden'}
+                        </span>
+                      </div>
                     </div>
-                    {t.isSamplePlaceholder && (
-                      <span className="text-[10px] bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded font-mono">
-                        Demo Placeholder
-                      </span>
-                    )}
+
+                    <p className="text-xs text-neutral-700 italic leading-relaxed">"{t.reviewText}"</p>
                   </div>
 
-                  <p className="text-xs text-neutral-700 italic">"{t.reviewText}"</p>
-
-                  <div className="pt-2 border-t border-neutral-100 flex items-center justify-between text-xs">
+                  <div className="pt-3 border-t border-neutral-100 flex items-center justify-between text-xs gap-3">
                     <div>
                       <span className="font-bold text-neutral-900 block">{t.customerName}</span>
-                      <span className="text-neutral-500 text-[11px]">{t.tripName}</span>
+                      <span className="text-neutral-500 text-[11px]">{t.location} • {t.tripName}</span>
                     </div>
 
-                    <button
-                      onClick={() => {
-                        saveTestimonial({ ...t, isPublished: !t.isPublished });
-                        showNotification('Review Updated', `Review is now ${!t.isPublished ? 'Published' : 'Hidden'}.`);
-                      }}
-                      className="text-purple-900 font-bold hover:underline"
-                    >
-                      {t.isPublished ? 'Hide from Site' : 'Show on Site'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setEditingTestimonial(t);
+                          setTestimonialForm({
+                            customerName: t.customerName,
+                            location: t.location,
+                            tripName: t.tripName,
+                            rating: t.rating,
+                            reviewText: t.reviewText,
+                            date: t.date || 'September 5, 2026',
+                            isPublished: t.isPublished,
+                            isSamplePlaceholder: t.isSamplePlaceholder || false,
+                          });
+                          setIsCreatingTestimonial(false);
+                        }}
+                        className="p-1.5 text-neutral-500 hover:text-purple-900 hover:bg-purple-50 rounded-lg transition-colors flex items-center gap-1 text-xs font-bold"
+                        title="Edit Review"
+                        aria-label={`Edit review from ${t.customerName}`}
+                      >
+                        <Edit2 className="w-3.5 h-3.5 text-purple-700" />
+                        <span>Edit</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          saveTestimonial({ ...t, isPublished: !t.isPublished });
+                          showNotification('Review Updated', `Review is now ${!t.isPublished ? 'Published' : 'Hidden'}.`);
+                        }}
+                        className={`text-xs font-bold px-2.5 py-1 rounded-lg transition-colors ${
+                          t.isPublished ? 'text-amber-700 bg-amber-50 hover:bg-amber-100' : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
+                        }`}
+                      >
+                        {t.isPublished ? 'Hide' : 'Publish'}
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (confirm(`Are you sure you want to delete the review from ${t.customerName}?`)) {
+                            deleteTestimonial(t.id);
+                          }
+                        }}
+                        className="p-1.5 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                        title="Delete Review"
+                        aria-label={`Delete review from ${t.customerName}`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
+
+            {/* Testimonial Edit / Create Modal */}
+            {(editingTestimonial || isCreatingTestimonial) && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-neutral-200 overflow-hidden flex flex-col max-h-[90vh]">
+                  <div className="bg-[#2E0249] text-white p-5 flex items-center justify-between shrink-0">
+                    <div className="flex items-center gap-2">
+                      <Edit2 className="w-4 h-4 text-[#FFC72C]" />
+                      <h3 className="font-bold text-base font-['Outfit',sans-serif]">
+                        {isCreatingTestimonial ? 'Add Verified Traveler Review' : `Edit Review: ${testimonialForm.customerName}`}
+                      </h3>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setEditingTestimonial(null);
+                        setIsCreatingTestimonial(false);
+                      }}
+                      className="p-1 rounded-full text-neutral-300 hover:text-white hover:bg-white/10"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!testimonialForm.customerName.trim()) {
+                        showNotification('Error', 'Customer name is required.', 'warning');
+                        return;
+                      }
+                      if (!testimonialForm.reviewText.trim()) {
+                        showNotification('Error', 'Review text is required.', 'warning');
+                        return;
+                      }
+
+                      if (isCreatingTestimonial) {
+                        addTestimonial({
+                          customerName: testimonialForm.customerName.trim(),
+                          location: testimonialForm.location.trim() || 'Jamaica',
+                          rating: testimonialForm.rating,
+                          reviewText: testimonialForm.reviewText.trim(),
+                          tripName: testimonialForm.tripName.trim(),
+                          date: testimonialForm.date.trim(),
+                          avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+                          isPublished: testimonialForm.isPublished,
+                          isSamplePlaceholder: testimonialForm.isSamplePlaceholder,
+                        });
+                        showNotification('Review Added', 'New traveler review has been saved.');
+                      } else if (editingTestimonial) {
+                        updateTestimonial(editingTestimonial.id, {
+                          customerName: testimonialForm.customerName.trim(),
+                          location: testimonialForm.location.trim(),
+                          rating: testimonialForm.rating,
+                          reviewText: testimonialForm.reviewText.trim(),
+                          tripName: testimonialForm.tripName.trim(),
+                          date: testimonialForm.date.trim(),
+                          isPublished: testimonialForm.isPublished,
+                          isSamplePlaceholder: testimonialForm.isSamplePlaceholder,
+                        });
+                        showNotification('Review Saved', 'Review updates were successfully committed.');
+                      }
+
+                      setEditingTestimonial(null);
+                      setIsCreatingTestimonial(false);
+                    }}
+                    className="p-6 overflow-y-auto space-y-4 text-xs"
+                  >
+                    <div>
+                      <label className="block font-bold text-neutral-800 mb-1">Customer Full Name</label>
+                      <input
+                        type="text"
+                        value={testimonialForm.customerName}
+                        onChange={(e) => setTestimonialForm({ ...testimonialForm, customerName: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-neutral-300 focus:border-purple-600 outline-none text-xs font-semibold"
+                        required
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block font-bold text-neutral-800 mb-1">Parish / Location</label>
+                        <input
+                          type="text"
+                          value={testimonialForm.location}
+                          onChange={(e) => setTestimonialForm({ ...testimonialForm, location: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl border border-neutral-300 focus:border-purple-600 outline-none text-xs"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-neutral-800 mb-1">Trip Name</label>
+                        <input
+                          type="text"
+                          value={testimonialForm.tripName}
+                          onChange={(e) => setTestimonialForm({ ...testimonialForm, tripName: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl border border-neutral-300 focus:border-purple-600 outline-none text-xs"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block font-bold text-neutral-800 mb-1">Rating</label>
+                        <select
+                          value={testimonialForm.rating}
+                          onChange={(e) => setTestimonialForm({ ...testimonialForm, rating: Number(e.target.value) })}
+                          className="w-full px-3 py-2 rounded-xl border border-neutral-300 focus:border-purple-600 outline-none text-xs bg-white font-medium"
+                        >
+                          <option value={5}>★★★★★ 5 Stars</option>
+                          <option value={4}>★★★★☆ 4 Stars</option>
+                          <option value={3}>★★★☆☆ 3 Stars</option>
+                          <option value={2}>★★☆☆☆ 2 Stars</option>
+                          <option value={1}>★☆☆☆☆ 1 Star</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-neutral-800 mb-1">Date of Review Sent</label>
+                        <input
+                          type="text"
+                          value={testimonialForm.date}
+                          onChange={(e) => setTestimonialForm({ ...testimonialForm, date: e.target.value })}
+                          placeholder="e.g. September 5, 2026"
+                          className="w-full px-3 py-2 rounded-xl border border-neutral-300 focus:border-purple-600 outline-none text-xs font-medium"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-neutral-800 mb-1">Review Feedback Text</label>
+                      <textarea
+                        rows={4}
+                        value={testimonialForm.reviewText}
+                        onChange={(e) => setTestimonialForm({ ...testimonialForm, reviewText: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-neutral-300 focus:border-purple-600 outline-none text-xs resize-none leading-relaxed"
+                        required
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-neutral-200">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={testimonialForm.isPublished}
+                          onChange={(e) => setTestimonialForm({ ...testimonialForm, isPublished: e.target.checked })}
+                          className="rounded border-neutral-300 text-purple-900 focus:ring-purple-600"
+                        />
+                        <span className="font-semibold text-neutral-800">Publish on website</span>
+                      </label>
+
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={testimonialForm.isSamplePlaceholder}
+                          onChange={(e) => setTestimonialForm({ ...testimonialForm, isSamplePlaceholder: e.target.checked })}
+                          className="rounded border-neutral-300 text-purple-900 focus:ring-purple-600"
+                        />
+                        <span className="text-neutral-500 text-[11px]">Mark as placeholder</span>
+                      </label>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-neutral-200">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingTestimonial(null);
+                          setIsCreatingTestimonial(false);
+                        }}
+                        className="px-4 py-2 rounded-xl text-neutral-600 hover:bg-neutral-100 font-bold"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-5 py-2 rounded-xl bg-[#2E0249] text-[#FFC72C] font-black hover:bg-[#3B185F] shadow-sm cursor-pointer"
+                      >
+                        {isCreatingTestimonial ? 'Create Review' : 'Save Review'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
