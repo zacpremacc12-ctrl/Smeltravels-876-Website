@@ -162,6 +162,8 @@ export interface TravelerUser {
   memberSince?: string;
   firstDeposit?: TravelerDepositRecord;
   deposits?: TravelerDepositRecord[];
+  isAdmin?: boolean;
+  adminRole?: AdminRole;
 }
 
 export interface BlogPost {

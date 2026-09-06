@@ -900,23 +900,82 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Admin Auth - Email & Password Protected
   const REQUIRED_ADMIN_EMAIL = 'zbuchanan.smeltravels@gmail.com';
   const REQUIRED_ADMIN_PASSWORD = 'Jjrrss5521';
+  const ADMIN_AUTHORIZED_EMAILS = [
+    'zbuchanan.smeltravels@gmail.com',
+    'zacpremacc12@gmail.com',
+  ];
+
+  // Keep Admin and User in sync: If admin is logged in, ensure currentUser reflects this
+  useEffect(() => {
+    if (isAdminLoggedIn) {
+      setCurrentUser(prev => {
+        if (!prev) {
+          return {
+            id: 'admin-user-zbuchanan',
+            name: 'Zachary Buchanan',
+            email: adminEmail || REQUIRED_ADMIN_EMAIL,
+            phone: '(876) 848-9772',
+            homeParishOrCountry: 'Kingston, Jamaica',
+            memberSince: '2026',
+            isAdmin: true,
+            adminRole: currentAdminRole || 'Super Admin',
+          };
+        } else if (!prev.isAdmin) {
+          return {
+            ...prev,
+            isAdmin: true,
+            adminRole: currentAdminRole || 'Super Admin',
+          };
+        }
+        return prev;
+      });
+    }
+  }, [isAdminLoggedIn, adminEmail, currentAdminRole]);
 
   const loginAdmin = (role: AdminRole = 'Super Admin') => {
     setIsAdminLoggedIn(true);
     setAdminEmail(REQUIRED_ADMIN_EMAIL);
     setCurrentAdminRole(role);
-    showNotification('Admin Authenticated', `Logged into SMELTRAVELS876 CMS as ${role}.`);
+    setCurrentUser(prev => ({
+      id: prev?.id || 'admin-user-zbuchanan',
+      name: prev?.name || 'Zachary Buchanan',
+      email: prev?.email || REQUIRED_ADMIN_EMAIL,
+      phone: prev?.phone || '(876) 848-9772',
+      homeParishOrCountry: prev?.homeParishOrCountry || 'Kingston, Jamaica',
+      memberSince: prev?.memberSince || '2026',
+      firstDeposit: prev?.firstDeposit,
+      deposits: prev?.deposits,
+      isAdmin: true,
+      adminRole: role,
+    }));
+    showNotification('Admin Authenticated', `Signed in to SMELTRAVELS876 as ${role}.`);
   };
 
   const loginAdminWithCredentials = (email: string, password: string): { success: boolean; error?: string } => {
     const cleanEmail = (email || '').trim().toLowerCase();
     const cleanPassword = (password || '').trim();
 
-    if (cleanEmail === REQUIRED_ADMIN_EMAIL.toLowerCase() && cleanPassword === REQUIRED_ADMIN_PASSWORD) {
+    const isMatchEmail = ADMIN_AUTHORIZED_EMAILS.includes(cleanEmail) || 
+      cleanEmail === REQUIRED_ADMIN_EMAIL.toLowerCase() ||
+      (settings.ambassadors || []).some(a => a.email && a.email.toLowerCase() === cleanEmail);
+
+    if (isMatchEmail && cleanPassword === REQUIRED_ADMIN_PASSWORD) {
       setIsAdminLoggedIn(true);
-      setAdminEmail(REQUIRED_ADMIN_EMAIL);
+      setAdminEmail(cleanEmail);
       setCurrentAdminRole('Super Admin');
-      showNotification('Access Granted', `Welcome back, Administrator (${REQUIRED_ADMIN_EMAIL}).`);
+      setCurrentUser(prev => ({
+        id: prev?.id || 'admin-user-zbuchanan',
+        name: prev?.name || 'Zachary Buchanan',
+        email: cleanEmail,
+        phone: prev?.phone || '(876) 848-9772',
+        homeParishOrCountry: prev?.homeParishOrCountry || 'Kingston, Jamaica',
+        memberSince: prev?.memberSince || '2026',
+        firstDeposit: prev?.firstDeposit,
+        deposits: prev?.deposits,
+        isAdmin: true,
+        adminRole: 'Super Admin',
+      }));
+      showNotification('Access Granted', `Welcome back, Administrator (${cleanEmail}).`);
       return { success: true };
     } else {
       showNotification('Access Denied', 'Invalid administrator email or password.', 'warning');
@@ -930,6 +989,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const logoutAdmin = () => {
     setIsAdminLoggedIn(false);
     setAdminEmail(null);
+    setCurrentUser(prev => prev ? { ...prev, isAdmin: false } : null);
     showNotification('Admin Panel Locked', 'Safely signed out. Admin panel is password protected.', 'info');
   };
 
@@ -945,6 +1005,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const resolvedName = name?.trim() || (existingCustomer ? existingCustomer.name : cleanEmail.split('@')[0].replace(/[._]/g, ' '));
     const formattedName = resolvedName.charAt(0).toUpperCase() + resolvedName.slice(1);
 
+    const isSpecialAdmin = ADMIN_AUTHORIZED_EMAILS.includes(cleanEmail) ||
+      cleanEmail === REQUIRED_ADMIN_EMAIL.toLowerCase() ||
+      cleanEmail.includes('smeltravels') ||
+      (settings.ambassadors || []).some(a => a.email && a.email.toLowerCase() === cleanEmail);
+
     const user: TravelerUser = {
       id: existingCustomer ? existingCustomer.id : `traveler-${Date.now()}`,
       name: formattedName,
@@ -952,11 +1017,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       phone: phone || (existingCustomer ? existingCustomer.phone : ''),
       homeParishOrCountry: existingCustomer ? existingCustomer.countryOrParish : 'Jamaica',
       memberSince: new Date().getFullYear().toString(),
+      isAdmin: isSpecialAdmin,
+      adminRole: isSpecialAdmin ? 'Super Admin' : undefined,
     };
+
+    if (isSpecialAdmin) {
+      setIsAdminLoggedIn(true);
+      setAdminEmail(cleanEmail);
+      setCurrentAdminRole('Super Admin');
+      showNotification('Admin Signed In', `Welcome back, Administrator ${user.name}! Administrative privileges active.`);
+    } else {
+      showNotification('Welcome Back!', `Signed in as ${user.name}`);
+    }
 
     setCurrentUser(user);
     setIsAuthModalOpen(false);
-    showNotification('Welcome Back!', `Signed in as ${user.name}`);
 
     // If traveler was waiting to secure their spot, open booking modal now!
     if (pendingTripForBooking) {
@@ -1027,6 +1102,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logoutUser = () => {
     setCurrentUser(null);
+    setIsAdminLoggedIn(false);
+    setAdminEmail(null);
     showNotification('Signed Out', 'You have been safely signed out.');
   };
 
