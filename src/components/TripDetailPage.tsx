@@ -16,7 +16,8 @@ import {
   Mail,
   Send,
   AlertTriangle,
-  Info
+  Info,
+  Bookmark,
 } from 'lucide-react';
 import { TripPackage } from '../types';
 import { useApp, formatPriceJMD } from '../context/AppContext';
@@ -26,7 +27,16 @@ interface TripDetailPageProps {
 }
 
 export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
-  const { trips, navigateTo, setSelectedTripForBooking, settings, showNotification } = useApp();
+  const {
+    trips,
+    navigateTo,
+    setSelectedTripForBooking,
+    savedTripIds,
+    toggleSaveTrip,
+    secureSpotForTrip,
+    settings,
+    showNotification,
+  } = useApp();
   const [activeTab, setActiveTab] = useState<'overview' | 'inclusions' | 'itinerary' | 'requirements' | 'payment'>('overview');
 
   const trip = trips.find(t => t.slug === slug || t.id === slug) || trips[0];
@@ -46,6 +56,7 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
   }
 
   const remainingBalance = trip.price - trip.deposit;
+  const isSaved = savedTripIds.includes(trip.id);
 
   const handleShare = () => {
     if (navigator.share) {
@@ -80,6 +91,19 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
 
           <div className="flex items-center gap-2">
             <button
+              onClick={() => toggleSaveTrip(trip.id)}
+              className={`p-2 rounded-lg transition-colors text-xs font-semibold flex items-center gap-1.5 cursor-pointer ${
+                isSaved
+                  ? 'bg-amber-100 text-[#2E0249] font-bold'
+                  : 'text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100'
+              }`}
+              title={isSaved ? 'Remove trip bookmark' : 'Bookmark this trip for later'}
+            >
+              <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current text-[#2E0249]' : ''}`} />
+              <span className="hidden sm:inline">{isSaved ? 'Bookmarked' : 'Bookmark'}</span>
+            </button>
+
+            <button
               onClick={handleShare}
               className="p-2 text-neutral-500 hover:text-neutral-900 rounded-lg hover:bg-neutral-100 transition-colors text-xs font-semibold flex items-center gap-1.5"
             >
@@ -88,8 +112,8 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
             </button>
 
             <button
-              onClick={() => setSelectedTripForBooking(trip)}
-              className="bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-bold text-xs sm:text-sm px-4 py-2 rounded-xl transition-all shadow-sm"
+              onClick={() => secureSpotForTrip(trip)}
+              className="bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-bold text-xs sm:text-sm px-4 py-2 rounded-xl transition-all shadow-sm cursor-pointer"
             >
               Secure Your Spot
             </button>
@@ -482,8 +506,8 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
 
               <div className="space-y-2.5 pt-2">
                 <button
-                  onClick={() => setSelectedTripForBooking(trip)}
-                  className="w-full bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-bold text-sm py-3.5 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                  onClick={() => secureSpotForTrip(trip)}
+                  className="w-full bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-bold text-sm py-3.5 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                   id="package-secure-spot-btn"
                 >
                   <Sparkles className="w-4 h-4 fill-current" />

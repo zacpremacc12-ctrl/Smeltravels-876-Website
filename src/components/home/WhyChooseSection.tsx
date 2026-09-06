@@ -105,7 +105,7 @@ export const WhyChooseSection: React.FC = () => {
               Have questions about an upcoming destination?
             </h3>
             <p className="text-xs sm:text-sm text-neutral-300">
-              Speak directly with our agency team or Ambassador Zachary Buchanan ({settings.ambassadorPhone}).
+              Speak directly with our agency team or Ambassador {settings.ambassadorName || (settings.ambassadors?.[0]?.name ?? 'Zachary Buchanan')} ({settings.ambassadorPhone || (settings.ambassadors?.[0]?.phone ?? '(876) 848-9772')}).
             </p>
           </div>
           <button

@@ -8,7 +8,8 @@ import {
   Plane,
   ShieldAlert,
   CreditCard,
-  Camera
+  Camera,
+  Bookmark,
 } from 'lucide-react';
 import { TripPackage } from '../../types';
 import { formatPriceJMD, useApp } from '../../context/AppContext';
@@ -19,7 +20,15 @@ interface TripCardProps {
 }
 
 export const TripCard: React.FC<TripCardProps> = ({ trip, highlight2026 }) => {
-  const { navigateTo, setSelectedTripForBooking, setSelectedTripForInquiry } = useApp();
+  const {
+    navigateTo,
+    setSelectedTripForBooking,
+    savedTripIds,
+    toggleSaveTrip,
+    secureSpotForTrip,
+  } = useApp();
+
+  const isSaved = savedTripIds.includes(trip.id);
 
   const getStatusBadge = (status: TripPackage['status']) => {
     switch (status) {
@@ -82,8 +91,26 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, highlight2026 }) => {
           </span>
         </div>
 
-        {/* Dates Pill on Top Right */}
-        <div className="absolute top-3 right-3 flex items-center gap-1.5">
+        {/* Top Right Controls: Dates & Bookmark */}
+        <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleSaveTrip(trip.id);
+            }}
+            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all shadow-md backdrop-blur-md cursor-pointer ${
+              isSaved
+                ? 'bg-[#FFC72C] text-[#2E0249] ring-2 ring-white scale-105'
+                : 'bg-black/60 text-white hover:bg-black/80 hover:text-[#FFC72C]'
+            }`}
+            title={isSaved ? 'Remove from bookmarked trips' : 'Save trip bookmark for later'}
+            aria-label="Bookmark trip"
+            id={`bookmark-btn-${trip.id}`}
+          >
+            <Bookmark className={`w-3.5 h-3.5 ${isSaved ? 'fill-current' : ''}`} />
+          </button>
+
           {trip.tripLogo && (
             <div className="w-8 h-8 rounded-lg bg-white/95 backdrop-blur-md p-1 border border-white/60 shadow-md flex items-center justify-center overflow-hidden">
               <img
@@ -96,8 +123,8 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, highlight2026 }) => {
               />
             </div>
           )}
-          <div className="bg-black/70 backdrop-blur-sm text-white px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 border border-white/15">
-            <Calendar className="w-3.5 h-3.5 text-[#FFC72C]" />
+          <div className="bg-black/70 backdrop-blur-sm text-white px-2 py-1 rounded-md text-[11px] font-semibold flex items-center gap-1 border border-white/15">
+            <Calendar className="w-3 h-3 text-[#FFC72C]" />
             <span>{trip.dates}</span>
           </div>
         </div>
@@ -199,17 +226,18 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, highlight2026 }) => {
           </button>
 
           <button
-            onClick={() => setSelectedTripForBooking(trip)}
+            onClick={() => secureSpotForTrip(trip)}
             disabled={trip.status === 'Sold Out' || trip.status === 'Closed'}
-            className={`w-full font-bold text-xs py-2.5 px-3 rounded-xl transition-colors flex items-center justify-center gap-1 shadow-sm ${
+            className={`w-full font-bold text-xs py-2.5 px-3 rounded-xl transition-colors flex items-center justify-center gap-1 shadow-sm cursor-pointer ${
               trip.status === 'Sold Out' || trip.status === 'Closed'
                 ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
                 : 'bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249]'
             }`}
             id={`book-trip-${trip.id}`}
+            title="Secure your spot for this trip"
           >
             <Sparkles className="w-3.5 h-3.5 fill-current" />
-            <span>Book / Inquire</span>
+            <span>Secure Your Spot</span>
           </button>
         </div>
       </div>

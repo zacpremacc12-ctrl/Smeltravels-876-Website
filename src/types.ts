@@ -100,6 +100,9 @@ export interface BookingSubmission {
   ambassadorId?: string;
   ambassadorName?: string;
   ambassadorPhone?: string;
+  ambassadorCode?: string;
+  discountPercentage?: number;
+  discountAmount?: number;
   internalNotes: string[];
   createdAt: string;
   updatedAt: string;
@@ -289,6 +292,7 @@ export interface SiteSettings {
   ambassadorEmail: string;
   ambassadors: Ambassador[];
   requireAmbassadorSelection: boolean;
+  ambassadorDiscountPercentage?: number;
   whatsappNumber: string;
   whatsappMessageTemplate: string;
   addressSummary: string;
@@ -342,4 +346,25 @@ export interface AdminUser {
   name: string;
   email: string;
   role: AdminRole;
+}
+
+export type AdminInboxCategory = 'inquiry' | 'deposit' | 'review' | 'message';
+
+export interface AdminInboxItem {
+  id: string;
+  type: AdminInboxCategory;
+  title: string;
+  senderName: string;
+  senderEmail?: string;
+  senderPhone?: string;
+  summary: string;
+  details?: string;
+  amount?: number;
+  currency?: string;
+  tripId?: string;
+  tripName?: string;
+  rating?: number;
+  referenceNumber?: string;
+  timestamp: string;
+  isRead: boolean;
 }

@@ -177,11 +177,9 @@ export const AboutPage: React.FC = () => {
                     <div>
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <h4 className="font-bold text-neutral-900 text-sm">{amb.name}</h4>
-                        {amb.code && (
-                          <span className="font-mono text-[9px] font-bold bg-white text-purple-900 px-1.5 py-0.5 rounded border border-purple-200">
-                            {amb.code}
-                          </span>
-                        )}
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                          Certified
+                        </span>
                       </div>
                       <p className="text-[11px] text-neutral-500">{amb.title}</p>
                     </div>

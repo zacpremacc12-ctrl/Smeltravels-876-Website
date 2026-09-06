@@ -8,7 +8,8 @@ import {
   SiteSettings,
   MediaItem,
   CustomerRecord,
-  BookingSubmission
+  BookingSubmission,
+  AdminInboxItem
 } from '../types';
 
 export const INITIAL_SETTINGS: SiteSettings = {
@@ -53,6 +54,7 @@ export const INITIAL_SETTINGS: SiteSettings = {
     },
   ],
   requireAmbassadorSelection: true,
+  ambassadorDiscountPercentage: 10,
   whatsappNumber: '18768341537',
   whatsappMessageTemplate: 'Hi SMELTRAVELS876! I am interested in exploring upcoming group trips and travel packages.',
   addressSummary: 'Kingston, Jamaica • Serving Caribbean & International Travelers',
@@ -1076,3 +1078,66 @@ export const INITIAL_BOOKINGS: BookingSubmission[] = [
     updatedAt: '2026-08-19T16:00:00Z'
   }
 ];
+
+export const INITIAL_ADMIN_INBOX: AdminInboxItem[] = [
+  {
+    id: 'inbox-1',
+    type: 'deposit',
+    title: 'Deposit Received: Panama 2026 Experience',
+    senderName: 'Zachary Buchanan',
+    senderEmail: 'zacpremacc12@gmail.com',
+    senderPhone: '(876) 848-9772',
+    summary: 'Traveler deposited $83,353 JMD lock-in payment for Panama 2026 Experience.',
+    details: 'Initial required deposit successfully processed. Booking reference: ST-2026-8842. Verified via Lynk Jamaica / NCB transfer receipt.',
+    amount: 83353,
+    currency: 'JMD',
+    tripId: 'panama-2026',
+    tripName: 'Panama 2026 Experience',
+    referenceNumber: 'ST-2026-8842',
+    timestamp: '2026-09-06T04:45:00Z',
+    isRead: false
+  },
+  {
+    id: 'inbox-2',
+    type: 'inquiry',
+    title: 'New Booking Inquiry: Dubai Luxury Expedition 2026',
+    senderName: 'Kadeen Brown',
+    senderEmail: 'kadeen.brown@example.com',
+    senderPhone: '(876) 555-8910',
+    summary: 'Inquiry submitted for 2 adults. Interest: Ready to Book & Secure Spot.',
+    details: 'Customer is ready to place initial deposit. Preferred contact method: WhatsApp. Requested single room supplement quote.',
+    tripId: 'dubai-2026',
+    tripName: 'Dubai Luxury Expedition 2026',
+    referenceNumber: 'ST-2026-7731',
+    timestamp: '2026-09-06T03:30:00Z',
+    isRead: false
+  },
+  {
+    id: 'inbox-3',
+    type: 'review',
+    title: 'New Review Submitted: 5 Stars for Dubai Expedition',
+    senderName: 'Shanice McFarlane',
+    senderEmail: 'smcfarlane.travel@gmail.com',
+    senderPhone: '(876) 555-2241',
+    summary: '5-star review: "SMELTRAVELS876 made our international trip effortless! Every transfer, tour, and hotel was flawless."',
+    details: 'Traveler Shanice McFarlane submitted a glowing review from Kingston, Jamaica. Waiting for admin approval / published status.',
+    rating: 5,
+    tripName: 'Dubai Luxury Expedition 2026',
+    timestamp: '2026-09-05T20:15:00Z',
+    isRead: false
+  },
+  {
+    id: 'inbox-4',
+    type: 'message',
+    title: 'New Contact Message: Schengen Visa Requirements',
+    senderName: 'Damion Clarke',
+    senderEmail: 'd.clarke876@outlook.com',
+    senderPhone: '(876) 555-6677',
+    summary: 'Subject: Schengen Visa Appointment assistance for Germany + Italy 2027.',
+    details: 'Message: "Hello Zachary, my wife and I are interested in the Germany + Italy 2027 tour. Does SMELTRAVELS876 provide the embassy appointment booking support and document review?"',
+    referenceNumber: 'INQ-94218',
+    timestamp: '2026-09-05T18:00:00Z',
+    isRead: true
+  }
+];
+

@@ -32,15 +32,19 @@ import {
   Lock,
   LogOut,
   Calendar,
+  RefreshCw,
 } from 'lucide-react';
 import { useApp, formatPriceJMD } from '../../context/AppContext';
-import { BookingInquiry, TripPackage, BlogPost, FAQItem, PromotionalOffer, TestimonialItem, Destination, Ambassador } from '../../types';
+import { BookingInquiry, TripPackage, BlogPost, FAQItem, PromotionalOffer, TestimonialItem, Destination, Ambassador, SiteSettings } from '../../types';
 import { AdminLoginLock } from './AdminLoginLock';
 import { ImageUploader } from './ImageUploader';
 import { MultiGalleryUploader } from './MultiGalleryUploader';
+import { AdminInboxView } from './AdminInboxView';
 
 export const AdminDashboard: React.FC = () => {
   const {
+    adminInbox,
+    unreadInboxCount,
     bookings,
     updateBookingStatus,
     deleteBooking,
@@ -73,7 +77,7 @@ export const AdminDashboard: React.FC = () => {
     logoutAdmin,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'inquiries' | 'trips' | 'destinations' | 'guides' | 'faqs' | 'offers' | 'testimonials' | 'settings'>('inquiries');
+  const [activeTab, setActiveTab] = useState<'inbox' | 'inquiries' | 'trips' | 'destinations' | 'guides' | 'faqs' | 'offers' | 'testimonials' | 'settings'>('inbox');
   const [inquirySearch, setInquirySearch] = useState('');
   const [inquiryFilterStatus, setInquiryFilterStatus] = useState<string>('All');
   const [selectedInquiry, setSelectedInquiry] = useState<BookingInquiry | null>(null);
@@ -115,10 +119,38 @@ export const AdminDashboard: React.FC = () => {
 
   // Settings form state
   const [localSettings, setLocalSettings] = useState(settings);
+  const [isSyncingSettings, setIsSyncingSettings] = useState(false);
+  const [settingsSyncSuccess, setSettingsSyncSuccess] = useState(false);
+  const [lastSyncedTimestamp, setLastSyncedTimestamp] = useState<string | null>(null);
 
   useEffect(() => {
-    setLocalSettings(settings);
-  }, [settings]);
+    if (!isSyncingSettings) {
+      setLocalSettings(settings);
+    }
+  }, [settings, isSyncingSettings]);
+
+  const updateBankingField = (field: string, value: string) => {
+    setLocalSettings((prev) => ({
+      ...prev,
+      companyBanking: {
+        ...(prev.companyBanking || {
+          bankName: '',
+          accountName: '',
+          accountNumber: '',
+          accountType: 'Chequing Account',
+          branch: '',
+          swiftOrRoutingCode: '',
+          lynkHandle: '',
+          lynkPhone: '',
+          officeDepositAddress: '',
+          cardGatewayProvider: '',
+          cardGatewayMerchantId: '',
+          paymentInstructions: '',
+        }),
+        [field]: value,
+      },
+    }));
+  };
 
   // Ambassador Modal & Management State
   const [ambassadorModalOpen, setAmbassadorModalOpen] = useState(false);
@@ -284,10 +316,53 @@ export const AdminDashboard: React.FC = () => {
     showNotification('Export Successful', 'All booking inquiries exported as JSON.');
   };
 
-  const handleSaveSettings = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateSettings(localSettings);
-    showNotification('Settings Updated', 'Agency details and contact numbers updated.');
+  const handleSaveSettings = async (e?: React.FormEvent | React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      if ('stopPropagation' in e) e.stopPropagation();
+    }
+    if (isSyncingSettings) return;
+
+    setIsSyncingSettings(true);
+    setSettingsSyncSuccess(false);
+
+    // Ensure primary ambassador info aligns with active roster
+    const primaryAmb =
+      localSettings.ambassadors?.find((a) => a.isActive !== false) ||
+      localSettings.ambassadors?.[0];
+
+    const finalizedSettings: SiteSettings = {
+      ...localSettings,
+      ...(primaryAmb
+        ? {
+            ambassadorName: primaryAmb.name,
+            ambassadorTitle: primaryAmb.title,
+            ambassadorPhone: primaryAmb.phone,
+            ambassadorEmail: primaryAmb.email,
+          }
+        : {}),
+    };
+
+    try {
+      await updateSettings(finalizedSettings);
+      setLocalSettings(finalizedSettings);
+      setSettingsSyncSuccess(true);
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setLastSyncedTimestamp(timeStr);
+      showNotification(
+        'Live Sync Complete',
+        'Agency settings, banking information, and ambassador roster are now live across the website.',
+        'success'
+      );
+      setTimeout(() => {
+        setSettingsSyncSuccess(false);
+      }, 4000);
+    } catch (err) {
+      console.error('Failed to sync settings:', err);
+      showNotification('Save Notice', 'Settings saved in local session.', 'info');
+    } finally {
+      setIsSyncingSettings(false);
+    }
   };
 
   // Enforce Admin Lock Protection
@@ -360,7 +435,14 @@ export const AdminDashboard: React.FC = () => {
         {/* Tab Navigation */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-1 overflow-x-auto scrollbar-none text-xs font-bold pt-1">
           {[
-            { id: 'inquiries', label: `Inquiries (${bookings.length})`, icon: Inbox },
+            {
+              id: 'inbox',
+              label: 'Admin Inbox',
+              count: adminInbox.length,
+              badge: unreadInboxCount > 0 ? `${unreadInboxCount} new` : undefined,
+              icon: Inbox,
+            },
+            { id: 'inquiries', label: `Inquiries (${bookings.length})`, icon: UserCheck },
             { id: 'trips', label: `Trips (${trips.length})`, icon: Plane },
             { id: 'destinations', label: `Destinations (${destinations.length})`, icon: Compass },
             { id: 'guides', label: `Blog & Guides (${blogPosts.length})`, icon: BookOpen },
@@ -382,6 +464,11 @@ export const AdminDashboard: React.FC = () => {
               >
                 <Icon className="w-4 h-4" />
                 <span>{tab.label}</span>
+                {tab.badge && (
+                  <span className="bg-amber-400 text-[#2E0249] text-[10px] font-black px-1.5 py-0.5 rounded-full uppercase animate-pulse">
+                    {tab.badge}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -390,6 +477,9 @@ export const AdminDashboard: React.FC = () => {
 
       {/* Main Admin Content Body */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+        {/* TAB 0: ADMIN INBOX */}
+        {activeTab === 'inbox' && <AdminInboxView />}
+
         {/* TAB 1: INQUIRIES */}
         {activeTab === 'inquiries' && (
           <div className="space-y-6">
@@ -1649,19 +1739,56 @@ export const AdminDashboard: React.FC = () => {
           <div className="max-w-4xl bg-white rounded-3xl p-6 sm:p-8 border border-neutral-200 shadow-sm space-y-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-neutral-200">
               <div>
-                <h2 className="text-xl font-black text-neutral-900 font-['Outfit',sans-serif]">
-                  Agency & Ambassador Settings
-                </h2>
-                <p className="text-xs text-neutral-500">
-                  Configure agency contact lines, banking information, and registered travel ambassadors.
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-black text-neutral-900 font-['Outfit',sans-serif]">
+                    Agency & Ambassador Settings
+                  </h2>
+                  <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Live Sync Active
+                  </span>
+                </div>
+                <p className="text-xs text-neutral-500 mt-0.5">
+                  Configure agency contact lines, banking information, and registered travel ambassadors. All updates deploy live across the website.
                 </p>
+                {lastSyncedTimestamp && (
+                  <p className="text-[11px] text-emerald-700 font-bold mt-1 flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Live synced with website at {lastSyncedTimestamp}</span>
+                  </p>
+                )}
               </div>
               <button
                 type="button"
                 onClick={handleSaveSettings}
-                className="bg-[#2E0249] text-[#FFC72C] font-bold text-xs py-2.5 px-5 rounded-xl shadow transition-all hover:bg-[#3B185F] self-start sm:self-auto cursor-pointer"
+                disabled={isSyncingSettings}
+                className={`group relative inline-flex items-center gap-2.5 font-black text-xs py-3 px-5 rounded-xl border shadow-md transition-all self-start sm:self-auto ${
+                  isSyncingSettings
+                    ? 'bg-[#2E0249] text-[#FFC72C] border-[#FFC72C]/40 opacity-90 cursor-wait'
+                    : settingsSyncSuccess
+                    ? 'bg-emerald-700 hover:bg-emerald-600 text-white border-emerald-400 shadow-emerald-950/20 cursor-pointer'
+                    : 'bg-gradient-to-r from-[#2E0249] via-[#3B185F] to-[#2E0249] hover:from-[#3B185F] hover:via-[#4A156B] hover:to-[#3B185F] text-[#FFC72C] border-[#FFC72C]/50 hover:border-[#FFC72C] hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] cursor-pointer'
+                }`}
               >
-                Save All Changes
+                {isSyncingSettings ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 text-[#FFC72C] animate-spin" />
+                    <span>Syncing Live to Site...</span>
+                  </>
+                ) : settingsSyncSuccess ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                    <span>✓ Live Synced!</span>
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 text-[#FFC72C] transition-transform duration-500 group-hover:rotate-180" />
+                    <span>Save All Changes</span>
+                    <span className="bg-[#FFC72C]/20 text-[#FFC72C] text-[9px] font-black px-1.5 py-0.5 rounded-full border border-[#FFC72C]/30 tracking-wider">
+                      LIVE SYNC
+                    </span>
+                  </>
+                )}
               </button>
             </div>
 
@@ -1793,6 +1920,68 @@ export const AdminDashboard: React.FC = () => {
                       }`}
                     />
                   </button>
+                </div>
+
+                {/* Ambassador Discount Percentage Setting Card */}
+                <div className="p-4 bg-amber-50/60 border border-amber-200 rounded-2xl space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Tag className="w-4 h-4 text-amber-700" />
+                        <span className="font-bold text-sm text-[#2E0249]">Ambassador Code Discount Rate</span>
+                        <span className="text-[10px] font-black bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full uppercase">
+                          Base {localSettings.ambassadorDiscountPercentage ?? 10}% Off
+                        </span>
+                      </div>
+                      <p className="text-xs text-neutral-600 max-w-xl">
+                        When travelers click <strong>"Use ambassador code"</strong> on checkout and enter an active staff code, this exact percentage is discounted from their trip total. Ambassador codes are strictly confidential to agency staff and are never exposed publicly on customer pages.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-start sm:self-auto bg-white px-3 py-1.5 rounded-xl border border-amber-300 shadow-xs">
+                      <label className="text-xs font-bold text-neutral-700">Rate:</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="90"
+                        value={localSettings.ambassadorDiscountPercentage ?? 10}
+                        onChange={(e) => {
+                          const val = Math.max(1, Math.min(90, parseInt(e.target.value) || 10));
+                          const updated = { ...localSettings, ambassadorDiscountPercentage: val };
+                          setLocalSettings(updated);
+                          updateSettings(updated);
+                        }}
+                        className="w-14 text-center font-black text-sm text-[#2E0249] bg-amber-50/50 border border-amber-200 rounded-lg py-1 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      />
+                      <span className="font-bold text-sm text-neutral-600">%</span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-amber-200/60 text-xs">
+                    <span className="text-neutral-500 font-medium">Quick presets:</span>
+                    {[5, 10, 15, 20, 25].map((pct) => (
+                      <button
+                        key={pct}
+                        type="button"
+                        onClick={() => {
+                          const updated = { ...localSettings, ambassadorDiscountPercentage: pct };
+                          setLocalSettings(updated);
+                          updateSettings(updated);
+                          showNotification('Discount Rate Updated', `Ambassador code discount set to ${pct}%.`);
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${
+                          (localSettings.ambassadorDiscountPercentage ?? 10) === pct
+                            ? 'bg-[#2E0249] text-[#FFC72C]'
+                            : 'bg-white border border-amber-300/80 text-amber-900 hover:bg-amber-100'
+                        }`}
+                      >
+                        {pct}%
+                      </button>
+                    ))}
+                    <span className="text-[11px] text-neutral-500 ml-auto italic">
+                      Live sync enabled • Changes save to live website automatically
+                    </span>
+                  </div>
                 </div>
 
                 {/* Ambassador Cards Grid */}
@@ -1961,23 +2150,7 @@ export const AdminDashboard: React.FC = () => {
                       type="text"
                       placeholder="e.g. National Commercial Bank (NCB) Jamaica"
                       value={localSettings.companyBanking?.bankName || ''}
-                      onChange={(e) => setLocalSettings({
-                        ...localSettings,
-                        companyBanking: {
-                          bankName: e.target.value,
-                          accountName: localSettings.companyBanking?.accountName || '',
-                          accountNumber: localSettings.companyBanking?.accountNumber || '',
-                          accountType: localSettings.companyBanking?.accountType || 'Chequing Account',
-                          branch: localSettings.companyBanking?.branch || '',
-                          swiftOrRoutingCode: localSettings.companyBanking?.swiftOrRoutingCode || '',
-                          lynkHandle: localSettings.companyBanking?.lynkHandle || '',
-                          lynkPhone: localSettings.companyBanking?.lynkPhone || '',
-                          officeDepositAddress: localSettings.companyBanking?.officeDepositAddress || '',
-                          cardGatewayProvider: localSettings.companyBanking?.cardGatewayProvider || '',
-                          cardGatewayMerchantId: localSettings.companyBanking?.cardGatewayMerchantId || '',
-                          paymentInstructions: localSettings.companyBanking?.paymentInstructions || '',
-                        }
-                      })}
+                      onChange={(e) => updateBankingField('bankName', e.target.value)}
                       className="w-full p-2.5 border border-neutral-300 rounded-xl"
                     />
                   </div>
@@ -1988,23 +2161,7 @@ export const AdminDashboard: React.FC = () => {
                       type="text"
                       placeholder="e.g. SMELTRAVELS876 LIMITED"
                       value={localSettings.companyBanking?.accountName || ''}
-                      onChange={(e) => setLocalSettings({
-                        ...localSettings,
-                        companyBanking: {
-                          bankName: localSettings.companyBanking?.bankName || '',
-                          accountName: e.target.value,
-                          accountNumber: localSettings.companyBanking?.accountNumber || '',
-                          accountType: localSettings.companyBanking?.accountType || 'Chequing Account',
-                          branch: localSettings.companyBanking?.branch || '',
-                          swiftOrRoutingCode: localSettings.companyBanking?.swiftOrRoutingCode || '',
-                          lynkHandle: localSettings.companyBanking?.lynkHandle || '',
-                          lynkPhone: localSettings.companyBanking?.lynkPhone || '',
-                          officeDepositAddress: localSettings.companyBanking?.officeDepositAddress || '',
-                          cardGatewayProvider: localSettings.companyBanking?.cardGatewayProvider || '',
-                          cardGatewayMerchantId: localSettings.companyBanking?.cardGatewayMerchantId || '',
-                          paymentInstructions: localSettings.companyBanking?.paymentInstructions || '',
-                        }
-                      })}
+                      onChange={(e) => updateBankingField('accountName', e.target.value)}
                       className="w-full p-2.5 border border-neutral-300 rounded-xl"
                     />
                   </div>
@@ -2015,23 +2172,7 @@ export const AdminDashboard: React.FC = () => {
                       type="text"
                       placeholder="e.g. 354-928-1029"
                       value={localSettings.companyBanking?.accountNumber || ''}
-                      onChange={(e) => setLocalSettings({
-                        ...localSettings,
-                        companyBanking: {
-                          bankName: localSettings.companyBanking?.bankName || '',
-                          accountName: localSettings.companyBanking?.accountName || '',
-                          accountNumber: e.target.value,
-                          accountType: localSettings.companyBanking?.accountType || 'Chequing Account',
-                          branch: localSettings.companyBanking?.branch || '',
-                          swiftOrRoutingCode: localSettings.companyBanking?.swiftOrRoutingCode || '',
-                          lynkHandle: localSettings.companyBanking?.lynkHandle || '',
-                          lynkPhone: localSettings.companyBanking?.lynkPhone || '',
-                          officeDepositAddress: localSettings.companyBanking?.officeDepositAddress || '',
-                          cardGatewayProvider: localSettings.companyBanking?.cardGatewayProvider || '',
-                          cardGatewayMerchantId: localSettings.companyBanking?.cardGatewayMerchantId || '',
-                          paymentInstructions: localSettings.companyBanking?.paymentInstructions || '',
-                        }
-                      })}
+                      onChange={(e) => updateBankingField('accountNumber', e.target.value)}
                       className="w-full p-2.5 border border-neutral-300 rounded-xl font-mono font-bold"
                     />
                   </div>
@@ -2040,23 +2181,7 @@ export const AdminDashboard: React.FC = () => {
                     <label className="font-bold text-neutral-700 block mb-1">Account Type</label>
                     <select
                       value={localSettings.companyBanking?.accountType || 'Chequing Account'}
-                      onChange={(e) => setLocalSettings({
-                        ...localSettings,
-                        companyBanking: {
-                          bankName: localSettings.companyBanking?.bankName || '',
-                          accountName: localSettings.companyBanking?.accountName || '',
-                          accountNumber: localSettings.companyBanking?.accountNumber || '',
-                          accountType: e.target.value,
-                          branch: localSettings.companyBanking?.branch || '',
-                          swiftOrRoutingCode: localSettings.companyBanking?.swiftOrRoutingCode || '',
-                          lynkHandle: localSettings.companyBanking?.lynkHandle || '',
-                          lynkPhone: localSettings.companyBanking?.lynkPhone || '',
-                          officeDepositAddress: localSettings.companyBanking?.officeDepositAddress || '',
-                          cardGatewayProvider: localSettings.companyBanking?.cardGatewayProvider || '',
-                          cardGatewayMerchantId: localSettings.companyBanking?.cardGatewayMerchantId || '',
-                          paymentInstructions: localSettings.companyBanking?.paymentInstructions || '',
-                        }
-                      })}
+                      onChange={(e) => updateBankingField('accountType', e.target.value)}
                       className="w-full p-2.5 border border-neutral-300 rounded-xl"
                     >
                       <option value="Chequing Account">Chequing Account (Business)</option>
@@ -2070,23 +2195,7 @@ export const AdminDashboard: React.FC = () => {
                       type="text"
                       placeholder="e.g. Half-Way-Tree Branch, Kingston"
                       value={localSettings.companyBanking?.branch || ''}
-                      onChange={(e) => setLocalSettings({
-                        ...localSettings,
-                        companyBanking: {
-                          bankName: localSettings.companyBanking?.bankName || '',
-                          accountName: localSettings.companyBanking?.accountName || '',
-                          accountNumber: localSettings.companyBanking?.accountNumber || '',
-                          accountType: localSettings.companyBanking?.accountType || 'Chequing Account',
-                          branch: e.target.value,
-                          swiftOrRoutingCode: localSettings.companyBanking?.swiftOrRoutingCode || '',
-                          lynkHandle: localSettings.companyBanking?.lynkHandle || '',
-                          lynkPhone: localSettings.companyBanking?.lynkPhone || '',
-                          officeDepositAddress: localSettings.companyBanking?.officeDepositAddress || '',
-                          cardGatewayProvider: localSettings.companyBanking?.cardGatewayProvider || '',
-                          cardGatewayMerchantId: localSettings.companyBanking?.cardGatewayMerchantId || '',
-                          paymentInstructions: localSettings.companyBanking?.paymentInstructions || '',
-                        }
-                      })}
+                      onChange={(e) => updateBankingField('branch', e.target.value)}
                       className="w-full p-2.5 border border-neutral-300 rounded-xl"
                     />
                   </div>
@@ -2097,23 +2206,7 @@ export const AdminDashboard: React.FC = () => {
                       type="text"
                       placeholder="e.g. JNCBJMKX"
                       value={localSettings.companyBanking?.swiftOrRoutingCode || ''}
-                      onChange={(e) => setLocalSettings({
-                        ...localSettings,
-                        companyBanking: {
-                          bankName: localSettings.companyBanking?.bankName || '',
-                          accountName: localSettings.companyBanking?.accountName || '',
-                          accountNumber: localSettings.companyBanking?.accountNumber || '',
-                          accountType: localSettings.companyBanking?.accountType || 'Chequing Account',
-                          branch: localSettings.companyBanking?.branch || '',
-                          swiftOrRoutingCode: e.target.value,
-                          lynkHandle: localSettings.companyBanking?.lynkHandle || '',
-                          lynkPhone: localSettings.companyBanking?.lynkPhone || '',
-                          officeDepositAddress: localSettings.companyBanking?.officeDepositAddress || '',
-                          cardGatewayProvider: localSettings.companyBanking?.cardGatewayProvider || '',
-                          cardGatewayMerchantId: localSettings.companyBanking?.cardGatewayMerchantId || '',
-                          paymentInstructions: localSettings.companyBanking?.paymentInstructions || '',
-                        }
-                      })}
+                      onChange={(e) => updateBankingField('swiftOrRoutingCode', e.target.value)}
                       className="w-full p-2.5 border border-neutral-300 rounded-xl font-mono"
                     />
                   </div>
@@ -2124,23 +2217,7 @@ export const AdminDashboard: React.FC = () => {
                       type="text"
                       placeholder="e.g. @smeltravels876"
                       value={localSettings.companyBanking?.lynkHandle || ''}
-                      onChange={(e) => setLocalSettings({
-                        ...localSettings,
-                        companyBanking: {
-                          bankName: localSettings.companyBanking?.bankName || '',
-                          accountName: localSettings.companyBanking?.accountName || '',
-                          accountNumber: localSettings.companyBanking?.accountNumber || '',
-                          accountType: localSettings.companyBanking?.accountType || 'Chequing Account',
-                          branch: localSettings.companyBanking?.branch || '',
-                          swiftOrRoutingCode: localSettings.companyBanking?.swiftOrRoutingCode || '',
-                          lynkHandle: e.target.value,
-                          lynkPhone: localSettings.companyBanking?.lynkPhone || '',
-                          officeDepositAddress: localSettings.companyBanking?.officeDepositAddress || '',
-                          cardGatewayProvider: localSettings.companyBanking?.cardGatewayProvider || '',
-                          cardGatewayMerchantId: localSettings.companyBanking?.cardGatewayMerchantId || '',
-                          paymentInstructions: localSettings.companyBanking?.paymentInstructions || '',
-                        }
-                      })}
+                      onChange={(e) => updateBankingField('lynkHandle', e.target.value)}
                       className="w-full p-2.5 border border-neutral-300 rounded-xl"
                     />
                   </div>
@@ -2151,23 +2228,7 @@ export const AdminDashboard: React.FC = () => {
                       type="text"
                       placeholder="e.g. (876) 848-9772"
                       value={localSettings.companyBanking?.lynkPhone || ''}
-                      onChange={(e) => setLocalSettings({
-                        ...localSettings,
-                        companyBanking: {
-                          bankName: localSettings.companyBanking?.bankName || '',
-                          accountName: localSettings.companyBanking?.accountName || '',
-                          accountNumber: localSettings.companyBanking?.accountNumber || '',
-                          accountType: localSettings.companyBanking?.accountType || 'Chequing Account',
-                          branch: localSettings.companyBanking?.branch || '',
-                          swiftOrRoutingCode: localSettings.companyBanking?.swiftOrRoutingCode || '',
-                          lynkHandle: localSettings.companyBanking?.lynkHandle || '',
-                          lynkPhone: e.target.value,
-                          officeDepositAddress: localSettings.companyBanking?.officeDepositAddress || '',
-                          cardGatewayProvider: localSettings.companyBanking?.cardGatewayProvider || '',
-                          cardGatewayMerchantId: localSettings.companyBanking?.cardGatewayMerchantId || '',
-                          paymentInstructions: localSettings.companyBanking?.paymentInstructions || '',
-                        }
-                      })}
+                      onChange={(e) => updateBankingField('lynkPhone', e.target.value)}
                       className="w-full p-2.5 border border-neutral-300 rounded-xl"
                     />
                   </div>
@@ -2179,23 +2240,7 @@ export const AdminDashboard: React.FC = () => {
                     type="text"
                     placeholder="e.g. 12 Trafalgar Road, Suite 4B, Kingston 10, Jamaica"
                     value={localSettings.companyBanking?.officeDepositAddress || ''}
-                    onChange={(e) => setLocalSettings({
-                      ...localSettings,
-                      companyBanking: {
-                        bankName: localSettings.companyBanking?.bankName || '',
-                        accountName: localSettings.companyBanking?.accountName || '',
-                        accountNumber: localSettings.companyBanking?.accountNumber || '',
-                        accountType: localSettings.companyBanking?.accountType || 'Chequing Account',
-                        branch: localSettings.companyBanking?.branch || '',
-                        swiftOrRoutingCode: localSettings.companyBanking?.swiftOrRoutingCode || '',
-                        lynkHandle: localSettings.companyBanking?.lynkHandle || '',
-                        lynkPhone: localSettings.companyBanking?.lynkPhone || '',
-                        officeDepositAddress: e.target.value,
-                        cardGatewayProvider: localSettings.companyBanking?.cardGatewayProvider || '',
-                        cardGatewayMerchantId: localSettings.companyBanking?.cardGatewayMerchantId || '',
-                        paymentInstructions: localSettings.companyBanking?.paymentInstructions || '',
-                      }
-                    })}
+                    onChange={(e) => updateBankingField('officeDepositAddress', e.target.value)}
                     className="w-full p-2.5 border border-neutral-300 rounded-xl"
                   />
                 </div>
@@ -2205,34 +2250,51 @@ export const AdminDashboard: React.FC = () => {
                   <textarea
                     rows={2}
                     value={localSettings.companyBanking?.paymentInstructions || ''}
-                    onChange={(e) => setLocalSettings({
-                      ...localSettings,
-                      companyBanking: {
-                        bankName: localSettings.companyBanking?.bankName || '',
-                        accountName: localSettings.companyBanking?.accountName || '',
-                        accountNumber: localSettings.companyBanking?.accountNumber || '',
-                        accountType: localSettings.companyBanking?.accountType || 'Chequing Account',
-                        branch: localSettings.companyBanking?.branch || '',
-                        swiftOrRoutingCode: localSettings.companyBanking?.swiftOrRoutingCode || '',
-                        lynkHandle: localSettings.companyBanking?.lynkHandle || '',
-                        lynkPhone: localSettings.companyBanking?.lynkPhone || '',
-                        officeDepositAddress: localSettings.companyBanking?.officeDepositAddress || '',
-                        cardGatewayProvider: localSettings.companyBanking?.cardGatewayProvider || '',
-                        cardGatewayMerchantId: localSettings.companyBanking?.cardGatewayMerchantId || '',
-                        paymentInstructions: e.target.value,
-                      }
-                    })}
+                    onChange={(e) => updateBankingField('paymentInstructions', e.target.value)}
                     className="w-full p-2.5 border border-neutral-300 rounded-xl"
                   />
                 </div>
               </div>
 
-              <button
-                type="submit"
-                className="bg-[#2E0249] text-[#FFC72C] font-bold text-xs py-3 px-6 rounded-xl shadow transition-all cursor-pointer hover:bg-[#3B185F]"
-              >
-                Save Agency & Bank Settings
-              </button>
+              <div className="pt-4 border-t border-neutral-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="text-xs text-neutral-600">
+                  <span className="font-bold text-neutral-900 block">Instant Live Deployment:</span>
+                  <span>Saving pushes all agency phone numbers, floating WhatsApp settings, banking instructions, and ambassador roster directly to the live customer-facing website.</span>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSyncingSettings}
+                  className={`w-full sm:w-auto inline-flex items-center justify-center gap-2.5 font-black text-xs py-3.5 px-8 rounded-xl border shadow-lg transition-all ${
+                    isSyncingSettings
+                      ? 'bg-[#2E0249] text-[#FFC72C] border-[#FFC72C]/40 opacity-90 cursor-wait'
+                      : settingsSyncSuccess
+                      ? 'bg-emerald-700 hover:bg-emerald-600 text-white border-emerald-400 shadow-emerald-950/30 cursor-pointer'
+                      : 'bg-gradient-to-r from-[#2E0249] via-[#381255] to-[#2E0249] hover:from-[#3B185F] hover:via-[#4A156B] hover:to-[#3B185F] text-[#FFC72C] border-[#FFC72C]/60 hover:border-[#FFC72C] hover:shadow-2xl hover:scale-[1.01] active:scale-[0.99] cursor-pointer'
+                  }`}
+                >
+                  {isSyncingSettings ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 text-[#FFC72C] animate-spin" />
+                      <span>Pushing Changes to Live Website...</span>
+                    </>
+                  ) : settingsSyncSuccess ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                      <span>✓ All Settings Live Synced to Website!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4 text-[#FFC72C]" />
+                      <span>Save Agency & Bank Settings</span>
+                      <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border border-emerald-400/40 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        Live Website Sync
+                      </span>
+                    </>
+                  )}
+                </button>
+              </div>
             </form>
           </div>
         )}

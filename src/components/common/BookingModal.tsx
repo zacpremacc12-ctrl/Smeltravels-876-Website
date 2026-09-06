@@ -43,6 +43,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
     recordUserDeposit,
     signupUser,
     openAuthModal,
+    verifyAmbassadorCode,
   } = useApp();
 
   const [step, setStep] = useState<'details' | 'checkout' | 'confirmation'>('details');
@@ -77,6 +78,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
   const [selectedAmbassadorId, setSelectedAmbassadorId] = useState<string>('');
   const [ambassadorError, setAmbassadorError] = useState<string>('');
 
+  // Ambassador Promo Code & Discount state (hidden codes from customer)
+  const [ambassadorCodeInput, setAmbassadorCodeInput] = useState('');
+  const [appliedAmbassadorCode, setAppliedAmbassadorCode] = useState('');
+  const [appliedDiscountPercentage, setAppliedDiscountPercentage] = useState(0);
+  const [ambassadorCodeError, setAmbassadorCodeError] = useState('');
+  const [showCodeInput, setShowCodeInput] = useState(false);
+
   // Checkout payment states
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'bank' | 'lynk' | 'office'>('card');
   const [cardNumber, setCardNumber] = useState('');
@@ -95,9 +103,45 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
   const [wasFirstDepositTracked, setWasFirstDepositTracked] = useState(false);
 
   const activeTrip = trips.find(t => t.id === selectedTripId) || trip || trips[0];
+  const originalTotalPackagePrice = activeTrip.price * adultsCount;
+  const discountAmount = appliedDiscountPercentage > 0
+    ? Math.round(originalTotalPackagePrice * (appliedDiscountPercentage / 100))
+    : 0;
+  const totalPackagePrice = originalTotalPackagePrice - discountAmount;
   const depositDue = activeTrip.deposit * adultsCount;
-  const totalPackagePrice = activeTrip.price * adultsCount;
-  const remainingBalance = totalPackagePrice - depositDue;
+  const remainingBalance = Math.max(0, totalPackagePrice - depositDue);
+
+  const handleApplyAmbassadorCode = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!ambassadorCodeInput.trim()) {
+      setAmbassadorCodeError('Please enter an ambassador code');
+      return;
+    }
+    const result = verifyAmbassadorCode(ambassadorCodeInput);
+    if (result.valid && result.ambassador) {
+      setSelectedAmbassadorId(result.ambassador.id);
+      setAppliedAmbassadorCode(ambassadorCodeInput.trim().toUpperCase());
+      setAppliedDiscountPercentage(result.discountPercentage);
+      setAmbassadorCodeError('');
+      setAmbassadorError('');
+      showNotification(
+        'Ambassador Code Applied!',
+        `${result.discountPercentage}% discount applied courtesy of ${result.ambassador.name}!`,
+        'success'
+      );
+    } else {
+      setAmbassadorCodeError('Invalid ambassador code. Please check with your travel ambassador or choose from the list below.');
+      showNotification('Invalid Ambassador Code', 'The code you entered is not recognized.', 'error');
+    }
+  };
+
+  const handleRemoveAmbassadorCode = () => {
+    setAppliedAmbassadorCode('');
+    setAppliedDiscountPercentage(0);
+    setAmbassadorCodeInput('');
+    setAmbassadorCodeError('');
+    showNotification('Ambassador Code Removed', 'Discount removed from package.', 'info');
+  };
 
   const companyBank = settings.companyBanking || {
     bankName: 'National Commercial Bank (NCB) Jamaica',
@@ -194,6 +238,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
       ambassadorId: chosenAmbassador?.id,
       ambassadorName: chosenAmbassador?.name,
       ambassadorPhone: chosenAmbassador?.phone,
+      ambassadorCode: appliedAmbassadorCode || undefined,
+      discountPercentage: appliedDiscountPercentage > 0 ? appliedDiscountPercentage : undefined,
+      discountAmount: discountAmount > 0 ? discountAmount : undefined,
     });
 
     const paymentMethodLabels: Record<string, string> = {
@@ -429,6 +476,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                     {adultsCount} Adult{adultsCount > 1 ? 's' : ''}{childrenCount > 0 ? `, ${childrenCount} Child(ren)` : ''}
                   </span>
                 </div>
+                {appliedDiscountPercentage > 0 && (
+                  <div className="flex justify-between py-1 border-b border-neutral-200 text-emerald-800 font-medium">
+                    <span>Ambassador Discount ({appliedDiscountPercentage}%):</span>
+                    <span className="font-bold text-emerald-700">-{formatPriceJMD(discountAmount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between py-1 border-b border-neutral-200">
                   <span className="text-neutral-500">Deposit Paid Today:</span>
                   <span className="font-bold text-emerald-700">{formatPriceJMD(depositDue)}</span>
@@ -439,7 +492,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                 </div>
               </div>
 
-              {/* Dedicated Assigned Ambassador Card */}
+              {/* Dedicated Assigned Ambassador Card (Codes hidden from customers) */}
               {(() => {
                 const assignedAmbassador = ambassadorsList.find((a) => a.id === selectedAmbassadorId) || ambassadorsList[0];
                 return (
@@ -449,9 +502,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                         <UserCheck className="w-4 h-4 text-purple-700" />
                         <span>Your Assigned Travel Ambassador</span>
                       </span>
-                      {assignedAmbassador.code && (
-                        <span className="bg-[#2E0249] text-[#FFC72C] text-[10px] font-mono font-bold px-2 py-0.5 rounded-full">
-                          Code: {assignedAmbassador.code}
+                      {appliedDiscountPercentage > 0 ? (
+                        <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                          ✓ {appliedDiscountPercentage}% Discount Applied
+                        </span>
+                      ) : (
+                        <span className="bg-[#2E0249] text-[#FFC72C] text-[10px] font-bold px-2 py-0.5 rounded-full">
+                          Verified Specialist
                         </span>
                       )}
                     </div>
@@ -569,10 +626,26 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                   </div>
 
                   <div className="pt-2 mt-2 border-t border-white/15 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-                    <div>
-                      <span className="text-neutral-400 block text-[11px]">Total Package:</span>
-                      <span className="font-semibold text-white">{formatPriceJMD(totalPackagePrice)}</span>
-                    </div>
+                    {appliedDiscountPercentage > 0 ? (
+                      <>
+                        <div>
+                          <span className="text-neutral-400 block text-[11px]">Original Package:</span>
+                          <span className="font-medium text-neutral-400 line-through">{formatPriceJMD(originalTotalPackagePrice)}</span>
+                          <span className="text-[10px] text-emerald-400 font-bold block">
+                            -{appliedDiscountPercentage}% Ambassador Code ({formatPriceJMD(discountAmount)})
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-emerald-300 font-bold block text-[11px]">Discounted Total:</span>
+                          <span className="text-sm font-black text-emerald-300">{formatPriceJMD(totalPackagePrice)}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div>
+                        <span className="text-neutral-400 block text-[11px]">Total Package:</span>
+                        <span className="font-semibold text-white">{formatPriceJMD(totalPackagePrice)}</span>
+                      </div>
+                    )}
                     <div>
                       <span className="text-[#FFC72C] font-bold block text-[11px]">Lock-In Deposit Due:</span>
                       <span className="text-base font-black text-[#FFC72C]">{formatPriceJMD(depositDue)}</span>
@@ -585,7 +658,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                 </div>
               </div>
 
-              {/* Assigned Ambassador Banner in Checkout */}
+              {/* Assigned Ambassador Banner in Checkout (Codes hidden from customer) */}
               {(() => {
                 const assignedAmbassador = ambassadorsList.find((a) => a.id === selectedAmbassadorId) || ambassadorsList[0];
                 return (
@@ -594,9 +667,15 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                       <UserCheck className="w-4 h-4 text-purple-700 shrink-0" />
                       <span>Assigned Travel Ambassador: <strong>{assignedAmbassador.name}</strong></span>
                     </span>
-                    <span className="text-[11px] text-purple-900 font-mono font-bold bg-white px-2 py-0.5 rounded-md border border-purple-200 shrink-0">
-                      {assignedAmbassador.code ? `Code: ${assignedAmbassador.code}` : assignedAmbassador.phone}
-                    </span>
+                    {appliedDiscountPercentage > 0 ? (
+                      <span className="text-[11px] text-emerald-800 font-bold bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                        ✓ {appliedDiscountPercentage}% Ambassador Discount Active
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-purple-900 font-medium bg-white px-2 py-0.5 rounded-md border border-purple-200 shrink-0">
+                        {assignedAmbassador.phone}
+                      </span>
+                    )}
                   </div>
                 );
               })()}
@@ -1056,7 +1135,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                   Please select a verified SMELTRAVELS876 ambassador who will be your designated agent for flight coordination, payment plans, and personalized itinerary guidance:
                 </p>
 
-                {/* Grid of ambassador cards */}
+                {/* Grid of ambassador cards (Codes hidden from customers) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 mb-2">
                   {ambassadorsList.map((amb) => {
                     const isSelected = selectedAmbassadorId === amb.id;
@@ -1092,9 +1171,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                           <p className="text-[11px] text-neutral-500 truncate">{amb.title}</p>
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-neutral-500 mt-1">
                             <span>{amb.phone}</span>
-                            {amb.code && (
-                              <span className="font-mono font-bold bg-neutral-100 text-neutral-600 px-1 py-0.2 rounded text-[9px]">
-                                {amb.code}
+                            {amb.parishOrRegion && (
+                              <span className="text-purple-700 font-medium">
+                                • {amb.parishOrRegion}
                               </span>
                             )}
                           </div>
@@ -1109,6 +1188,85 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                       </button>
                     );
                   })}
+                </div>
+
+                {/* USE AMBASSADOR CODE INPUT BOX (Discount changeable in agency settings, default 10%) */}
+                <div className="mt-3.5 pt-3.5 border-t border-purple-200/80">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowCodeInput(!showCodeInput)}
+                      className="text-xs font-bold text-[#2E0249] hover:underline flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-current" />
+                      <span>{showCodeInput || appliedAmbassadorCode ? 'Ambassador Code' : 'Have an Ambassador Code? Click to apply'}</span>
+                    </button>
+                    <span className="text-[10px] font-extrabold text-purple-900 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
+                      Save {settings.ambassadorDiscountPercentage ?? 10}% Off
+                    </span>
+                  </div>
+
+                  {(showCodeInput || appliedAmbassadorCode) && (
+                    <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                      {appliedAmbassadorCode ? (
+                        <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 flex items-center justify-between text-xs shadow-xs">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <div>
+                              <span className="font-bold text-emerald-950 block">
+                                Ambassador Code Applied ({appliedDiscountPercentage}% Discount)
+                              </span>
+                              <span className="text-emerald-700 text-[11px]">
+                                Your package discount has been applied courtesy of your ambassador.
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleRemoveAmbassadorCode}
+                            className="text-xs font-bold text-neutral-500 hover:text-rose-600 underline cursor-pointer px-2 py-1"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              placeholder="Enter your ambassador's code"
+                              value={ambassadorCodeInput}
+                              onChange={(e) => {
+                                setAmbassadorCodeInput(e.target.value);
+                                setAmbassadorCodeError('');
+                              }}
+                              className="flex-1 bg-white border border-purple-300 rounded-xl px-3.5 py-2 text-xs font-mono font-bold uppercase tracking-wider text-neutral-900 focus:outline-none focus:border-[#2E0249]"
+                              id="ambassador-code-input"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleApplyAmbassadorCode}
+                              className="bg-[#2E0249] hover:bg-[#3B185F] text-[#FFC72C] font-bold text-xs px-4 py-2 rounded-xl transition-colors cursor-pointer shadow-xs whitespace-nowrap"
+                              id="apply-ambassador-code-btn"
+                            >
+                              Apply Code
+                            </button>
+                          </div>
+
+                          {ambassadorCodeError ? (
+                            <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1">
+                              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                              <span>{ambassadorCodeError}</span>
+                            </p>
+                          ) : (
+                            <p className="text-[11px] text-neutral-500">
+                              Enter the confidential code provided by your travel ambassador to automatically claim your {settings.ambassadorDiscountPercentage ?? 10}% trip discount.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {ambassadorError && (

@@ -16,6 +16,8 @@ import {
   AdminRole,
   TravelerUser,
   TravelerDepositRecord,
+  AdminInboxItem,
+  Ambassador,
 } from '../types';
 import {
   INITIAL_SETTINGS,
@@ -28,11 +30,12 @@ import {
   INITIAL_MEDIA,
   INITIAL_CUSTOMERS,
   INITIAL_BOOKINGS,
+  INITIAL_ADMIN_INBOX,
 } from '../data/initialData';
 
 interface AppContextType {
   settings: SiteSettings;
-  updateSettings: (newSettings: Partial<SiteSettings>) => void;
+  updateSettings: (newSettings: Partial<SiteSettings>) => Promise<boolean>;
   resetSettings: () => void;
   
   trips: TripPackage[];
@@ -94,6 +97,34 @@ interface AppContextType {
   loginAdmin: (role?: AdminRole) => void;
   loginAdminWithCredentials: (email: string, password: string) => { success: boolean; error?: string };
   logoutAdmin: () => void;
+
+  // Admin Inbox
+  adminInbox: AdminInboxItem[];
+  addInboxItem: (item: Omit<AdminInboxItem, 'id' | 'timestamp' | 'isRead'>) => void;
+  markInboxItemAsRead: (id: string) => void;
+  markAllInboxAsRead: () => void;
+  deleteInboxItem: (id: string) => void;
+  unreadInboxCount: number;
+
+  // Bookmarks / Saved Trips
+  savedTripIds: string[];
+  savedTrips: TripPackage[];
+  toggleSaveTrip: (tripId: string) => void;
+  isTripSaved: (tripId: string) => boolean;
+  isSavedTripsDrawerOpen: boolean;
+  setIsSavedTripsDrawerOpen: (open: boolean) => void;
+  openSavedTripsDrawer: () => void;
+  closeSavedTripsDrawer: () => void;
+
+  // Force Auth / Spot Booking Flow
+  secureSpotForTrip: (trip: TripPackage) => void;
+  pendingTripForBooking: TripPackage | null;
+  setPendingTripForBooking: (trip: TripPackage | null) => void;
+  authNotice: string | null;
+  setAuthNotice: (notice: string | null) => void;
+
+  // Ambassador Code & Discount Helpers
+  verifyAmbassadorCode: (code: string) => { valid: boolean; ambassador?: Ambassador; discountPercentage: number };
 
   // Traveler Account Authentication
   currentUser: TravelerUser | null;
@@ -205,6 +236,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     { id: 'sub-1', firstName: 'Kadeen', email: 'kadeen.campbell@example.com', subscribedAt: '2026-08-10', isActive: true, source: 'Website Footer' }
   ]));
 
+  // Admin Inbox state
+  const [adminInbox, setAdminInbox] = useState<AdminInboxItem[]>(() => {
+    return getStoredItem('admin_inbox', INITIAL_ADMIN_INBOX);
+  });
+
+  // Bookmarked / Saved trips state
+  const [savedTripIds, setSavedTripIds] = useState<string[]>(() => {
+    return getStoredItem('saved_trips', ['panama-2026']);
+  });
+  const [isSavedTripsDrawerOpen, setIsSavedTripsDrawerOpen] = useState<boolean>(false);
+
+  // Forced Auth for Spot Booking state
+  const [pendingTripForBooking, setPendingTripForBooking] = useState<TripPackage | null>(null);
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
+
   // Admin states
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => getStoredItem('admin_logged', false));
   const [adminEmail, setAdminEmail] = useState<string | null>(() => getStoredItem('admin_email', null));
@@ -248,10 +294,76 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => { setStoredItem('faqs', faqs); }, [faqs]);
   useEffect(() => { setStoredItem('media', mediaList); }, [mediaList]);
   useEffect(() => { setStoredItem('subscribers', subscribers); }, [subscribers]);
+  useEffect(() => { setStoredItem('admin_inbox', adminInbox); }, [adminInbox]);
+  useEffect(() => { setStoredItem('saved_trips', savedTripIds); }, [savedTripIds]);
   useEffect(() => { setStoredItem('admin_logged', isAdminLoggedIn); }, [isAdminLoggedIn]);
   useEffect(() => { setStoredItem('admin_email', adminEmail); }, [adminEmail]);
   useEffect(() => { setStoredItem('admin_role', currentAdminRole); }, [currentAdminRole]);
   useEffect(() => { setStoredItem('traveler_user', currentUser); }, [currentUser]);
+
+  // Initial Sync from Live Server (persisted to live website)
+  useEffect(() => {
+    fetch('/api/site-data')
+      .then((res) => res.json())
+      .then((res) => {
+        if (res?.success && res?.data && Object.keys(res.data).length > 0) {
+          const d = res.data;
+          if (d.settings) setSettings(d.settings);
+          if (d.trips && Array.isArray(d.trips) && d.trips.length > 0) setTrips(d.trips);
+          if (d.destinations && Array.isArray(d.destinations)) setDestinations(d.destinations);
+          if (d.bookings && Array.isArray(d.bookings)) setBookings(d.bookings);
+          if (d.contacts && Array.isArray(d.contacts)) setContactSubmissions(d.contacts);
+          if (d.customers && Array.isArray(d.customers)) setCustomers(d.customers);
+          if (d.blog && Array.isArray(d.blog)) setBlogPosts(d.blog);
+          if (d.offers && Array.isArray(d.offers)) setOffers(d.offers);
+          if (d.testimonials && Array.isArray(d.testimonials)) setTestimonials(d.testimonials);
+          if (d.faqs && Array.isArray(d.faqs)) setFaqs(d.faqs);
+          if (d.adminInbox && Array.isArray(d.adminInbox)) setAdminInbox(d.adminInbox);
+        }
+      })
+      .catch((err) => {
+        console.log('[AppContext] Offline or initial state, using local cache:', err);
+      });
+  }, []);
+
+  // Listen for storage events (e.g. from other tabs) or custom sync events
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'settings' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          setSettings(parsed);
+        } catch (err) {}
+      }
+    };
+    const handleCustomSync = (e: any) => {
+      if (e.detail) {
+        setSettings(e.detail);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('site-settings-updated', handleCustomSync);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('site-settings-updated', handleCustomSync);
+    };
+  }, []);
+
+  // Helper to persist admin changes to the live backend server
+  const syncToLiveServer = async (payload: Record<string, any>): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/site-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => null);
+      return res.ok && (data?.success !== false);
+    } catch (e) {
+      console.log('Server sync error:', e);
+      return false;
+    }
+  };
 
   const showNotification = (title: string, message: string, type: 'success' | 'info' | 'warning' = 'success') => {
     setActiveNotification({ title, message, type });
@@ -269,13 +381,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Settings
-  const updateSettings = (newSettings: Partial<SiteSettings>) => {
-    setSettings(prev => ({ ...prev, ...newSettings }));
-    showNotification('Settings Updated', 'Website configurations were successfully saved.');
+  const updateSettings = async (newSettings: Partial<SiteSettings>): Promise<boolean> => {
+    let updatedSnapshot: SiteSettings = settings;
+    setSettings(prev => {
+      const updated = { ...prev, ...newSettings };
+      updatedSnapshot = updated;
+      setStoredItem('settings', updated);
+      return updated;
+    });
+
+    // Broadcast instantaneous update across windows/tabs
+    try {
+      window.dispatchEvent(new CustomEvent('site-settings-updated', { detail: updatedSnapshot }));
+    } catch (e) {}
+
+    const isLiveSynced = await syncToLiveServer({ settings: updatedSnapshot });
+    return isLiveSynced;
   };
 
   const resetSettings = () => {
     setSettings(INITIAL_SETTINGS);
+    syncToLiveServer({ settings: INITIAL_SETTINGS });
     showNotification('Settings Reset', 'Website configurations reverted to initial settings.');
   };
 
@@ -283,17 +409,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addTrip = (tripData: Omit<TripPackage, 'id'>) => {
     const id = `trip-${Date.now()}`;
     const newTrip: TripPackage = { ...tripData, id };
-    setTrips(prev => [newTrip, ...prev]);
+    setTrips(prev => {
+      const updated = [newTrip, ...prev];
+      syncToLiveServer({ trips: updated });
+      return updated;
+    });
     showNotification('Trip Created', `Successfully added "${newTrip.name}".`);
   };
 
   const updateTrip = (id: string, tripData: Partial<TripPackage>) => {
-    setTrips(prev => prev.map(t => (t.id === id ? { ...t, ...tripData } : t)));
+    setTrips(prev => {
+      const updated = prev.map(t => (t.id === id ? { ...t, ...tripData } : t));
+      syncToLiveServer({ trips: updated });
+      return updated;
+    });
     showNotification('Trip Updated', 'Package details were successfully saved.');
   };
 
   const deleteTrip = (id: string) => {
-    setTrips(prev => prev.filter(t => t.id !== id));
+    setTrips(prev => {
+      const updated = prev.filter(t => t.id !== id);
+      syncToLiveServer({ trips: updated });
+      return updated;
+    });
     showNotification('Trip Deleted', 'Trip was removed from the system.', 'warning');
   };
 
@@ -307,25 +445,132 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       slug: `${existing.slug}-copy`,
       isFeatured: false,
     };
-    setTrips(prev => [duplicated, ...prev]);
+    setTrips(prev => {
+      const updated = [duplicated, ...prev];
+      syncToLiveServer({ trips: updated });
+      return updated;
+    });
     showNotification('Trip Duplicated', `Created a copy of ${existing.name}.`);
   };
 
   // Destinations
   const addDestination = (destData: Omit<Destination, 'id'>) => {
     const newDest: Destination = { ...destData, id: `dest-${Date.now()}` };
-    setDestinations(prev => [...prev, newDest]);
+    setDestinations(prev => {
+      const updated = [...prev, newDest];
+      syncToLiveServer({ destinations: updated });
+      return updated;
+    });
     showNotification('Destination Added', `Added ${newDest.name} to directory.`);
   };
 
   const updateDestination = (id: string, destData: Partial<Destination>) => {
-    setDestinations(prev => prev.map(d => (d.id === id ? { ...d, ...destData } : d)));
+    setDestinations(prev => {
+      const updated = prev.map(d => (d.id === id ? { ...d, ...destData } : d));
+      syncToLiveServer({ destinations: updated });
+      return updated;
+    });
     showNotification('Destination Updated', 'Destination profile updated.');
   };
 
   const deleteDestination = (id: string) => {
-    setDestinations(prev => prev.filter(d => d.id !== id));
+    setDestinations(prev => {
+      const updated = prev.filter(d => d.id !== id);
+      syncToLiveServer({ destinations: updated });
+      return updated;
+    });
     showNotification('Destination Deleted', 'Destination was removed.', 'warning');
+  };
+
+  // Admin Inbox methods
+  const addInboxItem = (itemData: Omit<AdminInboxItem, 'id' | 'timestamp' | 'isRead'>) => {
+    const newItem: AdminInboxItem = {
+      ...itemData,
+      id: `inbox-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      timestamp: new Date().toISOString(),
+      isRead: false,
+    };
+    setAdminInbox(prev => {
+      const updated = [newItem, ...prev];
+      syncToLiveServer({ adminInbox: updated });
+      return updated;
+    });
+  };
+
+  const markInboxItemAsRead = (id: string) => {
+    setAdminInbox(prev => {
+      const updated = prev.map(item => item.id === id ? { ...item, isRead: true } : item);
+      syncToLiveServer({ adminInbox: updated });
+      return updated;
+    });
+  };
+
+  const markAllInboxAsRead = () => {
+    setAdminInbox(prev => {
+      const updated = prev.map(item => ({ ...item, isRead: true }));
+      syncToLiveServer({ adminInbox: updated });
+      return updated;
+    });
+    showNotification('Inbox Updated', 'All inbox notifications marked as read.');
+  };
+
+  const deleteInboxItem = (id: string) => {
+    setAdminInbox(prev => {
+      const updated = prev.filter(item => item.id !== id);
+      syncToLiveServer({ adminInbox: updated });
+      return updated;
+    });
+    showNotification('Item Removed', 'Notification dismissed from inbox.', 'info');
+  };
+
+  const unreadInboxCount = adminInbox.filter(i => !i.isRead).length;
+
+  // Bookmarks / Saved Trips methods
+  const toggleSaveTrip = (tripId: string) => {
+    setSavedTripIds(prev => {
+      const exists = prev.includes(tripId);
+      if (exists) {
+        showNotification('Bookmark Removed', 'Trip removed from your saved list.', 'info');
+        return prev.filter(id => id !== tripId);
+      } else {
+        const trip = trips.find(t => t.id === tripId);
+        showNotification('Trip Bookmarked! 📌', `Saved "${trip ? trip.name : 'Trip'}" to your wishlist.`);
+        return [...prev, tripId];
+      }
+    });
+  };
+
+  const isTripSaved = (tripId: string): boolean => {
+    return savedTripIds.includes(tripId);
+  };
+
+  const savedTrips: TripPackage[] = trips.filter(t => savedTripIds.includes(t.id));
+
+  const openSavedTripsDrawer = () => setIsSavedTripsDrawerOpen(true);
+  const closeSavedTripsDrawer = () => setIsSavedTripsDrawerOpen(false);
+
+  // Forced Authentication on Spot Booking
+  const secureSpotForTrip = (trip: TripPackage) => {
+    if (!currentUser) {
+      setPendingTripForBooking(trip);
+      setAuthNotice(`Please sign in or create an account to secure your spot for ${trip.name}.`);
+      openAuthModal('signup');
+    } else {
+      setSelectedTripForBooking(trip);
+    }
+  };
+
+  // Ambassador Code validation
+  const verifyAmbassadorCode = (code: string) => {
+    const clean = (code || '').trim().toUpperCase();
+    const discountPct = settings.ambassadorDiscountPercentage ?? 10;
+    const match = (settings.ambassadors || []).find(
+      a => a.code && a.code.toUpperCase() === clean && a.isActive !== false
+    );
+    if (match) {
+      return { valid: true, ambassador: match, discountPercentage: discountPct };
+    }
+    return { valid: false, discountPercentage: discountPct };
   };
 
   // Bookings & Inquiries
@@ -345,13 +590,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updatedAt: now.toISOString(),
     };
 
-    setBookings(prev => [newBooking, ...prev]);
+    setBookings(prev => {
+      const updated = [newBooking, ...prev];
+      syncToLiveServer({ bookings: updated });
+      return updated;
+    });
+
+    // Notify Admin Inbox: Inquiry!
+    addInboxItem({
+      type: 'inquiry',
+      title: `New Booking Inquiry: ${data.tripName}`,
+      senderName: data.customerName,
+      senderEmail: data.email,
+      senderPhone: data.phone,
+      summary: `Inquiry submitted for ${data.adultsCount} traveler(s). Interest: ${data.travelInterestType === 'ready_to_book' ? 'Ready to Book & Lock In Spot' : 'General Inquiry'}.`,
+      details: data.specialRequests || `Travel Date: ${data.preferredTravelDate}. Preferred Contact: ${data.preferredContactMethod}. Total: $${data.totalPrice?.toLocaleString()} JMD.`,
+      tripId: data.tripId,
+      tripName: data.tripName,
+      referenceNumber: ref,
+    });
 
     // Upsert Customer
     setCustomers(prev => {
       const existing = prev.find(c => c.email.toLowerCase() === data.email.toLowerCase());
+      let updatedCustomers: CustomerRecord[];
       if (existing) {
-        return prev.map(c =>
+        updatedCustomers = prev.map(c =>
           c.id === existing.id
             ? {
                 ...c,
@@ -377,8 +641,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           communicationPreference: data.preferredContactMethod,
           createdAt: now.toISOString().split('T')[0],
         };
-        return [newCustomer, ...prev];
+        updatedCustomers = [newCustomer, ...prev];
       }
+      syncToLiveServer({ customers: updatedCustomers });
+      return updatedCustomers;
     });
 
     return ref;
@@ -437,82 +703,161 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: 'New',
       createdAt: new Date().toISOString(),
     };
-    setContactSubmissions(prev => [newContact, ...prev]);
+    setContactSubmissions(prev => {
+      const updated = [newContact, ...prev];
+      syncToLiveServer({ contacts: updated });
+      return updated;
+    });
+
+    // Notify Admin Inbox: Message!
+    addInboxItem({
+      type: 'message',
+      title: `New Contact Message: ${subData.subject || 'Website Inquiry'}`,
+      senderName: subData.name,
+      senderEmail: subData.email,
+      senderPhone: subData.phone,
+      summary: `Inquiry from ${subData.name}: "${(subData.message || '').slice(0, 100)}..."`,
+      details: subData.message,
+      referenceNumber: ref,
+    });
+
     return ref;
   };
 
   // Customers
   const addCustomerNote = (id: string, note: string) => {
-    setCustomers(prev =>
-      prev.map(c => (c.id === id ? { ...c, notes: [...c.notes, note] } : c))
-    );
+    setCustomers(prev => {
+      const updated = prev.map(c => (c.id === id ? { ...c, notes: [...c.notes, note] } : c));
+      syncToLiveServer({ customers: updated });
+      return updated;
+    });
   };
 
   // Blog
   const addBlogPost = (postData: Omit<BlogPost, 'id'>) => {
     const newPost: BlogPost = { ...postData, id: `blog-${Date.now()}` };
-    setBlogPosts(prev => [newPost, ...prev]);
+    setBlogPosts(prev => {
+      const updated = [newPost, ...prev];
+      syncToLiveServer({ blog: updated });
+      return updated;
+    });
     showNotification('Article Published', `"${newPost.title}" was saved.`);
   };
 
   const updateBlogPost = (id: string, postData: Partial<BlogPost>) => {
-    setBlogPosts(prev => prev.map(p => (p.id === id ? { ...p, ...postData } : p)));
+    setBlogPosts(prev => {
+      const updated = prev.map(p => (p.id === id ? { ...p, ...postData } : p));
+      syncToLiveServer({ blog: updated });
+      return updated;
+    });
     showNotification('Article Updated', 'Travel guide updated.');
   };
 
   const deleteBlogPost = (id: string) => {
-    setBlogPosts(prev => prev.filter(p => p.id !== id));
+    setBlogPosts(prev => {
+      const updated = prev.filter(p => p.id !== id);
+      syncToLiveServer({ blog: updated });
+      return updated;
+    });
     showNotification('Article Deleted', 'Post removed.', 'warning');
   };
 
   // Offers
   const addOffer = (offerData: Omit<OfferItem, 'id'>) => {
     const newOffer: OfferItem = { ...offerData, id: `offer-${Date.now()}` };
-    setOffers(prev => [newOffer, ...prev]);
+    setOffers(prev => {
+      const updated = [newOffer, ...prev];
+      syncToLiveServer({ offers: updated });
+      return updated;
+    });
     showNotification('Offer Created', 'New promotion was published.');
   };
 
   const updateOffer = (id: string, offerData: Partial<OfferItem>) => {
-    setOffers(prev => prev.map(o => (o.id === id ? { ...o, ...offerData } : o)));
+    setOffers(prev => {
+      const updated = prev.map(o => (o.id === id ? { ...o, ...offerData } : o));
+      syncToLiveServer({ offers: updated });
+      return updated;
+    });
     showNotification('Offer Updated', 'Promotion updated.');
   };
 
   const deleteOffer = (id: string) => {
-    setOffers(prev => prev.filter(o => o.id !== id));
+    setOffers(prev => {
+      const updated = prev.filter(o => o.id !== id);
+      syncToLiveServer({ offers: updated });
+      return updated;
+    });
     showNotification('Offer Deleted', 'Promotion removed.', 'warning');
   };
 
   // Testimonials
   const addTestimonial = (testData: Omit<TestimonialItem, 'id'>) => {
     const newTest: TestimonialItem = { ...testData, id: `test-${Date.now()}` };
-    setTestimonials(prev => [newTest, ...prev]);
+    setTestimonials(prev => {
+      const updated = [newTest, ...prev];
+      syncToLiveServer({ testimonials: updated });
+      return updated;
+    });
+
+    // Notify Admin Inbox: Review!
+    addInboxItem({
+      type: 'review',
+      title: `New Review: ${newTest.rating} Stars from ${newTest.customerName}`,
+      senderName: newTest.customerName,
+      summary: `Traveler rating: ${newTest.rating}★ for ${newTest.tripName}. "${newTest.reviewText.slice(0, 100)}..."`,
+      details: newTest.reviewText,
+      rating: newTest.rating,
+      tripName: newTest.tripName,
+    });
+
     showNotification('Testimonial Added', 'Customer review saved.');
   };
 
   const updateTestimonial = (id: string, testData: Partial<TestimonialItem>) => {
-    setTestimonials(prev => prev.map(t => (t.id === id ? { ...t, ...testData } : t)));
+    setTestimonials(prev => {
+      const updated = prev.map(t => (t.id === id ? { ...t, ...testData } : t));
+      syncToLiveServer({ testimonials: updated });
+      return updated;
+    });
     showNotification('Testimonial Updated', 'Review details updated.');
   };
 
   const deleteTestimonial = (id: string) => {
-    setTestimonials(prev => prev.filter(t => t.id !== id));
+    setTestimonials(prev => {
+      const updated = prev.filter(t => t.id !== id);
+      syncToLiveServer({ testimonials: updated });
+      return updated;
+    });
     showNotification('Testimonial Deleted', 'Review removed.', 'warning');
   };
 
   // FAQs
   const addFaq = (faqData: Omit<FAQItem, 'id'>) => {
     const newFaq: FAQItem = { ...faqData, id: `faq-${Date.now()}` };
-    setFaqs(prev => [...prev, newFaq]);
+    setFaqs(prev => {
+      const updated = [...prev, newFaq];
+      syncToLiveServer({ faqs: updated });
+      return updated;
+    });
     showNotification('FAQ Added', 'Question and answer published.');
   };
 
   const updateFaq = (id: string, faqData: Partial<FAQItem>) => {
-    setFaqs(prev => prev.map(f => (f.id === id ? { ...f, ...faqData } : f)));
+    setFaqs(prev => {
+      const updated = prev.map(f => (f.id === id ? { ...f, ...faqData } : f));
+      syncToLiveServer({ faqs: updated });
+      return updated;
+    });
     showNotification('FAQ Updated', 'FAQ item updated.');
   };
 
   const deleteFaq = (id: string) => {
-    setFaqs(prev => prev.filter(f => f.id !== id));
+    setFaqs(prev => {
+      const updated = prev.filter(f => f.id !== id);
+      syncToLiveServer({ faqs: updated });
+      return updated;
+    });
     showNotification('FAQ Deleted', 'FAQ removed.', 'warning');
   };
 
@@ -612,6 +957,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentUser(user);
     setIsAuthModalOpen(false);
     showNotification('Welcome Back!', `Signed in as ${user.name}`);
+
+    // If traveler was waiting to secure their spot, open booking modal now!
+    if (pendingTripForBooking) {
+      const tripToLock = pendingTripForBooking;
+      setPendingTripForBooking(null);
+      setAuthNotice(null);
+      setTimeout(() => {
+        setSelectedTripForBooking(tripToLock);
+        showNotification('Spot Secured!', `Welcome back, ${user.name}! Finish reserving your spot for ${tripToLock.name}.`);
+      }, 300);
+    }
+
     return true;
   };
 
@@ -646,11 +1003,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         communicationPreference: 'whatsapp',
         createdAt: new Date().toISOString(),
       };
-      return [newCustomer, ...prev];
+      const updated = [newCustomer, ...prev];
+      syncToLiveServer({ customers: updated });
+      return updated;
     });
 
     setIsAuthModalOpen(false);
     showNotification('Account Created!', `Welcome to SMELTRAVELS876, ${user.name}!`);
+
+    // If traveler was waiting to secure their spot, open booking modal now!
+    if (pendingTripForBooking) {
+      const tripToLock = pendingTripForBooking;
+      setPendingTripForBooking(null);
+      setAuthNotice(null);
+      setTimeout(() => {
+        setSelectedTripForBooking(tripToLock);
+        showNotification('Spot Secured!', `Welcome, ${user.name}! Finish reserving your spot for ${tripToLock.name}.`);
+      }, 300);
+    }
+
     return true;
   };
 
@@ -674,10 +1045,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return updatedUser;
     });
 
+    // Notify Admin Inbox: Deposit!
+    addInboxItem({
+      type: 'deposit',
+      title: `Deposit Recorded: ${deposit.tripName} ($${deposit.amount.toLocaleString()} JMD)`,
+      senderName: currentUser?.name || 'Verified Traveler',
+      senderEmail: currentUser?.email || userEmail,
+      senderPhone: currentUser?.phone,
+      summary: `Deposit payment of $${deposit.amount.toLocaleString()} JMD recorded for ${deposit.tripName}. Method: ${deposit.paymentMethod}.`,
+      details: `Booking Reference: ${deposit.bookingRef}. Status: Verified. Payment receipt verified by traveler.`,
+      amount: deposit.amount,
+      currency: 'JMD',
+      tripName: deposit.tripName,
+      referenceNumber: deposit.bookingRef,
+    });
+
     // Also update in customers table
     const targetEmail = (currentUser?.email || userEmail || deposit.bookingRef).toLowerCase();
-    setCustomers(prev =>
-      prev.map(c => {
+    setCustomers(prev => {
+      const updated = prev.map(c => {
         if (c.email.toLowerCase() === targetEmail) {
           return {
             ...c,
@@ -690,84 +1076,108 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           };
         }
         return c;
-      })
-    );
+      });
+      syncToLiveServer({ customers: updated });
+      return updated;
+    });
   };
 
   const deleteBooking = (id: string) => {
-    setBookings(prev => prev.filter(b => b.id !== id));
+    setBookings(prev => {
+      const updated = prev.filter(b => b.id !== id);
+      syncToLiveServer({ bookings: updated });
+      return updated;
+    });
     showNotification('Inquiry Removed', 'Booking inquiry deleted from records.', 'info');
   };
 
   const saveTrip = (trip: TripPackage) => {
     setTrips(prev => {
       const idx = prev.findIndex(t => t.id === trip.id);
+      let updated: TripPackage[];
       if (idx >= 0) {
-        const updated = [...prev];
+        updated = [...prev];
         updated[idx] = trip;
-        return updated;
+      } else {
+        updated = [trip, ...prev];
       }
-      return [trip, ...prev];
+      syncToLiveServer({ trips: updated });
+      return updated;
     });
   };
 
   const saveDestination = (dest: Destination) => {
     setDestinations(prev => {
       const idx = prev.findIndex(d => d.id === dest.id);
+      let updated: Destination[];
       if (idx >= 0) {
-        const updated = [...prev];
+        updated = [...prev];
         updated[idx] = dest;
-        return updated;
+      } else {
+        updated = [dest, ...prev];
       }
-      return [dest, ...prev];
+      syncToLiveServer({ destinations: updated });
+      return updated;
     });
   };
 
   const saveBlogPost = (post: BlogPost) => {
     setBlogPosts(prev => {
       const idx = prev.findIndex(p => p.id === post.id);
+      let updated: BlogPost[];
       if (idx >= 0) {
-        const updated = [...prev];
+        updated = [...prev];
         updated[idx] = post;
-        return updated;
+      } else {
+        updated = [post, ...prev];
       }
-      return [post, ...prev];
+      syncToLiveServer({ blog: updated });
+      return updated;
     });
   };
 
   const saveFaq = (faq: FAQItem) => {
     setFaqs(prev => {
       const idx = prev.findIndex(f => f.id === faq.id);
+      let updated: FAQItem[];
       if (idx >= 0) {
-        const updated = [...prev];
+        updated = [...prev];
         updated[idx] = faq;
-        return updated;
+      } else {
+        updated = [...prev, faq];
       }
-      return [...prev, faq];
+      syncToLiveServer({ faqs: updated });
+      return updated;
     });
   };
 
   const saveOffer = (offer: OfferItem) => {
     setOffers(prev => {
       const idx = prev.findIndex(o => o.id === offer.id);
+      let updated: OfferItem[];
       if (idx >= 0) {
-        const updated = [...prev];
+        updated = [...prev];
         updated[idx] = offer;
-        return updated;
+      } else {
+        updated = [...prev, offer];
       }
-      return [...prev, offer];
+      syncToLiveServer({ offers: updated });
+      return updated;
     });
   };
 
   const saveTestimonial = (test: TestimonialItem) => {
     setTestimonials(prev => {
       const idx = prev.findIndex(t => t.id === test.id);
+      let updated: TestimonialItem[];
       if (idx >= 0) {
-        const updated = [...prev];
+        updated = [...prev];
         updated[idx] = test;
-        return updated;
+      } else {
+        updated = [test, ...prev];
       }
-      return [test, ...prev];
+      syncToLiveServer({ testimonials: updated });
+      return updated;
     });
   };
 
@@ -781,6 +1191,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setOffers(INITIAL_OFFERS);
     setTestimonials(INITIAL_TESTIMONIALS);
     setFaqs(INITIAL_FAQS);
+    setAdminInbox(INITIAL_ADMIN_INBOX);
+    syncToLiveServer({
+      settings: INITIAL_SETTINGS,
+      trips: INITIAL_TRIPS,
+      destinations: INITIAL_DESTINATIONS,
+      bookings: INITIAL_BOOKINGS,
+      blog: INITIAL_BLOG_POSTS,
+      offers: INITIAL_OFFERS,
+      testimonials: INITIAL_TESTIMONIALS,
+      faqs: INITIAL_FAQS,
+      adminInbox: INITIAL_ADMIN_INBOX,
+    });
     showNotification('System Reset', 'All demo data has been restored.');
   };
 
@@ -873,6 +1295,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         navigateTo,
         pageParam,
         resetToInitialData,
+        adminInbox,
+        addInboxItem,
+        markInboxItemAsRead,
+        markAllInboxAsRead,
+        deleteInboxItem,
+        unreadInboxCount,
+        savedTripIds,
+        savedTrips,
+        toggleSaveTrip,
+        isTripSaved,
+        isSavedTripsDrawerOpen,
+        setIsSavedTripsDrawerOpen,
+        openSavedTripsDrawer,
+        closeSavedTripsDrawer,
+        secureSpotForTrip,
+        pendingTripForBooking,
+        setPendingTripForBooking,
+        authNotice,
+        setAuthNotice,
+        verifyAmbassadorCode,
       }}
     >
       {children}

@@ -17,6 +17,7 @@ import {
   UserPlus,
   ArrowRight,
   Star,
+  Bookmark,
 } from 'lucide-react';
 import { useApp, formatPriceJMD } from '../context/AppContext';
 import { BrandLogo } from './common/BrandLogo';
@@ -38,6 +39,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
     openAuthModal,
     setIsSearchOpen,
     openReviewModal,
+    savedTripIds,
+    openSavedTripsDrawer,
   } = useApp();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -410,6 +413,22 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
 
           {/* Right Action Icons & CTAs */}
           <div className="flex items-center gap-3">
+            {/* Saved Trips Bookmark Button */}
+            <button
+              onClick={openSavedTripsDrawer}
+              className="relative p-2 text-neutral-300 hover:text-[#FFC72C] hover:bg-purple-900/40 rounded-full transition-colors cursor-pointer"
+              title="View bookmarked trips you saved to revisit"
+              id="header-saved-trips-btn"
+              aria-label="View saved trips"
+            >
+              <Bookmark className={`w-5 h-5 ${savedTripIds.length > 0 ? 'text-[#FFC72C]' : ''}`} />
+              {savedTripIds.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-[#FFC72C] text-[#2E0249] text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                  {savedTripIds.length}
+                </span>
+              )}
+            </button>
+
             {/* Quick Search Button */}
             <button
               onClick={handleOpenSearch}
@@ -627,6 +646,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
                   </button>
                 </div>
               )}
+
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  openSavedTripsDrawer();
+                }}
+                className="w-full py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-center flex items-center justify-center gap-2 border border-neutral-700 cursor-pointer text-xs"
+                id="mobile-saved-trips-btn"
+              >
+                <Bookmark className={`w-4 h-4 ${savedTripIds.length > 0 ? 'text-[#FFC72C] fill-current' : ''}`} />
+                <span>SAVED TRIPS ({savedTripIds.length})</span>
+              </button>
 
               <button
                 onClick={() => handleNav('trips')}

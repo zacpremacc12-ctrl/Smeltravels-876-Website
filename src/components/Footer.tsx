@@ -279,7 +279,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenLegal, onOpenAdmin }) => {
 
               <div className="pt-2 flex items-start gap-1.5 text-neutral-400">
                 <MapPin className="w-3.5 h-3.5 text-[#FFC72C] shrink-0 mt-0.5" />
-                <span>Kingston, Jamaica (Serving Islandwide & Diaspora)</span>
+                <span>{settings.operatingBase || 'Kingston, Jamaica'} (Serving Islandwide & Diaspora)</span>
               </div>
             </div>
           </div>
