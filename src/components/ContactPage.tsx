@@ -194,7 +194,7 @@ export const ContactPage: React.FC = () => {
                       {
                         id: 'amb-default',
                         name: settings.ambassadorName || 'Zachary Buchanan',
-                        title: settings.ambassadorTitle || 'Senior Travel Ambassador',
+                        title: settings.ambassadorTitle || 'Travel Ambassador',
                         phone: settings.ambassadorPhone || '(876) 848-9772',
                         email: settings.ambassadorEmail || 'zbuchanan.smeltravels@gmail.com',
                         parishOrRegion: 'Kingston & St. Andrew',
