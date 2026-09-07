@@ -220,8 +220,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         requireAmbassadorSelection: true,
       };
     }
+    const updatedAmbassadors = (loaded.ambassadors as Ambassador[]).map((a) => {
+      if (a.email === 'jvirgo.smeltravels@gmail.com' && a.phone !== '(876) 566-6923') {
+        return { ...a, phone: '(876) 566-6923' };
+      }
+      if (a.email === 'sdavis.smeltravels@gmail.com' && a.phone !== '(876) 276-1310') {
+        return { ...a, phone: '(876) 276-1310' };
+      }
+      return a;
+    });
     return {
       ...loaded,
+      ambassadors: updatedAmbassadors,
       requireAmbassadorSelection: loaded.requireAmbassadorSelection ?? true,
     };
   });
@@ -1036,13 +1046,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     'jvirgo.smeltravels@gmail.com': {
       name: 'Jada Virgo',
       title: 'Travel Ambassador',
-      phone: '(876) 848-9772',
+      phone: '(876) 566-6923',
       role: 'Super Admin',
     },
     'sdavis.smeltravels@gmail.com': {
       name: 'Shenoya Davis',
       title: 'Travel Ambassador',
-      phone: '(876) 848-9772',
+      phone: '(876) 276-1310',
       role: 'Super Admin',
     },
     'zacpremacc12@gmail.com': {
