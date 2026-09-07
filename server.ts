@@ -36,20 +36,79 @@ const persistData = () => {
   }
 };
 
+// Connected clients for Server-Sent Events (Real-time live feed for all users)
+const sseClients = new Set<express.Response>();
+
+const broadcastSiteUpdate = (data: any) => {
+  const payload = JSON.stringify({
+    type: 'SITE_DATA_UPDATE',
+    data,
+    lastUpdated: siteDataCache.lastUpdated,
+  });
+  const message = `data: ${payload}\n\n`;
+
+  for (const client of sseClients) {
+    try {
+      client.write(message);
+    } catch (err) {
+      sseClients.delete(client);
+    }
+  }
+};
+
 // --- API ROUTES FIRST ---
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// GET all live site data (settings, trips, bookings, inbox, etc.)
-app.get('/api/site-data', (req, res) => {
-  res.json({
-    success: true,
-    data: siteDataCache,
+// GET real-time SSE stream for ALL connected users (logged in or not)
+app.get('/api/site-stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // Prevents proxy/reverse-proxy buffering
+  res.flushHeaders();
+
+  // Send current state immediately on connect
+  res.write(
+    `data: ${JSON.stringify({
+      type: 'INIT',
+      data: siteDataCache,
+      lastUpdated: siteDataCache.lastUpdated || new Date().toISOString(),
+    })}\n\n`
+  );
+
+  sseClients.add(res);
+
+  // Heartbeat ping every 15 seconds to keep connection alive
+  const heartbeat = setInterval(() => {
+    try {
+      res.write(': keepalive\n\n');
+    } catch (e) {
+      clearInterval(heartbeat);
+      sseClients.delete(res);
+    }
+  }, 15000);
+
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    sseClients.delete(res);
   });
 });
 
-// POST update live site data
+// GET all live site data (settings, trips, bookings, inbox, etc.) with cache-busting headers
+app.get('/api/site-data', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.json({
+    success: true,
+    data: siteDataCache,
+    lastUpdated: siteDataCache.lastUpdated || new Date().toISOString(),
+  });
+});
+
+// POST update live site data - immediately persists and broadcasts to ALL users
 app.post('/api/site-data', (req, res) => {
   try {
     const updates = req.body;
@@ -60,7 +119,13 @@ app.post('/api/site-data', (req, res) => {
         lastUpdated: new Date().toISOString(),
       };
       persistData();
-      return res.json({ success: true, message: 'Live data successfully persisted to server' });
+      broadcastSiteUpdate(siteDataCache);
+      console.log(`[Server] Live site data updated & broadcast to ${sseClients.size} connected users`);
+      return res.json({
+        success: true,
+        message: 'Live data successfully persisted to server and broadcast to all users',
+        lastUpdated: siteDataCache.lastUpdated,
+      });
     }
     return res.status(400).json({ success: false, error: 'Invalid payload' });
   } catch (err: any) {
@@ -85,7 +150,9 @@ app.post('/api/inbox', (req, res) => {
     };
 
     siteDataCache.adminInbox = [newItem, ...currentInbox];
+    siteDataCache.lastUpdated = new Date().toISOString();
     persistData();
+    broadcastSiteUpdate(siteDataCache);
 
     res.json({ success: true, item: newItem });
   } catch (err: any) {
@@ -101,7 +168,9 @@ app.patch('/api/inbox/:id/read', (req, res) => {
     siteDataCache.adminInbox = currentInbox.map((item: any) =>
       item.id === id ? { ...item, isRead: true } : item
     );
+    siteDataCache.lastUpdated = new Date().toISOString();
     persistData();
+    broadcastSiteUpdate(siteDataCache);
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -114,7 +183,9 @@ app.delete('/api/inbox/:id', (req, res) => {
     const { id } = req.params;
     const currentInbox = Array.isArray(siteDataCache.adminInbox) ? siteDataCache.adminInbox : [];
     siteDataCache.adminInbox = currentInbox.filter((item: any) => item.id !== id);
+    siteDataCache.lastUpdated = new Date().toISOString();
     persistData();
+    broadcastSiteUpdate(siteDataCache);
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });

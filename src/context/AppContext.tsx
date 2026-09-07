@@ -322,10 +322,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => { setStoredItem('admin_role', currentAdminRole); }, [currentAdminRole]);
   useEffect(() => { setStoredItem('traveler_user', currentUser); }, [currentUser]);
 
+  // Centralized state updater for live website feed updates
+  const applyServerData = (d: any) => {
+    if (!d || typeof d !== 'object') return;
+    if (d.settings && typeof d.settings === 'object') {
+      setSettings(prev => ({
+        ...prev,
+        ...d.settings,
+        ambassadors: Array.isArray(d.settings.ambassadors) && d.settings.ambassadors.length > 0
+          ? d.settings.ambassadors
+          : prev.ambassadors,
+      }));
+    }
+    if (d.trips && Array.isArray(d.trips)) setTrips(d.trips);
+    if (d.destinations && Array.isArray(d.destinations)) setDestinations(d.destinations);
+    if (d.bookings && Array.isArray(d.bookings)) setBookings(d.bookings);
+    if (d.contacts && Array.isArray(d.contacts)) setContactSubmissions(d.contacts);
+    if (d.customers && Array.isArray(d.customers)) setCustomers(d.customers);
+    if (d.blog && Array.isArray(d.blog)) setBlogPosts(d.blog);
+    if (d.offers && Array.isArray(d.offers)) setOffers(d.offers);
+    if (d.testimonials && Array.isArray(d.testimonials)) setTestimonials(d.testimonials);
+    if (d.faqs && Array.isArray(d.faqs)) setFaqs(d.faqs);
+    if (d.adminInbox && Array.isArray(d.adminInbox)) setAdminInbox(d.adminInbox);
+    if (d.media && Array.isArray(d.media)) setMediaList(d.media);
+  };
+
   // Helper to persist admin changes to the live backend server & broadcast to live feed
   const syncToLiveServer = async (payload: Record<string, any>): Promise<boolean> => {
     try {
-      // Instant cross-tab broadcast within the browser
+      // Instant cross-tab broadcast within the browser (0ms delay)
       try {
         if (typeof BroadcastChannel !== 'undefined') {
           const ch = new BroadcastChannel('smeltravels_live_feed');
@@ -347,83 +372,107 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Real-time Live Synchronization for the LIVE WEBSITE FEED:
-  // Polls server regularly and synchronizes across all visitors and open tabs
+  // 1. REAL-TIME SERVER-SENT EVENTS (SSE):
+  // Connects every user (logged in or guest) to the live event stream for instantaneous updates
+  useEffect(() => {
+    let eventSource: EventSource | null = null;
+    let reconnectTimer: any = null;
+    let isMounted = true;
+
+    const connectSSE = () => {
+      if (!isMounted) return;
+      try {
+        eventSource = new EventSource('/api/site-stream');
+
+        eventSource.onmessage = (event) => {
+          if (!event.data) return;
+          try {
+            const parsed = JSON.parse(event.data);
+            if (parsed?.data) {
+              applyServerData(parsed.data);
+            }
+          } catch (err) {
+            // Heartbeat or malformed frame
+          }
+        };
+
+        eventSource.onerror = () => {
+          if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+          }
+          if (isMounted) {
+            reconnectTimer = setTimeout(connectSSE, 3000);
+          }
+        };
+      } catch (err) {
+        if (isMounted) {
+          reconnectTimer = setTimeout(connectSSE, 5000);
+        }
+      }
+    };
+
+    connectSSE();
+
+    return () => {
+      isMounted = false;
+      if (eventSource) eventSource.close();
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+    };
+  }, []);
+
+  // 2. RESILIENT POLLING & VISIBILITY SYNC:
+  // Ensures updates sync even if SSE is interrupted or user returns to tab
   useEffect(() => {
     let isSubscribed = true;
     let lastKnownTimestamp = '';
 
     const syncFeedFromServer = async () => {
       try {
-        const res = await fetch('/api/site-data');
+        const res = await fetch(`/api/site-data?t=${Date.now()}`, {
+          cache: 'no-store',
+          headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+        });
         if (!res.ok) return;
         const json = await res.json();
         if (json?.success && json?.data && isSubscribed) {
           const serverUpdated = json.lastUpdated || json.data.lastUpdated;
           if (serverUpdated && serverUpdated === lastKnownTimestamp) {
-            return; // Already up to date
+            return; // Up to date
           }
           if (serverUpdated) lastKnownTimestamp = serverUpdated;
-
-          const d = json.data;
-          if (d.settings) {
-            setSettings(prev => {
-              const ambList = (d.settings.ambassadors && d.settings.ambassadors.length === 4)
-                ? d.settings.ambassadors
-                : (prev.ambassadors && prev.ambassadors.length === 4 ? prev.ambassadors : INITIAL_SETTINGS.ambassadors);
-              return {
-                ...prev,
-                ...d.settings,
-                ambassadors: ambList,
-              };
-            });
-          }
-          if (d.trips && Array.isArray(d.trips) && d.trips.length > 0) setTrips(d.trips);
-          if (d.destinations && Array.isArray(d.destinations)) setDestinations(d.destinations);
-          if (d.bookings && Array.isArray(d.bookings)) setBookings(d.bookings);
-          if (d.contacts && Array.isArray(d.contacts)) setContactSubmissions(d.contacts);
-          if (d.customers && Array.isArray(d.customers)) setCustomers(d.customers);
-          if (d.blog && Array.isArray(d.blog)) setBlogPosts(d.blog);
-          if (d.offers && Array.isArray(d.offers)) setOffers(d.offers);
-          if (d.testimonials && Array.isArray(d.testimonials)) setTestimonials(d.testimonials);
-          if (d.faqs && Array.isArray(d.faqs)) setFaqs(d.faqs);
-          if (d.adminInbox && Array.isArray(d.adminInbox)) setAdminInbox(d.adminInbox);
+          applyServerData(json.data);
         }
       } catch (err) {
-        // Transient network or initial loading
+        // Transient network failure
       }
     };
 
-    // Initial immediate sync
+    // Immediate initial sync
     syncFeedFromServer();
 
-    // Regular poll to catch any live admin updates across all devices
-    const pollInterval = setInterval(syncFeedFromServer, 3500);
-
-    const handleVisibility = () => {
+    // Fast polling interval (2.5 seconds)
+    const pollInterval = setInterval(() => {
       if (document.visibilityState === 'visible') {
         syncFeedFromServer();
       }
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
+    }, 2500);
 
-    // Cross-tab broadcast receiver for instantaneous 0ms sync
+    const handleVisibilityOrFocus = () => {
+      syncFeedFromServer();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    window.addEventListener('focus', handleVisibilityOrFocus);
+
+    // Cross-tab broadcast receiver for instantaneous 0ms tab-to-tab sync
     let channel: BroadcastChannel | null = null;
     try {
       if (typeof BroadcastChannel !== 'undefined') {
         channel = new BroadcastChannel('smeltravels_live_feed');
         channel.onmessage = (event) => {
           if (event.data?.type === 'LIVE_FEED_SYNC' && event.data?.payload) {
-            const p = event.data.payload;
-            if (p.settings) setSettings(prev => ({ ...prev, ...p.settings }));
-            if (p.trips) setTrips(p.trips);
-            if (p.destinations) setDestinations(p.destinations);
-            if (p.offers) setOffers(p.offers);
-            if (p.blog) setBlogPosts(p.blog);
-            if (p.testimonials) setTestimonials(p.testimonials);
-            if (p.faqs) setFaqs(p.faqs);
-            if (p.bookings) setBookings(p.bookings);
-            if (p.customers) setCustomers(p.customers);
+            applyServerData(event.data.payload);
           }
         };
       }
@@ -432,7 +481,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => {
       isSubscribed = false;
       clearInterval(pollInterval);
-      document.removeEventListener('visibilitychange', handleVisibility);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
       channel?.close();
     };
   }, []);
@@ -481,11 +531,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           testimonials,
           faqs,
           adminInbox,
+          media: mediaList,
         });
-      }, 600);
+      }, 400);
       return () => clearTimeout(timer);
     }
-  }, [isAdminActive, settings, trips, destinations, offers, blogPosts, testimonials, faqs, adminInbox]);
+  }, [isAdminActive, settings, trips, destinations, offers, blogPosts, testimonials, faqs, adminInbox, mediaList]);
 
   const showNotification = (title: string, message: string, type: 'success' | 'info' | 'warning' = 'success') => {
     setActiveNotification({ title, message, type });
