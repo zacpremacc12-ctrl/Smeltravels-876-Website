@@ -201,17 +201,26 @@ export const ContactPage: React.FC = () => {
                       },
                     ]
                 ).map((amb) => (
-                  <div key={amb.id} className="bg-purple-950/50 p-3 rounded-xl border border-purple-800/60 flex items-center justify-between gap-2">
+                  <div key={amb.id} className="bg-purple-950/50 p-3.5 rounded-xl border border-purple-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                      <div className="font-bold text-white text-xs">{amb.name}</div>
-                      <div className="text-[10px] text-purple-300">{amb.title}{amb.parishOrRegion ? ` • ${amb.parishOrRegion}` : ''}</div>
+                      <div className="font-bold text-white text-sm">{amb.name}</div>
+                      <div className="text-[11px] text-purple-300 font-medium">{amb.title}{amb.parishOrRegion ? ` • ${amb.parishOrRegion}` : ''}</div>
+                      {amb.email && (
+                        <a href={`mailto:${amb.email}`} className="text-[11px] text-neutral-300 hover:text-[#FFC72C] flex items-center gap-1.5 mt-1">
+                          <Mail className="w-3 h-3 text-[#FFC72C]" />
+                          <span>{amb.email}</span>
+                        </a>
+                      )}
                     </div>
-                    <a
-                      href={`tel:${amb.phone.replace(/[^0-9]/g, '')}`}
-                      className="text-xs font-bold text-[#FFC72C] hover:underline shrink-0 bg-[#2E0249] px-2.5 py-1 rounded-lg border border-purple-700"
-                    >
-                      {amb.phone}
-                    </a>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <a
+                        href={`tel:${amb.phone.replace(/[^0-9]/g, '')}`}
+                        className="text-xs font-bold text-[#FFC72C] hover:underline bg-[#2E0249] px-3 py-1.5 rounded-lg border border-purple-700 flex items-center gap-1.5 shadow-sm"
+                      >
+                        <Phone className="w-3 h-3" />
+                        <span>{amb.phone}</span>
+                      </a>
+                    </div>
                   </div>
                 ))}
               </div>

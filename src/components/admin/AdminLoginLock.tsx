@@ -45,8 +45,8 @@ export const AdminLoginLock: React.FC = () => {
     }, 350);
   };
 
-  const handleAutofillEmail = () => {
-    setEmail('zbuchanan.smeltravels@gmail.com');
+  const handleAutofillEmail = (adminEmail: string) => {
+    setEmail(adminEmail);
     setErrorMessage(null);
   };
 
@@ -95,14 +95,24 @@ export const AdminLoginLock: React.FC = () => {
               <label className="text-xs font-bold text-neutral-300">
                 Administrator Email
               </label>
-              <button
-                type="button"
-                onClick={handleAutofillEmail}
-                className="text-[11px] text-[#FFC72C] hover:underline font-semibold"
-                title="Autofill authorized administrator email"
-              >
-                Use Admin Email
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleAutofillEmail('smeltravels876@gmail.com')}
+                  className="text-[10px] bg-purple-900/60 hover:bg-purple-800 text-[#FFC72C] px-2 py-0.5 rounded border border-[#FFC72C]/30 font-semibold"
+                  title="Autofill smeltravels876@gmail.com"
+                >
+                  smeltravels876@gmail.com
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAutofillEmail('zbuchanan.smeltravels@gmail.com')}
+                  className="text-[10px] bg-purple-900/60 hover:bg-purple-800 text-purple-200 px-2 py-0.5 rounded border border-purple-700/50 font-semibold"
+                  title="Autofill zbuchanan.smeltravels@gmail.com"
+                >
+                  Zachary Buchanan
+                </button>
+              </div>
             </div>
             <div className="relative">
               <Mail className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -111,7 +121,7 @@ export const AdminLoginLock: React.FC = () => {
                 required
                 id="admin-email-input"
                 autoComplete="email"
-                placeholder="zbuchanan.smeltravels@gmail.com"
+                placeholder="smeltravels876@gmail.com"
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);

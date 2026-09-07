@@ -898,31 +898,62 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Admin Auth - Email & Password Protected
-  const REQUIRED_ADMIN_EMAIL = 'zbuchanan.smeltravels@gmail.com';
+  const REQUIRED_ADMIN_EMAIL = 'smeltravels876@gmail.com';
   const REQUIRED_ADMIN_PASSWORD = 'Jjrrss5521';
   const ADMIN_AUTHORIZED_EMAILS = [
+    'smeltravels876@gmail.com',
     'zbuchanan.smeltravels@gmail.com',
     'zacpremacc12@gmail.com',
   ];
 
+  const ADMIN_PROFILES: Record<string, { name: string; title: string; phone: string; role: AdminRole }> = {
+    'smeltravels876@gmail.com': {
+      name: 'SMEL Travels 876 Admin',
+      title: 'Executive Travel Operations & CMS Director',
+      phone: '(876) 848-9772',
+      role: 'Super Admin',
+    },
+    'zbuchanan.smeltravels@gmail.com': {
+      name: 'Zachary Buchanan',
+      title: 'Managing Director & Founder',
+      phone: '(876) 848-9772',
+      role: 'Super Admin',
+    },
+    'zacpremacc12@gmail.com': {
+      name: 'Zachary Buchanan',
+      title: 'Lead Administrator',
+      phone: '(876) 848-9772',
+      role: 'Super Admin',
+    },
+  };
+
   // Keep Admin and User in sync: If admin is logged in, ensure currentUser reflects this
   useEffect(() => {
     if (isAdminLoggedIn) {
+      const activeAdminProfile = (adminEmail && ADMIN_PROFILES[adminEmail.toLowerCase()]) || {
+        name: adminEmail === 'smeltravels876@gmail.com' ? 'SMEL Travels 876 Admin' : 'Zachary Buchanan',
+        title: 'Executive Travel Operations & CMS Director',
+        phone: '(876) 848-9772',
+        role: (currentAdminRole || 'Super Admin') as AdminRole,
+      };
+
       setCurrentUser(prev => {
         if (!prev) {
           return {
-            id: 'admin-user-zbuchanan',
-            name: 'Zachary Buchanan',
+            id: `admin-user-${(adminEmail || REQUIRED_ADMIN_EMAIL).replace(/[^a-z0-9]/gi, '-')}`,
+            name: activeAdminProfile.name,
             email: adminEmail || REQUIRED_ADMIN_EMAIL,
-            phone: '(876) 848-9772',
+            phone: activeAdminProfile.phone,
             homeParishOrCountry: 'Kingston, Jamaica',
             memberSince: '2026',
             isAdmin: true,
             adminRole: currentAdminRole || 'Super Admin',
           };
-        } else if (!prev.isAdmin) {
+        } else if (!prev.isAdmin || prev.email !== (adminEmail || REQUIRED_ADMIN_EMAIL)) {
           return {
             ...prev,
+            name: activeAdminProfile.name,
+            email: adminEmail || REQUIRED_ADMIN_EMAIL,
             isAdmin: true,
             adminRole: currentAdminRole || 'Super Admin',
           };
@@ -933,14 +964,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [isAdminLoggedIn, adminEmail, currentAdminRole]);
 
   const loginAdmin = (role: AdminRole = 'Super Admin') => {
+    const profile = ADMIN_PROFILES[REQUIRED_ADMIN_EMAIL] || {
+      name: 'SMEL Travels 876 Admin',
+      title: 'Executive Travel Operations',
+      phone: '(876) 848-9772',
+      role: 'Super Admin',
+    };
     setIsAdminLoggedIn(true);
     setAdminEmail(REQUIRED_ADMIN_EMAIL);
     setCurrentAdminRole(role);
     setCurrentUser(prev => ({
-      id: prev?.id || 'admin-user-zbuchanan',
-      name: prev?.name || 'Zachary Buchanan',
-      email: prev?.email || REQUIRED_ADMIN_EMAIL,
-      phone: prev?.phone || '(876) 848-9772',
+      id: prev?.id || 'admin-user-smeltravels876',
+      name: profile.name,
+      email: REQUIRED_ADMIN_EMAIL,
+      phone: profile.phone,
       homeParishOrCountry: prev?.homeParishOrCountry || 'Kingston, Jamaica',
       memberSince: prev?.memberSince || '2026',
       firstDeposit: prev?.firstDeposit,
@@ -960,14 +997,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       (settings.ambassadors || []).some(a => a.email && a.email.toLowerCase() === cleanEmail);
 
     if (isMatchEmail && cleanPassword === REQUIRED_ADMIN_PASSWORD) {
+      const profile = ADMIN_PROFILES[cleanEmail] || {
+        name: cleanEmail.includes('smeltravels876') ? 'SMEL Travels 876 Admin' : 'Zachary Buchanan',
+        title: 'Executive Travel Operations',
+        phone: '(876) 848-9772',
+        role: 'Super Admin',
+      };
+
       setIsAdminLoggedIn(true);
       setAdminEmail(cleanEmail);
       setCurrentAdminRole('Super Admin');
       setCurrentUser(prev => ({
-        id: prev?.id || 'admin-user-zbuchanan',
-        name: prev?.name || 'Zachary Buchanan',
+        id: prev?.id || `admin-user-${cleanEmail.replace(/[^a-z0-9]/gi, '-')}`,
+        name: profile.name,
         email: cleanEmail,
-        phone: prev?.phone || '(876) 848-9772',
+        phone: profile.phone,
         homeParishOrCountry: prev?.homeParishOrCountry || 'Kingston, Jamaica',
         memberSince: prev?.memberSince || '2026',
         firstDeposit: prev?.firstDeposit,
@@ -975,7 +1019,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isAdmin: true,
         adminRole: 'Super Admin',
       }));
-      showNotification('Access Granted', `Welcome back, Administrator (${cleanEmail}).`);
+      showNotification('Access Granted', `Welcome back, ${profile.name} (${cleanEmail}). Super Admin unlocked.`);
       return { success: true };
     } else {
       showNotification('Access Denied', 'Invalid administrator email or password.', 'warning');
