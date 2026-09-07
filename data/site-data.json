@@ -1,5 +1,64 @@
 {
   "testKey": "persisted_live",
-  "lastUpdated": "2026-09-06T12:21:01.503Z",
+  "lastUpdated": "2026-09-07T16:26:00.000Z",
+  "settings": {
+    "siteName": "SMELTRAVELS876",
+    "tagline": "Travel More. Worry Less.",
+    "primaryPhone": "(876) 834-1537",
+    "primaryEmail": "smeltravels876@gmail.com",
+    "ambassadorName": "Zachary Buchanan",
+    "ambassadorTitle": "Travel Ambassador",
+    "ambassadorPhone": "(876) 848-9772",
+    "ambassadorEmail": "zbuchanan.smeltravels@gmail.com",
+    "ambassadors": [
+      {
+        "id": "amb-1",
+        "name": "Zachary Buchanan",
+        "title": "Travel Ambassador",
+        "phone": "(876) 848-9772",
+        "email": "zbuchanan.smeltravels@gmail.com",
+        "code": "ZAC876",
+        "isActive": true,
+        "parishOrRegion": "Kingston & St. Andrew"
+      },
+      {
+        "id": "amb-2",
+        "name": "Jada Virgo",
+        "title": "Travel Ambassador",
+        "phone": "(876) 848-9772",
+        "email": "jvirgo.smeltravels@gmail.com",
+        "code": "JADA876",
+        "isActive": true,
+        "parishOrRegion": "Montego Bay & Western Jamaica"
+      },
+      {
+        "id": "amb-3",
+        "name": "Shenoya Davis",
+        "title": "Travel Ambassador",
+        "phone": "(876) 848-9772",
+        "email": "sdavis.smeltravels@gmail.com",
+        "code": "SHENOYA876",
+        "isActive": true,
+        "parishOrRegion": "St. Catherine & Portmore"
+      },
+      {
+        "id": "amb-4",
+        "name": "Elvoy Bennett",
+        "title": "CEO",
+        "phone": "(876) 834-1537",
+        "email": "smeltravels876@gmail.com",
+        "code": "ELVOY876",
+        "isActive": true,
+        "parishOrRegion": "Executive Operations & Corporate Travel"
+      }
+    ],
+    "requireAmbassadorSelection": true,
+    "ambassadorDiscountPercentage": 10,
+    "whatsappNumber": "18768341537",
+    "whatsappMessageTemplate": "Hi SMELTRAVELS876! I am interested in exploring upcoming group trips and travel packages.",
+    "addressSummary": "Kingston, Jamaica • Serving Caribbean & International Travelers",
+    "operatingBase": "Kingston, Jamaica",
+    "businessHours": "Monday - Saturday: 8:30 AM - 6:30 PM EST"
+  },
   "adminInbox": []
 }

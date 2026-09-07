@@ -387,8 +387,9 @@ export const AdminDashboard: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-black font-['Outfit',sans-serif]">SMELTRAVELS876 CMS</h1>
-                <span className="text-[10px] bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 px-2 py-0.5 rounded font-mono font-bold">
-                  UNLOCKED
+                <span className="text-[10px] bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 px-2 py-0.5 rounded font-mono font-bold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  AUTO-SYNC TO LIVE FEED
                 </span>
               </div>
               <p className="text-xs text-neutral-300">

@@ -28,6 +28,7 @@ import {
 import { TripPackage, TravelInterestType, TravelerDepositRecord } from '../../types';
 import { useApp, formatPriceJMD } from '../../context/AppContext';
 import { validateCardDetails, detectCardBrand } from '../../utils/cardValidation';
+import { INITIAL_SETTINGS } from '../../data/initialData';
 
 interface BookingModalProps {
   trip: TripPackage | null;
@@ -64,18 +65,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
   // Ambassador selection state
   const ambassadorsList = settings.ambassadors && settings.ambassadors.length > 0
     ? settings.ambassadors.filter((a) => a.isActive !== false)
-    : [
-        {
-          id: 'amb-1',
-          name: settings.ambassadorName || 'Zachary Buchanan',
-          title: settings.ambassadorTitle || 'Senior Travel Ambassador',
-          phone: settings.ambassadorPhone || '(876) 848-9772',
-          email: settings.ambassadorEmail || 'zbuchanan.smeltravels@gmail.com',
-          code: 'ZAC876',
-          isActive: true,
-          parishOrRegion: 'Kingston & St. Andrew',
-        },
-      ];
+    : INITIAL_SETTINGS.ambassadors;
   const [selectedAmbassadorId, setSelectedAmbassadorId] = useState<string>('');
   const [ambassadorError, setAmbassadorError] = useState<string>('');
 

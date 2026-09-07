@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import {
   TripPackage,
   Destination,
@@ -202,9 +202,20 @@ function setStoredItem<T>(key: string, val: T): void {
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<SiteSettings>(() => {
     const loaded = getStoredItem('settings', INITIAL_SETTINGS);
-    if (!loaded.ambassadors || !Array.isArray(loaded.ambassadors) || loaded.ambassadors.length === 0) {
+    const hasCanonical4 = Array.isArray(loaded.ambassadors) &&
+      loaded.ambassadors.length === 4 &&
+      loaded.ambassadors.some((a: Ambassador) => a.email === 'zbuchanan.smeltravels@gmail.com') &&
+      loaded.ambassadors.some((a: Ambassador) => a.email === 'jvirgo.smeltravels@gmail.com') &&
+      loaded.ambassadors.some((a: Ambassador) => a.email === 'sdavis.smeltravels@gmail.com') &&
+      loaded.ambassadors.some((a: Ambassador) => a.email === 'smeltravels876@gmail.com');
+
+    if (!hasCanonical4) {
       return {
         ...loaded,
+        ambassadorName: INITIAL_SETTINGS.ambassadorName,
+        ambassadorTitle: INITIAL_SETTINGS.ambassadorTitle,
+        ambassadorPhone: INITIAL_SETTINGS.ambassadorPhone,
+        ambassadorEmail: INITIAL_SETTINGS.ambassadorEmail,
         ambassadors: INITIAL_SETTINGS.ambassadors,
         requireAmbassadorSelection: true,
       };
@@ -301,14 +312,62 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => { setStoredItem('admin_role', currentAdminRole); }, [currentAdminRole]);
   useEffect(() => { setStoredItem('traveler_user', currentUser); }, [currentUser]);
 
-  // Initial Sync from Live Server (persisted to live website)
+  // Helper to persist admin changes to the live backend server & broadcast to live feed
+  const syncToLiveServer = async (payload: Record<string, any>): Promise<boolean> => {
+    try {
+      // Instant cross-tab broadcast within the browser
+      try {
+        if (typeof BroadcastChannel !== 'undefined') {
+          const ch = new BroadcastChannel('smeltravels_live_feed');
+          ch.postMessage({ type: 'LIVE_FEED_SYNC', payload });
+          ch.close();
+        }
+      } catch (e) {}
+
+      const res = await fetch('/api/site-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => null);
+      return res.ok && (data?.success !== false);
+    } catch (e) {
+      console.log('Server sync error:', e);
+      return false;
+    }
+  };
+
+  // Real-time Live Synchronization for the LIVE WEBSITE FEED:
+  // Polls server regularly and synchronizes across all visitors and open tabs
   useEffect(() => {
-    fetch('/api/site-data')
-      .then((res) => res.json())
-      .then((res) => {
-        if (res?.success && res?.data && Object.keys(res.data).length > 0) {
-          const d = res.data;
-          if (d.settings) setSettings(d.settings);
+    let isSubscribed = true;
+    let lastKnownTimestamp = '';
+
+    const syncFeedFromServer = async () => {
+      try {
+        const res = await fetch('/api/site-data');
+        if (!res.ok) return;
+        const json = await res.json();
+        if (json?.success && json?.data && isSubscribed) {
+          const serverUpdated = json.lastUpdated || json.data.lastUpdated;
+          if (serverUpdated && serverUpdated === lastKnownTimestamp) {
+            return; // Already up to date
+          }
+          if (serverUpdated) lastKnownTimestamp = serverUpdated;
+
+          const d = json.data;
+          if (d.settings) {
+            setSettings(prev => {
+              const ambList = (d.settings.ambassadors && d.settings.ambassadors.length === 4)
+                ? d.settings.ambassadors
+                : (prev.ambassadors && prev.ambassadors.length === 4 ? prev.ambassadors : INITIAL_SETTINGS.ambassadors);
+              return {
+                ...prev,
+                ...d.settings,
+                ambassadors: ambList,
+              };
+            });
+          }
           if (d.trips && Array.isArray(d.trips) && d.trips.length > 0) setTrips(d.trips);
           if (d.destinations && Array.isArray(d.destinations)) setDestinations(d.destinations);
           if (d.bookings && Array.isArray(d.bookings)) setBookings(d.bookings);
@@ -320,10 +379,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (d.faqs && Array.isArray(d.faqs)) setFaqs(d.faqs);
           if (d.adminInbox && Array.isArray(d.adminInbox)) setAdminInbox(d.adminInbox);
         }
-      })
-      .catch((err) => {
-        console.log('[AppContext] Offline or initial state, using local cache:', err);
-      });
+      } catch (err) {
+        // Transient network or initial loading
+      }
+    };
+
+    // Initial immediate sync
+    syncFeedFromServer();
+
+    // Regular poll to catch any live admin updates across all devices
+    const pollInterval = setInterval(syncFeedFromServer, 3500);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        syncFeedFromServer();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    // Cross-tab broadcast receiver for instantaneous 0ms sync
+    let channel: BroadcastChannel | null = null;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        channel = new BroadcastChannel('smeltravels_live_feed');
+        channel.onmessage = (event) => {
+          if (event.data?.type === 'LIVE_FEED_SYNC' && event.data?.payload) {
+            const p = event.data.payload;
+            if (p.settings) setSettings(prev => ({ ...prev, ...p.settings }));
+            if (p.trips) setTrips(p.trips);
+            if (p.destinations) setDestinations(p.destinations);
+            if (p.offers) setOffers(p.offers);
+            if (p.blog) setBlogPosts(p.blog);
+            if (p.testimonials) setTestimonials(p.testimonials);
+            if (p.faqs) setFaqs(p.faqs);
+            if (p.bookings) setBookings(p.bookings);
+            if (p.customers) setCustomers(p.customers);
+          }
+        };
+      }
+    } catch (e) {}
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(pollInterval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      channel?.close();
+    };
   }, []);
 
   // Listen for storage events (e.g. from other tabs) or custom sync events
@@ -349,21 +450,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
-  // Helper to persist admin changes to the live backend server
-  const syncToLiveServer = async (payload: Record<string, any>): Promise<boolean> => {
-    try {
-      const res = await fetch('/api/site-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json().catch(() => null);
-      return res.ok && (data?.success !== false);
-    } catch (e) {
-      console.log('Server sync error:', e);
-      return false;
+  // Auto-sync to LIVE WEBSITE FEED: When an administrator is logged in, any modification to site data
+  // is automatically synchronized and published to the live backend server and live website feed.
+  const isAdminActive = isAdminLoggedIn || (currentUser?.isAdmin ?? false);
+  const adminSyncInitialRef = useRef(false);
+
+  useEffect(() => {
+    if (!adminSyncInitialRef.current) {
+      adminSyncInitialRef.current = true;
+      return;
     }
-  };
+    if (isAdminActive) {
+      const timer = setTimeout(() => {
+        syncToLiveServer({
+          settings,
+          trips,
+          destinations,
+          offers,
+          blog: blogPosts,
+          testimonials,
+          faqs,
+          adminInbox,
+        });
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [isAdminActive, settings, trips, destinations, offers, blogPosts, testimonials, faqs, adminInbox]);
 
   const showNotification = (title: string, message: string, type: 'success' | 'info' | 'warning' = 'success') => {
     setActiveNotification({ title, message, type });
@@ -903,25 +1015,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const ADMIN_AUTHORIZED_EMAILS = [
     'smeltravels876@gmail.com',
     'zbuchanan.smeltravels@gmail.com',
+    'jvirgo.smeltravels@gmail.com',
+    'sdavis.smeltravels@gmail.com',
     'zacpremacc12@gmail.com',
   ];
 
   const ADMIN_PROFILES: Record<string, { name: string; title: string; phone: string; role: AdminRole }> = {
     'smeltravels876@gmail.com': {
-      name: 'SMEL Travels 876 Admin',
-      title: 'Executive Travel Operations & CMS Director',
-      phone: '(876) 848-9772',
+      name: 'Elvoy Bennett',
+      title: 'CEO | SMELTRAVELS876',
+      phone: '(876) 834-1537',
       role: 'Super Admin',
     },
     'zbuchanan.smeltravels@gmail.com': {
       name: 'Zachary Buchanan',
-      title: 'Managing Director & Founder',
+      title: 'Travel Ambassador',
+      phone: '(876) 848-9772',
+      role: 'Super Admin',
+    },
+    'jvirgo.smeltravels@gmail.com': {
+      name: 'Jada Virgo',
+      title: 'Travel Ambassador',
+      phone: '(876) 848-9772',
+      role: 'Super Admin',
+    },
+    'sdavis.smeltravels@gmail.com': {
+      name: 'Shenoya Davis',
+      title: 'Travel Ambassador',
       phone: '(876) 848-9772',
       role: 'Super Admin',
     },
     'zacpremacc12@gmail.com': {
       name: 'Zachary Buchanan',
-      title: 'Lead Administrator',
+      title: 'Travel Ambassador / Lead Admin',
       phone: '(876) 848-9772',
       role: 'Super Admin',
     },

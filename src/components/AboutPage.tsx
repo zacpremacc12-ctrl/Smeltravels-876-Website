@@ -13,6 +13,7 @@ import {
   HeartHandshake
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { INITIAL_SETTINGS } from '../data/initialData';
 
 export const AboutPage: React.FC = () => {
   const { settings, navigateTo } = useApp();
@@ -149,17 +150,7 @@ export const AboutPage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {(settings.ambassadors && settings.ambassadors.length > 0
               ? settings.ambassadors.filter((a) => a.isActive !== false)
-              : [
-                  {
-                    id: 'amb-default',
-                    name: settings.ambassadorName || 'Zachary Buchanan',
-                    title: settings.ambassadorTitle || 'Senior Travel Ambassador',
-                    phone: settings.ambassadorPhone || '(876) 848-9772',
-                    email: settings.ambassadorEmail || 'zbuchanan.smeltravels@gmail.com',
-                    code: 'ZAC876',
-                    parishOrRegion: 'Kingston & St. Andrew',
-                  },
-                ]
+              : INITIAL_SETTINGS.ambassadors
             ).map((amb) => (
               <div
                 key={amb.id}

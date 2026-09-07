@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { TravelInterestType, Ambassador } from '../types';
+import { INITIAL_SETTINGS } from '../data/initialData';
 
 export const ContactPage: React.FC = () => {
   const {
@@ -89,18 +90,7 @@ export const ContactPage: React.FC = () => {
 
   const currentAmbassadorsList: Ambassador[] = (settings.ambassadors && settings.ambassadors.length > 0)
     ? settings.ambassadors
-    : [
-        {
-          id: 'amb-default',
-          name: settings.ambassadorName || 'Zachary Buchanan',
-          title: settings.ambassadorTitle || 'Travel Ambassador',
-          phone: settings.ambassadorPhone || '(876) 848-9772',
-          email: settings.ambassadorEmail || 'zbuchanan.smeltravels@gmail.com',
-          code: 'ZAC876',
-          isActive: true,
-          parishOrRegion: 'Kingston & St. Andrew',
-        },
-      ];
+    : INITIAL_SETTINGS.ambassadors;
 
   const startEditAmbassador = (amb: Ambassador) => {
     const isPrimary = (settings.ambassadorEmail === amb.email) || (settings.ambassadorName === amb.name);
