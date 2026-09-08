@@ -27,23 +27,35 @@ export const db: Firestore = getFirestore(app);
 
 export const SITE_CONTENT_COLLECTION = 'siteContent';
 
+// Helper to safely strip undefined values and functions for Firestore
+function sanitizeData(val: any): any {
+  if (val === undefined) return null;
+  try {
+    return JSON.parse(JSON.stringify(val));
+  } catch (e) {
+    return val;
+  }
+}
+
 /**
  * Pushes updated travel packages or any site section directly into Firestore 'siteContent' collection
  */
 export async function pushSiteContentToFirestore(sectionKey: string, data: any): Promise<boolean> {
   try {
     const timestamp = new Date().toISOString();
+    const cleanData = sanitizeData(data);
+
     // 1. Save directly to specific section document in 'siteContent' (e.g. 'siteContent/packages', 'siteContent/settings')
     const sectionDocRef = doc(db, SITE_CONTENT_COLLECTION, sectionKey);
     await setDoc(sectionDocRef, {
-      [sectionKey]: data,
+      [sectionKey]: cleanData,
       updatedAt: timestamp,
     }, { merge: true });
 
     // 2. Also save to the unified 'siteContent/main' document for fast complete page loading
     const mainDocRef = doc(db, SITE_CONTENT_COLLECTION, 'main');
     await setDoc(mainDocRef, {
-      [sectionKey]: data,
+      [sectionKey]: cleanData,
       updatedAt: timestamp,
     }, { merge: true });
 
@@ -62,10 +74,10 @@ export async function pushFullSiteContentToFirestore(payload: Record<string, any
     const timestamp = new Date().toISOString();
     const cleanPayload: Record<string, any> = { updatedAt: timestamp };
 
-    // Sanitize values to prevent undefined in Firestore
+    // Deep sanitize values to prevent undefined in Firestore
     for (const [key, value] of Object.entries(payload)) {
       if (value !== undefined) {
-        cleanPayload[key] = value;
+        cleanPayload[key] = sanitizeData(value);
       }
     }
 

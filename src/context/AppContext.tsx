@@ -376,7 +376,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
-  // Helper to persist admin changes to the live backend server & broadcast to live feed
+  // Helper to persist admin changes directly to Firebase Firestore 'siteContent' collection
   const syncToLiveServer = async (payload: Record<string, any>): Promise<boolean> => {
     try {
       // Instant cross-tab broadcast within the browser (0ms delay)
@@ -388,130 +388,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       } catch (e) {}
 
-      const res = await fetch('/api/site-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json().catch(() => null);
-      return res.ok && (data?.success !== false);
+      // Push directly to Firestore 'siteContent' collection using native SDK setDoc
+      const ok = await pushFullSiteContentToFirestore(payload);
+      return ok;
     } catch (e) {
-      console.log('Server sync error:', e);
+      console.error('[Firestore Save Error]:', e);
       return false;
     }
   };
 
-  // 1. REAL-TIME SERVER-SENT EVENTS (SSE):
-  // Connects every user (logged in or guest) to the live event stream for instantaneous updates
+  // Cross-tab broadcast receiver for instantaneous same-browser tab-to-tab sync
   useEffect(() => {
-    let eventSource: EventSource | null = null;
-    let reconnectTimer: any = null;
-    let isMounted = true;
-
-    const connectSSE = () => {
-      if (!isMounted) return;
-      try {
-        eventSource = new EventSource('/api/site-stream');
-
-        eventSource.onmessage = (event) => {
-          if (!event.data) return;
-          try {
-            const parsed = JSON.parse(event.data);
-            if (parsed?.data) {
-              applyServerData(parsed.data);
-            }
-          } catch (err) {
-            // Heartbeat or malformed frame
-          }
-        };
-
-        eventSource.onerror = () => {
-          if (eventSource) {
-            eventSource.close();
-            eventSource = null;
-          }
-          if (isMounted) {
-            reconnectTimer = setTimeout(connectSSE, 3000);
-          }
-        };
-      } catch (err) {
-        if (isMounted) {
-          reconnectTimer = setTimeout(connectSSE, 5000);
-        }
-      }
-    };
-
-    connectSSE();
-
-    return () => {
-      isMounted = false;
-      if (eventSource) eventSource.close();
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-    };
-  }, []);
-
-  // 2. RESILIENT POLLING & VISIBILITY SYNC:
-  // Ensures updates sync even if SSE is interrupted or user returns to tab
-  useEffect(() => {
-    let isSubscribed = true;
-    let lastKnownTimestamp = '';
-
-    const syncFeedFromServer = async () => {
-      try {
-        const res = await fetch(`/api/site-data?t=${Date.now()}`, {
-          cache: 'no-store',
-          headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
-        });
-        if (!res.ok) return;
-        const json = await res.json();
-        if (json?.success && json?.data && isSubscribed) {
-          const serverUpdated = json.lastUpdated || json.data.lastUpdated;
-          if (serverUpdated && serverUpdated === lastKnownTimestamp) {
-            return; // Up to date
-          }
-          if (serverUpdated) lastKnownTimestamp = serverUpdated;
-          applyServerData(json.data);
-        }
-      } catch (err) {
-        // Transient network failure
-      }
-    };
-
-    // Immediate initial sync
-    syncFeedFromServer();
-
-    // Fast polling interval (2.5 seconds)
-    const pollInterval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        syncFeedFromServer();
-      }
-    }, 2500);
-
-    const handleVisibilityOrFocus = () => {
-      syncFeedFromServer();
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
-    window.addEventListener('focus', handleVisibilityOrFocus);
-
-    // Cross-tab broadcast receiver for instantaneous 0ms tab-to-tab sync
     let channel: BroadcastChannel | null = null;
     try {
       if (typeof BroadcastChannel !== 'undefined') {
         channel = new BroadcastChannel('smeltravels_live_feed');
         channel.onmessage = (event) => {
           if (event.data?.type === 'LIVE_FEED_SYNC' && event.data?.payload) {
-            applyServerData(event.data.payload);
+            applyFirestoreContent(event.data.payload);
           }
         };
       }
     } catch (e) {}
 
     return () => {
-      isSubscribed = false;
-      clearInterval(pollInterval);
-      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
-      window.removeEventListener('focus', handleVisibilityOrFocus);
       channel?.close();
     };
   }, []);
