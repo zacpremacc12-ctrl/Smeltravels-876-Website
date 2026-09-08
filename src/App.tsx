@@ -3,18 +3,8 @@ import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 
-// Homepage Sections
-import { HeroSection } from './components/home/HeroSection';
-import { FeaturedTripsSection } from './components/home/FeaturedTripsSection';
-import { GroupTrips2027Section } from './components/home/GroupTrips2027Section';
-import { WhyChooseSection } from './components/home/WhyChooseSection';
-import { PopularDestinationsSection } from './components/home/PopularDestinationsSection';
-import { HowItWorksSection } from './components/home/HowItWorksSection';
-import { OffersSection } from './components/home/OffersSection';
-import { BlogPreviewSection } from './components/home/BlogPreviewSection';
-import { TestimonialsSection } from './components/home/TestimonialsSection';
+import { HomePage } from './components/home/HomePage';
 import { FAQSection } from './components/home/FAQSection';
-import { BookingCTASection } from './components/home/BookingCTASection';
 
 // Full Pages
 import { TripsPage } from './components/TripsPage';
@@ -47,21 +37,7 @@ const MainContent: React.FC = () => {
   const renderCurrentView = () => {
     switch (activePage) {
       case 'home':
-        return (
-          <main>
-            <HeroSection />
-            <FeaturedTripsSection />
-            <GroupTrips2027Section />
-            <WhyChooseSection />
-            <PopularDestinationsSection />
-            <HowItWorksSection />
-            <OffersSection />
-            <BlogPreviewSection />
-            <TestimonialsSection />
-            <FAQSection />
-            <BookingCTASection />
-          </main>
-        );
+        return <HomePage />;
 
       case 'trips':
         return <TripsPage initialFilterParam={pageParam} />;
@@ -95,7 +71,7 @@ const MainContent: React.FC = () => {
         return <AdminDashboard />;
 
       default:
-        return <HeroSection />;
+        return <HomePage />;
     }
   };
 

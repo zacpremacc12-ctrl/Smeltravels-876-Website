@@ -32,6 +32,12 @@ import {
   INITIAL_BOOKINGS,
   INITIAL_ADMIN_INBOX,
 } from '../data/initialData';
+import {
+  pushSiteContentToFirestore,
+  pushFullSiteContentToFirestore,
+  fetchSiteContentFromFirestore,
+  subscribeToSiteContent,
+} from '../lib/firebase';
 
 interface AppContextType {
   settings: SiteSettings;
@@ -175,6 +181,7 @@ interface AppContextType {
   saveOffer: (offer: OfferItem) => void;
   saveTestimonial: (test: TestimonialItem) => void;
   resetToInitialData: () => void;
+  applyFirestoreContent: (data: any) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -323,7 +330,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => { setStoredItem('traveler_user', currentUser); }, [currentUser]);
 
   // Centralized state updater for live website feed updates
-  const applyServerData = (d: any) => {
+  const applyFirestoreContent = (d: any) => {
     if (!d || typeof d !== 'object') return;
     if (d.settings && typeof d.settings === 'object') {
       setSettings(prev => ({
@@ -334,7 +341,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : prev.ambassadors,
       }));
     }
-    if (d.trips && Array.isArray(d.trips)) setTrips(d.trips);
+    const tripsArray = (Array.isArray(d.trips) && d.trips) || (Array.isArray(d.packages) && d.packages) || (Array.isArray(d.travelPackages) && d.travelPackages);
+    if (tripsArray) setTrips(tripsArray);
     if (d.destinations && Array.isArray(d.destinations)) setDestinations(d.destinations);
     if (d.bookings && Array.isArray(d.bookings)) setBookings(d.bookings);
     if (d.contacts && Array.isArray(d.contacts)) setContactSubmissions(d.contacts);
@@ -346,6 +354,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (d.adminInbox && Array.isArray(d.adminInbox)) setAdminInbox(d.adminInbox);
     if (d.media && Array.isArray(d.media)) setMediaList(d.media);
   };
+
+  const applyServerData = applyFirestoreContent;
+
+  // Real-time Firestore 'siteContent' listener & initial fetch
+  useEffect(() => {
+    fetchSiteContentFromFirestore().then((data) => {
+      if (data) {
+        applyFirestoreContent(data);
+      }
+    });
+
+    const unsubscribe = subscribeToSiteContent((realtimeData) => {
+      if (realtimeData) {
+        applyFirestoreContent(realtimeData);
+      }
+    });
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, []);
 
   // Helper to persist admin changes to the live backend server & broadcast to live feed
   const syncToLiveServer = async (payload: Record<string, any>): Promise<boolean> => {
@@ -522,7 +551,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     if (isAdminActive) {
       const timer = setTimeout(() => {
-        syncToLiveServer({
+        const payload = {
           settings,
           trips,
           destinations,
@@ -532,7 +561,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           faqs,
           adminInbox,
           media: mediaList,
-        });
+        };
+        syncToLiveServer(payload);
+        pushFullSiteContentToFirestore(payload);
+        pushSiteContentToFirestore('packages', trips);
       }, 400);
       return () => clearTimeout(timer);
     }
@@ -568,6 +600,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       window.dispatchEvent(new CustomEvent('site-settings-updated', { detail: updatedSnapshot }));
     } catch (e) {}
 
+    // Push directly to Firestore 'siteContent' collection
+    await pushSiteContentToFirestore('settings', updatedSnapshot);
+    await pushFullSiteContentToFirestore({ settings: updatedSnapshot });
     const isLiveSynced = await syncToLiveServer({ settings: updatedSnapshot });
     return isLiveSynced;
   };
@@ -1410,6 +1445,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updated = [trip, ...prev];
       }
       syncToLiveServer({ trips: updated });
+      // Push directly into Firestore 'siteContent' collection
+      pushSiteContentToFirestore('packages', updated);
+      pushSiteContentToFirestore('trips', updated);
+      pushFullSiteContentToFirestore({ trips: updated, settings });
       return updated;
     });
   };
@@ -1603,6 +1642,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         navigateTo,
         pageParam,
         resetToInitialData,
+        applyFirestoreContent,
         adminInbox,
         addInboxItem,
         markInboxItemAsRead,

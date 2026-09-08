@@ -40,6 +40,7 @@ import { AdminLoginLock } from './AdminLoginLock';
 import { ImageUploader } from './ImageUploader';
 import { MultiGalleryUploader } from './MultiGalleryUploader';
 import { AdminInboxView } from './AdminInboxView';
+import { pushSiteContentToFirestore, pushFullSiteContentToFirestore } from '../../lib/firebase';
 
 export const AdminDashboard: React.FC = () => {
   const {
@@ -344,14 +345,26 @@ export const AdminDashboard: React.FC = () => {
     };
 
     try {
+      // 1. Push directly into Firestore collection 'siteContent'
+      await pushSiteContentToFirestore('settings', finalizedSettings);
+      await pushFullSiteContentToFirestore({
+        settings: finalizedSettings,
+        trips,
+        destinations,
+        offers,
+        faqs,
+        blog: blogPosts,
+        testimonials,
+      });
+
       await updateSettings(finalizedSettings);
       setLocalSettings(finalizedSettings);
       setSettingsSyncSuccess(true);
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       setLastSyncedTimestamp(timeStr);
       showNotification(
-        'Live Sync Complete',
-        'Agency settings, banking information, and ambassador roster are now live across the website.',
+        'Firestore Sync Complete',
+        'Agency settings and text pushed to Firestore siteContent collection & live site.',
         'success'
       );
       setTimeout(() => {
@@ -1007,12 +1020,22 @@ export const AdminDashboard: React.FC = () => {
                       Cancel
                     </button>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
+                        // Calculate updated trips list
+                        const updatedTrips = trips.some(t => t.id === editingTrip.id)
+                          ? trips.map(t => t.id === editingTrip.id ? editingTrip : t)
+                          : [editingTrip, ...trips];
+                        // 1. Push directly into Firestore collection 'siteContent'
+                        await pushSiteContentToFirestore('packages', updatedTrips);
+                        await pushSiteContentToFirestore('trips', updatedTrips);
+                        await pushFullSiteContentToFirestore({ trips: updatedTrips, settings: localSettings });
+
+                        // 2. Save in app context
                         saveTrip(editingTrip);
                         setEditingTrip(null);
-                        showNotification('Trip Saved', `Updated "${editingTrip.name}"`);
+                        showNotification('Trip Saved to Firestore', `Pushed "${editingTrip.name}" directly to live siteContent.`);
                       }}
-                      className="px-5 py-2 bg-[#2E0249] text-[#FFC72C] rounded-xl text-xs font-bold"
+                      className="px-5 py-2 bg-[#2E0249] text-[#FFC72C] rounded-xl text-xs font-bold hover:bg-[#3B185F] transition-colors cursor-pointer shadow"
                     >
                       Save Changes
                     </button>
@@ -1201,10 +1224,14 @@ export const AdminDashboard: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
+                        const updatedDest = destinations.some(d => d.id === editingDestination.id)
+                          ? destinations.map(d => d.id === editingDestination.id ? editingDestination : d)
+                          : [editingDestination, ...destinations];
+                        await pushSiteContentToFirestore('destinations', updatedDest);
                         saveDestination(editingDestination);
                         setEditingDestination(null);
-                        showNotification('Destination Saved', `Updated "${editingDestination.name}"`);
+                        showNotification('Destination Saved', `Updated "${editingDestination.name}" to live site & Firestore.`);
                       }}
                       className="px-5 py-2 bg-[#2E0249] text-[#FFC72C] rounded-xl text-xs font-bold"
                     >
@@ -1369,10 +1396,14 @@ export const AdminDashboard: React.FC = () => {
                       Cancel
                     </button>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
+                        const updatedFaqs = faqs.some(f => f.id === editingFaq.id)
+                          ? faqs.map(f => f.id === editingFaq.id ? editingFaq : f)
+                          : [...faqs, editingFaq];
+                        await pushSiteContentToFirestore('faqs', updatedFaqs);
                         saveFaq(editingFaq);
                         setEditingFaq(null);
-                        showNotification('FAQ Saved', 'Knowledge base updated.');
+                        showNotification('FAQ Saved', 'Knowledge base updated in live Firestore.');
                       }}
                       className="px-4 py-2 bg-[#2E0249] text-[#FFC72C] rounded-xl text-xs font-bold"
                     >
