@@ -40,7 +40,7 @@ import { AdminLoginLock } from './AdminLoginLock';
 import { ImageUploader } from './ImageUploader';
 import { MultiGalleryUploader } from './MultiGalleryUploader';
 import { AdminInboxView } from './AdminInboxView';
-import { pushSiteContentToFirestore, pushFullSiteContentToFirestore } from '../../lib/firebase';
+import { pushSiteContentToRTDB, pushFullSiteContentToRTDB } from '../../lib/firebase';
 
 export const AdminDashboard: React.FC = () => {
   const {
@@ -345,9 +345,9 @@ export const AdminDashboard: React.FC = () => {
     };
 
     try {
-      // 1. Push directly into Firestore collection 'siteContent'
-      await pushSiteContentToFirestore('settings', finalizedSettings);
-      await pushFullSiteContentToFirestore({
+      // 1. Push directly into Realtime Database at '/siteContent'
+      await pushSiteContentToRTDB('settings', finalizedSettings);
+      await pushFullSiteContentToRTDB({
         settings: finalizedSettings,
         trips,
         destinations,
@@ -363,8 +363,8 @@ export const AdminDashboard: React.FC = () => {
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       setLastSyncedTimestamp(timeStr);
       showNotification(
-        'Firestore Sync Complete',
-        'Agency settings and text pushed to Firestore siteContent collection & live site.',
+        'Realtime Database Sync Complete',
+        'Agency settings and text pushed to Realtime Database path /siteContent & live site.',
         'success'
       );
       setTimeout(() => {
@@ -1025,15 +1025,15 @@ export const AdminDashboard: React.FC = () => {
                         const updatedTrips = trips.some(t => t.id === editingTrip.id)
                           ? trips.map(t => t.id === editingTrip.id ? editingTrip : t)
                           : [editingTrip, ...trips];
-                        // 1. Push directly into Firestore collection 'siteContent'
-                        await pushSiteContentToFirestore('packages', updatedTrips);
-                        await pushSiteContentToFirestore('trips', updatedTrips);
-                        await pushFullSiteContentToFirestore({ trips: updatedTrips, settings: localSettings });
+                        // 1. Push directly into Realtime Database at '/siteContent'
+                        await pushSiteContentToRTDB('packages', updatedTrips);
+                        await pushSiteContentToRTDB('trips', updatedTrips);
+                        await pushFullSiteContentToRTDB({ trips: updatedTrips, settings: localSettings });
 
                         // 2. Save in app context
                         saveTrip(editingTrip);
                         setEditingTrip(null);
-                        showNotification('Trip Saved to Firestore', `Pushed "${editingTrip.name}" directly to live siteContent.`);
+                        showNotification('Trip Saved to Database', `Pushed "${editingTrip.name}" directly to /siteContent.`);
                       }}
                       className="px-5 py-2 bg-[#2E0249] text-[#FFC72C] rounded-xl text-xs font-bold hover:bg-[#3B185F] transition-colors cursor-pointer shadow"
                     >
@@ -1228,10 +1228,10 @@ export const AdminDashboard: React.FC = () => {
                         const updatedDest = destinations.some(d => d.id === editingDestination.id)
                           ? destinations.map(d => d.id === editingDestination.id ? editingDestination : d)
                           : [editingDestination, ...destinations];
-                        await pushSiteContentToFirestore('destinations', updatedDest);
+                        await pushSiteContentToRTDB('destinations', updatedDest);
                         saveDestination(editingDestination);
                         setEditingDestination(null);
-                        showNotification('Destination Saved', `Updated "${editingDestination.name}" to live site & Firestore.`);
+                        showNotification('Destination Saved', `Updated "${editingDestination.name}" to /siteContent.`);
                       }}
                       className="px-5 py-2 bg-[#2E0249] text-[#FFC72C] rounded-xl text-xs font-bold"
                     >
@@ -1400,10 +1400,10 @@ export const AdminDashboard: React.FC = () => {
                         const updatedFaqs = faqs.some(f => f.id === editingFaq.id)
                           ? faqs.map(f => f.id === editingFaq.id ? editingFaq : f)
                           : [...faqs, editingFaq];
-                        await pushSiteContentToFirestore('faqs', updatedFaqs);
+                        await pushSiteContentToRTDB('faqs', updatedFaqs);
                         saveFaq(editingFaq);
                         setEditingFaq(null);
-                        showNotification('FAQ Saved', 'Knowledge base updated in live Firestore.');
+                        showNotification('FAQ Saved', 'Knowledge base updated in /siteContent.');
                       }}
                       className="px-4 py-2 bg-[#2E0249] text-[#FFC72C] rounded-xl text-xs font-bold"
                     >

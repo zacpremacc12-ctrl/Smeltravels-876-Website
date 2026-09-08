@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
-  fetchSiteContentFromFirestore,
+  fetchSiteContentFromRTDB,
   subscribeToSiteContent,
   db,
-  SITE_CONTENT_COLLECTION,
+  SITE_CONTENT_PATH,
 } from '../../lib/firebase';
-import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { ref, get, onValue } from 'firebase/database';
 
 // Homepage Sections
 import { HeroSection } from './HeroSection';
@@ -25,63 +25,46 @@ export const HomePage: React.FC = () => {
   const { applyFirestoreContent } = useApp();
   const [isLiveLoaded, setIsLiveLoaded] = useState(false);
 
-  // When the customer homepage loads, fetch data directly from the 'siteContent' Firestore collection
+  // When the customer homepage loads, fetch and subscribe directly from Realtime Database at '/siteContent'
   useEffect(() => {
     let isMounted = true;
 
     async function loadCustomerHomepageContent() {
       try {
-        console.log("[Customer Homepage] Fetching data directly from Firestore 'siteContent' collection...");
+        console.log("[Customer Homepage] Reading from Firebase Realtime Database at '/siteContent'...");
 
-        // 1. Fetch unified 'main' document from 'siteContent'
-        const mainDocRef = doc(db, SITE_CONTENT_COLLECTION, 'main');
-        const mainSnap = await getDoc(mainDocRef);
+        // 1. Fetch initial snapshot from /siteContent using get()
+        const contentRef = ref(db, SITE_CONTENT_PATH);
+        const snapshot = await get(contentRef);
 
-        if (mainSnap.exists()) {
-          const data = mainSnap.data();
-          if (isMounted) {
-            applyFirestoreContent(data);
-            setIsLiveLoaded(true);
-          }
-        }
-
-        // 2. Fetch specific 'packages' document from 'siteContent' for updated travel packages
-        const packagesDocRef = doc(db, SITE_CONTENT_COLLECTION, 'packages');
-        const packagesSnap = await getDoc(packagesDocRef);
-        if (packagesSnap.exists()) {
-          const pkgData = packagesSnap.data();
-          if (isMounted && (pkgData.trips || pkgData.packages)) {
-            applyFirestoreContent({ trips: pkgData.trips || pkgData.packages });
-            setIsLiveLoaded(true);
-          }
-        }
-
-        // 3. Fallback: query entire 'siteContent' collection
-        const colRef = collection(db, SITE_CONTENT_COLLECTION);
-        const colSnap = await getDocs(colRef);
-        if (!colSnap.empty && isMounted) {
-          const merged: Record<string, any> = {};
-          colSnap.forEach((d) => {
-            Object.assign(merged, d.data());
-          });
-          applyFirestoreContent(merged);
+        if (snapshot.exists() && isMounted) {
+          const data = snapshot.val();
+          applyFirestoreContent(data);
           setIsLiveLoaded(true);
         }
       } catch (err) {
-        console.warn("[Customer Homepage] Firestore fetch notice:", err);
+        console.warn("[Customer Homepage] RTDB initial fetch notice:", err);
       }
     }
 
     loadCustomerHomepageContent();
 
-    // Subscribe to real-time live changes from Firestore 'siteContent'
-    // so any changes an admin makes dynamically update the screen for the customer
-    const unsubscribe = subscribeToSiteContent((realtimeData) => {
-      if (isMounted && realtimeData) {
-        console.log("[Customer Homepage] Real-time Firestore update received from 'siteContent':", realtimeData);
-        applyFirestoreContent(realtimeData);
+    // 2. Subscribe to real-time live changes from RTDB path '/siteContent' using onValue
+    const contentRef = ref(db, SITE_CONTENT_PATH);
+    const unsubscribe = onValue(
+      contentRef,
+      (snapshot) => {
+        if (snapshot.exists() && isMounted) {
+          const liveData = snapshot.val();
+          console.log("[Customer Homepage] Realtime Database update received from '/siteContent':", liveData);
+          applyFirestoreContent(liveData);
+          setIsLiveLoaded(true);
+        }
+      },
+      (error) => {
+        console.warn("[Customer Homepage] RTDB onValue listener error:", error);
       }
-    });
+    );
 
     return () => {
       isMounted = false;

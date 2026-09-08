@@ -1,14 +1,13 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
-  getFirestore,
-  doc,
-  setDoc,
-  getDoc,
-  getDocs,
-  collection,
-  onSnapshot,
-  Firestore,
-} from 'firebase/firestore';
+  getDatabase,
+  ref,
+  set,
+  get,
+  onValue,
+  Database,
+  Unsubscribe,
+} from 'firebase/database';
 
 export const firebaseConfig = {
   apiKey: "AIzaSyBQOFuvMkwYrDZYKf93HQ51rSMmwRUtaRI",
@@ -23,11 +22,11 @@ export const firebaseConfig = {
 
 // Initialize Firebase safely
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-export const db: Firestore = getFirestore(app);
+export const db: Database = getDatabase(app, firebaseConfig.databaseURL);
 
-export const SITE_CONTENT_COLLECTION = 'siteContent';
+export const SITE_CONTENT_PATH = 'siteContent';
 
-// Helper to safely strip undefined values and functions for Firestore
+// Helper to safely strip undefined values and functions for Realtime Database
 function sanitizeData(val: any): any {
   if (val === undefined) return null;
   try {
@@ -38,125 +37,96 @@ function sanitizeData(val: any): any {
 }
 
 /**
- * Pushes updated travel packages or any site section directly into Firestore 'siteContent' collection
+ * Pushes updated travel packages or any site section directly into Realtime Database at '/siteContent'
  */
-export async function pushSiteContentToFirestore(sectionKey: string, data: any): Promise<boolean> {
+export async function pushSiteContentToRTDB(sectionKey: string, data: any): Promise<boolean> {
   try {
     const timestamp = new Date().toISOString();
     const cleanData = sanitizeData(data);
 
-    // 1. Save directly to specific section document in 'siteContent' (e.g. 'siteContent/packages', 'siteContent/settings')
-    const sectionDocRef = doc(db, SITE_CONTENT_COLLECTION, sectionKey);
-    await setDoc(sectionDocRef, {
-      [sectionKey]: cleanData,
-      updatedAt: timestamp,
-    }, { merge: true });
+    // Save directly to /siteContent/<sectionKey>
+    const sectionRef = ref(db, `${SITE_CONTENT_PATH}/${sectionKey}`);
+    await set(sectionRef, cleanData);
 
-    // 2. Also save to the unified 'siteContent/main' document for fast complete page loading
-    const mainDocRef = doc(db, SITE_CONTENT_COLLECTION, 'main');
-    await setDoc(mainDocRef, {
-      [sectionKey]: cleanData,
-      updatedAt: timestamp,
-    }, { merge: true });
+    // Also update timestamp at /siteContent/updatedAt
+    await set(ref(db, `${SITE_CONTENT_PATH}/updatedAt`), timestamp);
 
     return true;
   } catch (err) {
-    console.error(`[Firebase Firestore] Error saving ${sectionKey} to siteContent:`, err);
+    console.error(`[Firebase RTDB] Error saving ${sectionKey} to /siteContent:`, err);
     return false;
   }
 }
 
 /**
- * Pushes full site payload to Firestore 'siteContent' collection
+ * Pushes full site payload to Realtime Database at '/siteContent'
  */
-export async function pushFullSiteContentToFirestore(payload: Record<string, any>): Promise<boolean> {
+export async function pushFullSiteContentToRTDB(payload: Record<string, any>): Promise<boolean> {
   try {
     const timestamp = new Date().toISOString();
     const cleanPayload: Record<string, any> = { updatedAt: timestamp };
 
-    // Deep sanitize values to prevent undefined in Firestore
+    // Deep sanitize values to prevent undefined in Realtime Database
     for (const [key, value] of Object.entries(payload)) {
       if (value !== undefined) {
         cleanPayload[key] = sanitizeData(value);
       }
     }
 
-    const mainDocRef = doc(db, SITE_CONTENT_COLLECTION, 'main');
-    await setDoc(mainDocRef, cleanPayload, { merge: true });
-
-    // Also push individual sections if present
-    if (cleanPayload.trips) {
-      await setDoc(doc(db, SITE_CONTENT_COLLECTION, 'packages'), {
-        trips: cleanPayload.trips,
-        updatedAt: timestamp,
-      }, { merge: true });
-    }
-    if (cleanPayload.settings) {
-      await setDoc(doc(db, SITE_CONTENT_COLLECTION, 'settings'), {
-        settings: cleanPayload.settings,
-        updatedAt: timestamp,
-      }, { merge: true });
-    }
+    // Save to /siteContent
+    const contentRef = ref(db, SITE_CONTENT_PATH);
+    await set(contentRef, cleanPayload);
 
     return true;
   } catch (err) {
-    console.error('[Firebase Firestore] Error pushing full payload to siteContent:', err);
+    console.error('[Firebase RTDB] Error pushing full payload to /siteContent:', err);
     return false;
   }
 }
 
 /**
- * Fetches site data directly from Firestore 'siteContent' collection
+ * Fetches site data directly from Realtime Database at '/siteContent'
  */
-export async function fetchSiteContentFromFirestore(): Promise<Record<string, any> | null> {
+export async function fetchSiteContentFromRTDB(): Promise<Record<string, any> | null> {
   try {
-    // First try the unified 'main' document
-    const mainDocRef = doc(db, SITE_CONTENT_COLLECTION, 'main');
-    const snap = await getDoc(mainDocRef);
-
+    const contentRef = ref(db, SITE_CONTENT_PATH);
+    const snap = await get(contentRef);
     if (snap.exists()) {
-      return snap.data();
+      return snap.val();
     }
-
-    // Fallback: check all documents in 'siteContent' collection
-    const colRef = collection(db, SITE_CONTENT_COLLECTION);
-    const colSnap = await getDocs(colRef);
-    if (!colSnap.empty) {
-      const merged: Record<string, any> = {};
-      colSnap.forEach(docSnap => {
-        const d = docSnap.data();
-        Object.assign(merged, d);
-      });
-      return merged;
-    }
-
     return null;
   } catch (err) {
-    console.warn('[Firebase Firestore] Error fetching from siteContent:', err);
+    console.warn('[Firebase RTDB] Error fetching from /siteContent:', err);
     return null;
   }
 }
 
 /**
- * Subscribes to real-time live changes in Firestore 'siteContent' collection
+ * Subscribes to real-time live changes in Realtime Database at '/siteContent'
  */
-export function subscribeToSiteContent(callback: (data: Record<string, any>) => void): () => void {
+export function subscribeToSiteContent(callback: (data: Record<string, any>) => void): Unsubscribe {
   try {
-    const mainDocRef = doc(db, SITE_CONTENT_COLLECTION, 'main');
-    const unsubscribe = onSnapshot(
-      mainDocRef,
-      (docSnap) => {
-        if (docSnap.exists()) {
-          callback(docSnap.data());
+    const contentRef = ref(db, SITE_CONTENT_PATH);
+    const unsubscribe = onValue(
+      contentRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          callback(snapshot.val());
         }
       },
       (error) => {
-        console.warn('[Firebase Firestore] onSnapshot error:', error);
+        console.warn('[Firebase RTDB] onValue error:', error);
       }
     );
     return unsubscribe;
   } catch (err) {
-    console.warn('[Firebase Firestore] Failed to subscribe to onSnapshot:', err);
+    console.warn('[Firebase RTDB] Failed to subscribe to onValue:', err);
     return () => {};
   }
 }
+
+// Aliases for compatibility
+export const pushSiteContentToFirestore = pushSiteContentToRTDB;
+export const pushFullSiteContentToFirestore = pushFullSiteContentToRTDB;
+export const fetchSiteContentFromFirestore = fetchSiteContentFromRTDB;
+export const SITE_CONTENT_COLLECTION = SITE_CONTENT_PATH;
