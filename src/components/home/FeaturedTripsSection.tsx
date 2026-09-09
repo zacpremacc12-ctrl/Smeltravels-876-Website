@@ -6,8 +6,9 @@ import { TripCard } from '../common/TripCard';
 export const FeaturedTripsSection: React.FC = () => {
   const { trips, navigateTo } = useApp();
 
-  const panamaTrip = trips.find(t => t.id === 'panama-2026' || t.is2026Featured);
-  const otherUpcoming = trips.filter(t => t.id !== 'panama-2026' && !t.is2026Featured).slice(0, 2);
+  // Priority to Mexico package for 2026 featured trip
+  const featuredTrip = trips.find(t => t.country.toLowerCase().includes('mexico') || t.id.includes('mexico')) || trips.find(t => t.id === 'panama-2026' || t.is2026Featured) || trips[0];
+  const otherUpcoming = trips.filter(t => t.id !== featuredTrip?.id).slice(0, 2);
 
   return (
     <section className="py-16 md:py-24 bg-[#FAF9F6] border-b border-neutral-200" id="trips">
@@ -36,14 +37,14 @@ export const FeaturedTripsSection: React.FC = () => {
           </button>
         </div>
 
-        {/* Highlight 2026 Panama Trip Banner Card */}
-        {panamaTrip && (
+        {/* Highlight Featured Trip Banner Card */}
+        {featuredTrip && (
           <div className="mb-14 bg-gradient-to-br from-[#2E0249] to-[#3B185F] rounded-3xl overflow-hidden shadow-xl text-white border border-purple-900/40">
             <div className="grid grid-cols-1 lg:grid-cols-12 items-stretch">
               <div className="lg:col-span-6 relative min-h-[300px] lg:min-h-[420px]">
                 <img
-                  src={panamaTrip.featuredImage}
-                  alt={panamaTrip.name}
+                  src={featuredTrip.featuredImage}
+                  alt={featuredTrip.name}
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t lg:bg-gradient-to-r from-transparent to-[#2E0249]/80"></div>
@@ -57,34 +58,34 @@ export const FeaturedTripsSection: React.FC = () => {
               <div className="lg:col-span-6 p-6 sm:p-10 flex flex-col justify-between space-y-6">
                 <div>
                   <div className="flex items-center gap-2 text-xs font-semibold text-[#FFC72C] uppercase tracking-wider mb-2 flex-wrap">
-                    <span>{panamaTrip.countryFlag} {panamaTrip.country}</span>
-                    {panamaTrip.countryAcronym && (
+                    <span>{featuredTrip.countryFlag} {featuredTrip.country}</span>
+                    {featuredTrip.countryAcronym && (
                       <span className="bg-[#FFC72C] text-[#2E0249] px-2 py-0.5 rounded font-black text-[11px] tracking-wider uppercase shadow-xs">
-                        {panamaTrip.countryAcronym}
+                        {featuredTrip.countryAcronym}
                       </span>
                     )}
                     <span>•</span>
-                    <span>{panamaTrip.dates}</span>
+                    <span>{featuredTrip.dates}</span>
                     <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 text-[10px] font-bold">
-                      {panamaTrip.status}
+                      {featuredTrip.status}
                     </span>
-                    {panamaTrip.availabilityNote && (
+                    {featuredTrip.availabilityNote && (
                       <span className="px-2 py-0.5 rounded bg-[#FFC72C]/20 text-[#FFC72C] border border-[#FFC72C]/40 text-[10px] font-bold">
-                        {panamaTrip.availabilityNote}
+                        {featuredTrip.availabilityNote}
                       </span>
                     )}
                   </div>
 
                   <h3 className="text-2xl sm:text-3xl md:text-4xl font-extrabold font-['Outfit',sans-serif] text-white leading-tight">
-                    {panamaTrip.name}
+                    {featuredTrip.name}
                   </h3>
 
                   <p className="text-neutral-200 text-sm sm:text-base mt-3 leading-relaxed">
-                    {panamaTrip.fullDescription}
+                    {featuredTrip.fullDescription}
                   </p>
 
                   <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-neutral-200">
-                    {panamaTrip.packageInclusions.map((inc, i) => (
+                    {featuredTrip.packageInclusions.map((inc, i) => (
                       <div key={i} className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#FFC72C]"></span>
                         <span>{inc}</span>
@@ -97,20 +98,20 @@ export const FeaturedTripsSection: React.FC = () => {
                   <div>
                     <span className="text-xs text-neutral-300 block">Package Price</span>
                     <span className="text-3xl font-black text-white font-['Outfit',sans-serif]">
-                      ${panamaTrip.price.toLocaleString()}{' '}
+                      ${featuredTrip.price.toLocaleString()}{' '}
                       <span className="text-xs text-[#FFC72C] font-semibold">JMD / person</span>
                     </span>
                     <span className="text-xs text-amber-300 block mt-0.5">
-                      Deposit: ${panamaTrip.deposit.toLocaleString()} JMD
+                      Deposit: ${featuredTrip.deposit.toLocaleString()} JMD
                     </span>
                   </div>
 
                   <div className="flex items-center gap-3">
                     <button
-                      onClick={() => navigateTo('trip-detail', panamaTrip.slug)}
+                      onClick={() => navigateTo('trip-detail', featuredTrip.slug)}
                       className="bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-bold text-sm px-6 py-3 rounded-xl shadow-md transition-all cursor-pointer"
                     >
-                      View Panama Package
+                      View Mexico Package
                     </button>
                   </div>
                 </div>

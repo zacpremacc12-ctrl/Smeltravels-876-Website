@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { Bookmark, X, ArrowRight, Calendar, MapPin, Trash2, CheckCircle2, Lock } from 'lucide-react';
+import { Bookmark, X, ArrowRight, Calendar, MapPin, Trash2, CheckCircle2, Sparkles } from 'lucide-react';
 
 export const SavedTripsDrawer: React.FC = () => {
   const {
@@ -174,7 +174,7 @@ export const SavedTripsDrawer: React.FC = () => {
                           onClick={() => handleSecureSpot(trip)}
                           className="w-full py-2 px-3 text-[11px] font-bold text-[#2E0249] bg-[#FFC72C] hover:bg-amber-300 rounded-xl shadow-xs text-center flex items-center justify-center gap-1 transition-colors cursor-pointer"
                         >
-                          {!currentUser && <Lock className="w-3 h-3 text-[#2E0249]/70" />}
+                          <Sparkles className="w-3 h-3 text-[#2E0249]/70 fill-current" />
                           <span>Secure Spot</span>
                         </button>
                       </div>

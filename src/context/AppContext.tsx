@@ -765,15 +765,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const openSavedTripsDrawer = () => setIsSavedTripsDrawerOpen(true);
   const closeSavedTripsDrawer = () => setIsSavedTripsDrawerOpen(false);
 
-  // Forced Authentication on Spot Booking
+  // Spot Booking - Direct and accessible to all travelers without forced login
   const secureSpotForTrip = (trip: TripPackage) => {
-    if (!currentUser) {
-      setPendingTripForBooking(trip);
-      setAuthNotice(`Please sign in or create an account to secure your spot for ${trip.name}.`);
-      openAuthModal('signup');
-    } else {
-      setSelectedTripForBooking(trip);
-    }
+    setSelectedTripForBooking(trip);
   };
 
   // Ambassador Code validation

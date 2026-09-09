@@ -1147,6 +1147,7 @@ export const AdminDashboard: React.FC = () => {
                         </span>
                         <div className="flex flex-wrap gap-1.5">
                           {[
+                            { name: 'Mexico', acronym: 'MEX', flag: '🇲🇽', dest: 'Cancún & Riviera Maya' },
                             { name: 'Panama', acronym: 'PAN', flag: '🇵🇦', dest: 'Panama City & Canal' },
                             { name: 'Antigua and Barbuda', acronym: 'ATG', flag: '🇦🇬', dest: 'Antigua' },
                             { name: 'Dominican Republic', acronym: 'DOM', flag: '🇩🇴', dest: 'Punta Cana' },

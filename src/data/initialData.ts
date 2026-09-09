@@ -219,6 +219,99 @@ export const INITIAL_TRIPS: TripPackage[] = [
     metaDescription: 'Book Panama 2026 Part 2 with SMELTRAVELS876! Flights from KIN, hotel, bed & breakfast, 2 paid excursions, airport transfers, and document prep included.'
   },
   {
+    id: 'mexico-2026',
+    slug: 'mexico-cancun-riviera-maya-2026',
+    name: 'Mexico Cultural & Beach Escape 2026',
+    destination: 'Cancún & Riviera Maya',
+    country: 'Mexico',
+    countryFlag: '🇲🇽',
+    countryAcronym: 'MEX',
+    year: 2026,
+    dates: 'November 18–23, 2026',
+    hotel: 'All-Inclusive Beachfront Resort in Riviera Maya',
+    price: 189500,
+    currency: 'JMD',
+    deposit: 85000,
+    shortDescription: 'Experience the magic of Mexico: Caribbean turquoise waters, ancient Mayan pyramids of Chichen Itza, cenote dips, and authentic Mexican cuisine.',
+    fullDescription: 'Join SMELTRAVELS876 for an unforgettable journey to Mexico! From the vibrant beaches of the Riviera Maya to the awe-inspiring archaeological wonder of Chichen Itza and crystal-clear freshwater cenotes, this package takes care of every flight, luxury resort stay, excursion, and transfer from Kingston.',
+    packageInclusions: [
+      'Flight from Kingston (KIN)',
+      'Carry-on luggage & personal item',
+      'All-inclusive beachfront hotel accommodation',
+      'All meals, snacks, and unlimited drinks',
+      'Roundtrip airport transfers',
+      'Two paid excursions (Chichen Itza & Cenote Tour)',
+      'Exclusive trip memorabilia',
+      'Preparation of travel documents'
+    ],
+    exclusions: [
+      'Checked baggage (available as add-on)',
+      'Optional premium excursions and spa services',
+      'Personal purchases & souvenirs',
+      'Travel insurance (highly recommended)'
+    ],
+    itinerary: [
+      {
+        day: 1,
+        title: 'Arrival in Cancún & Resort Check-in',
+        description: 'Depart from Kingston (KIN), arrive at Cancún International Airport (CUN), group transfer to our all-inclusive beachfront resort in Riviera Maya, and evening welcome cocktails.',
+      },
+      {
+        day: 2,
+        title: 'Mayan Wonder: Chichen Itza & Sacred Cenote Excursion',
+        description: 'Full-day guided excursion to the world-famous Mayan ruins of Chichen Itza followed by a refreshing swim in a mystical freshwater underground cenote with authentic Yucatecan lunch.',
+      },
+      {
+        day: 3,
+        title: 'Catamaran Sailing & Snorkel Adventure',
+        description: 'Included catamaran ocean excursion with snorkeling along the vibrant Mesoamerican Barrier Reef, music, open bar on board, and beach club access.',
+      },
+      {
+        day: 4,
+        title: 'Resort Beach Day & Mexican Fiesta Night',
+        description: 'Relax poolside or on the white-sand beach, enjoy all-inclusive dining, and experience live Mexican cultural entertainment and culinary tastings.',
+      },
+      {
+        day: 5,
+        title: 'Playa del Carmen 5th Avenue Shopping & Farewell Dinner',
+        description: 'Afternoon transfer for duty-free shopping, artisan crafts, and cafe culture along Playa del Carmen\'s bustling Quinta Avenida, followed by a festive group farewell celebration.',
+      },
+      {
+        day: 6,
+        title: 'Airport Transfer & Return Flight to Kingston',
+        description: 'Breakfast at the resort, private group transfer to Cancún International Airport, and flight back to Kingston (KIN).',
+      },
+    ],
+    travelRequirements: [
+      'Valid Jamaican passport (with at least 6 months validity beyond travel dates)',
+      'Mexican Tourist Card (FMM) immigration form (facilitated by SMELTRAVELS876)',
+      'Valid US Visa, Canadian Visa, UK Visa, or Schengen Visa facilitates entry for Jamaican passport holders'
+    ],
+    visaRequirements: 'Jamaican passport holders with a valid US, Canadian, UK, or Schengen tourist visa enjoy visa-free entry into Mexico. Full travel document guidance provided by SMELTRAVELS876.',
+    requiresSchengenVisa: false,
+    excursions: [
+      'Guided Chichen Itza Archaeological Site Excursion',
+      'Sacred Underground Cenote Swim & Lunch',
+      'Catamaran Ocean & Snorkel Experience'
+    ],
+    baggageInfo: 'Includes Carry-on + Personal item. Checked bag add-on available upon request.',
+    paymentPlanInfo: 'Flexible payment plans available after your deposit of $85,000 JMD is placed. Pay convenient installments up to departure.',
+    featuredImage: 'https://images.unsplash.com/photo-1512815777174-88db0fb1bd74?auto=format&fit=crop&w=1200&q=80',
+    gallery: [
+      'https://images.unsplash.com/photo-1512815777174-88db0fb1bd74?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1518638150340-f706e86654de?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80'
+    ],
+    status: 'Available',
+    isFeatured: true,
+    is2026Featured: true,
+    is2027Collection: false,
+    occupancyNote: 'Per person rate based on double occupancy. Single supplement available upon inquiry.',
+    orderIndex: 0,
+    seoTitle: 'Mexico 2026 Group Trip from Kingston | SMELTRAVELS876',
+    metaDescription: 'Book Mexico 2026 with SMELTRAVELS876! Flights from KIN, all-inclusive resort, Chichen Itza excursion, cenote swim, airport transfers, and document prep included.'
+  },
+  {
     id: 'antigua-2027',
     slug: 'antigua-group-trip-2027',
     name: 'Antigua All-Inclusive Escape 2027',
@@ -582,6 +675,28 @@ export const INITIAL_TRIPS: TripPackage[] = [
 ];
 
 export const INITIAL_DESTINATIONS: Destination[] = [
+  {
+    id: 'mexico',
+    slug: 'mexico',
+    name: 'Mexico',
+    country: 'Mexico',
+    countryFlag: '🇲🇽',
+    countryCode: 'MX',
+    tagline: 'Ancient Mayan Wonders, Turquoise Waters & Vibrant Culture',
+    description: 'Mexico is a captivating world of stunning Caribbean beaches, crystal-clear mystical cenotes, ancient Mayan temples, mouthwatering culinary traditions, and warm hospitality.',
+    image: 'https://images.unsplash.com/photo-1512815777174-88db0fb1bd74?auto=format&fit=crop&w=800&q=80',
+    heroImage: 'https://images.unsplash.com/photo-1512815777174-88db0fb1bd74?auto=format&fit=crop&w=1600&q=80',
+    popularExperiences: [
+      'Chichen Itza UNESCO World Wonder Guided Tour',
+      'Swimming in Freshwater Limestone Cenotes',
+      'Cancún & Riviera Maya Beachfront Relaxation',
+      'Catamaran Ocean & Mesoamerican Coral Reef Snorkeling'
+    ],
+    bestTimeToVisit: 'November to April for sunny Caribbean days and ideal exploring temperatures',
+    visaOverview: 'Jamaican passport holders with a valid US, Canadian, UK, or Schengen visa enjoy visa-free entry. Mexican Tourist Card (FMM) facilitated by SMELTRAVELS876.',
+    currencyInfo: 'Mexican Peso (MXN) and US Dollar (USD)',
+    featured: true
+  },
   {
     id: 'panama',
     slug: 'panama',

@@ -217,6 +217,7 @@ export const HeroSection: React.FC = () => {
                 className="w-full bg-neutral-100 border border-neutral-300 rounded-xl px-3 py-2.5 text-sm font-medium text-neutral-900 focus:outline-none focus:border-[#2E0249]"
               >
                 <option value="all">All Destinations</option>
+                <option value="mexico-2026">Mexico (Nov 2026)</option>
                 <option value="panama-2026">Panama (Oct 2026)</option>
                 <option value="antigua-2027">Antigua (Jan 2027)</option>
                 <option value="germany-italy-2027">Germany + Italy (Feb 2027)</option>
