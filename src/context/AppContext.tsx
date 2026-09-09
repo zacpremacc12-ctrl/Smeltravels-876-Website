@@ -33,9 +33,9 @@ import {
   INITIAL_ADMIN_INBOX,
 } from '../data/initialData';
 import {
-  pushSiteContentToFirestore,
-  pushFullSiteContentToFirestore,
-  fetchSiteContentFromFirestore,
+  pushSiteContentToRTDB,
+  pushFullSiteContentToRTDB,
+  fetchSiteContentFromRTDB,
   subscribeToSiteContent,
 } from '../lib/firebase';
 
@@ -357,9 +357,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const applyServerData = applyFirestoreContent;
 
-  // Real-time Firestore 'siteContent' listener & initial fetch
+  // Real-time Realtime Database '/siteContent' listener & initial fetch
   useEffect(() => {
-    fetchSiteContentFromFirestore().then((data) => {
+    fetchSiteContentFromRTDB().then((data) => {
       if (data) {
         applyFirestoreContent(data);
       }
@@ -376,7 +376,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
-  // Helper to persist admin changes directly to Firebase Firestore 'siteContent' collection
+  // Helper to persist admin changes directly to Firebase Realtime Database path '/siteContent'
   const syncToLiveServer = async (payload: Record<string, any>): Promise<boolean> => {
     try {
       // Instant cross-tab broadcast within the browser (0ms delay)
@@ -388,11 +388,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       } catch (e) {}
 
-      // Push directly to Firestore 'siteContent' collection using native SDK setDoc
-      const ok = await pushFullSiteContentToFirestore(payload);
+      // Push directly to Realtime Database '/siteContent' path using native SDK set
+      const ok = await pushFullSiteContentToRTDB(payload);
       return ok;
     } catch (e) {
-      console.error('[Firestore Save Error]:', e);
+      console.error('[RTDB Save Error]:', e);
       return false;
     }
   };
@@ -463,8 +463,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           media: mediaList,
         };
         syncToLiveServer(payload);
-        pushFullSiteContentToFirestore(payload);
-        pushSiteContentToFirestore('packages', trips);
+        pushFullSiteContentToRTDB(payload);
+        pushSiteContentToRTDB('packages', trips);
       }, 400);
       return () => clearTimeout(timer);
     }
@@ -500,9 +500,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       window.dispatchEvent(new CustomEvent('site-settings-updated', { detail: updatedSnapshot }));
     } catch (e) {}
 
-    // Push directly to Firestore 'siteContent' collection
-    await pushSiteContentToFirestore('settings', updatedSnapshot);
-    await pushFullSiteContentToFirestore({ settings: updatedSnapshot });
+    // Push directly to Realtime Database '/siteContent' path
+    await pushSiteContentToRTDB('settings', updatedSnapshot);
+    await pushFullSiteContentToRTDB({ settings: updatedSnapshot });
     const isLiveSynced = await syncToLiveServer({ settings: updatedSnapshot });
     return isLiveSynced;
   };
@@ -1345,10 +1345,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updated = [trip, ...prev];
       }
       syncToLiveServer({ trips: updated });
-      // Push directly into Firestore 'siteContent' collection
-      pushSiteContentToFirestore('packages', updated);
-      pushSiteContentToFirestore('trips', updated);
-      pushFullSiteContentToFirestore({ trips: updated, settings });
+      // Push directly into Realtime Database '/siteContent' path
+      pushSiteContentToRTDB('packages', updated);
+      pushSiteContentToRTDB('trips', updated);
+      pushFullSiteContentToRTDB({ trips: updated, settings });
       return updated;
     });
   };
