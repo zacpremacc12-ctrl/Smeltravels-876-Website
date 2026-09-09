@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import {
   TripPackage,
   Destination,
@@ -330,30 +330,133 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => { setStoredItem('traveler_user', currentUser); }, [currentUser]);
 
   // Centralized state updater for live website feed updates
-  const applyFirestoreContent = (d: any) => {
+  const isIncomingUpdateRef = useRef(false);
+
+  const applyFirestoreContent = useCallback((d: any) => {
     if (!d || typeof d !== 'object') return;
+    isIncomingUpdateRef.current = true;
+
     if (d.settings && typeof d.settings === 'object') {
-      setSettings(prev => ({
-        ...prev,
-        ...d.settings,
-        ambassadors: Array.isArray(d.settings.ambassadors) && d.settings.ambassadors.length > 0
-          ? d.settings.ambassadors
-          : prev.ambassadors,
-      }));
+      setSettings(prev => {
+        try {
+          if (JSON.stringify(prev) === JSON.stringify({ ...prev, ...d.settings })) {
+            return prev;
+          }
+        } catch (e) {}
+        return {
+          ...prev,
+          ...d.settings,
+          ambassadors: Array.isArray(d.settings.ambassadors) && d.settings.ambassadors.length > 0
+            ? d.settings.ambassadors
+            : prev.ambassadors,
+        };
+      });
     }
+
     const tripsArray = (Array.isArray(d.trips) && d.trips) || (Array.isArray(d.packages) && d.packages) || (Array.isArray(d.travelPackages) && d.travelPackages);
-    if (tripsArray) setTrips(tripsArray);
-    if (d.destinations && Array.isArray(d.destinations)) setDestinations(d.destinations);
-    if (d.bookings && Array.isArray(d.bookings)) setBookings(d.bookings);
-    if (d.contacts && Array.isArray(d.contacts)) setContactSubmissions(d.contacts);
-    if (d.customers && Array.isArray(d.customers)) setCustomers(d.customers);
-    if (d.blog && Array.isArray(d.blog)) setBlogPosts(d.blog);
-    if (d.offers && Array.isArray(d.offers)) setOffers(d.offers);
-    if (d.testimonials && Array.isArray(d.testimonials)) setTestimonials(d.testimonials);
-    if (d.faqs && Array.isArray(d.faqs)) setFaqs(d.faqs);
-    if (d.adminInbox && Array.isArray(d.adminInbox)) setAdminInbox(d.adminInbox);
-    if (d.media && Array.isArray(d.media)) setMediaList(d.media);
-  };
+    if (tripsArray) {
+      setTrips(prev => {
+        try {
+          if (JSON.stringify(prev) === JSON.stringify(tripsArray)) return prev;
+        } catch (e) {}
+        return tripsArray;
+      });
+    }
+
+    if (d.destinations && Array.isArray(d.destinations)) {
+      setDestinations(prev => {
+        try {
+          if (JSON.stringify(prev) === JSON.stringify(d.destinations)) return prev;
+        } catch (e) {}
+        return d.destinations;
+      });
+    }
+
+    if (d.bookings && Array.isArray(d.bookings)) {
+      setBookings(prev => {
+        try {
+          if (JSON.stringify(prev) === JSON.stringify(d.bookings)) return prev;
+        } catch (e) {}
+        return d.bookings;
+      });
+    }
+
+    if (d.contacts && Array.isArray(d.contacts)) {
+      setContactSubmissions(prev => {
+        try {
+          if (JSON.stringify(prev) === JSON.stringify(d.contacts)) return prev;
+        } catch (e) {}
+        return d.contacts;
+      });
+    }
+
+    if (d.customers && Array.isArray(d.customers)) {
+      setCustomers(prev => {
+        try {
+          if (JSON.stringify(prev) === JSON.stringify(d.customers)) return prev;
+        } catch (e) {}
+        return d.customers;
+      });
+    }
+
+    if (d.blog && Array.isArray(d.blog)) {
+      setBlogPosts(prev => {
+        try {
+          if (JSON.stringify(prev) === JSON.stringify(d.blog)) return prev;
+        } catch (e) {}
+        return d.blog;
+      });
+    }
+
+    if (d.offers && Array.isArray(d.offers)) {
+      setOffers(prev => {
+        try {
+          if (JSON.stringify(prev) === JSON.stringify(d.offers)) return prev;
+        } catch (e) {}
+        return d.offers;
+      });
+    }
+
+    if (d.testimonials && Array.isArray(d.testimonials)) {
+      setTestimonials(prev => {
+        try {
+          if (JSON.stringify(prev) === JSON.stringify(d.testimonials)) return prev;
+        } catch (e) {}
+        return d.testimonials;
+      });
+    }
+
+    if (d.faqs && Array.isArray(d.faqs)) {
+      setFaqs(prev => {
+        try {
+          if (JSON.stringify(prev) === JSON.stringify(d.faqs)) return prev;
+        } catch (e) {}
+        return d.faqs;
+      });
+    }
+
+    if (d.adminInbox && Array.isArray(d.adminInbox)) {
+      setAdminInbox(prev => {
+        try {
+          if (JSON.stringify(prev) === JSON.stringify(d.adminInbox)) return prev;
+        } catch (e) {}
+        return d.adminInbox;
+      });
+    }
+
+    if (d.media && Array.isArray(d.media)) {
+      setMediaList(prev => {
+        try {
+          if (JSON.stringify(prev) === JSON.stringify(d.media)) return prev;
+        } catch (e) {}
+        return d.media;
+      });
+    }
+
+    setTimeout(() => {
+      isIncomingUpdateRef.current = false;
+    }, 200);
+  }, []);
 
   const applyServerData = applyFirestoreContent;
 
@@ -449,8 +552,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       adminSyncInitialRef.current = true;
       return;
     }
+    // Avoid echoing database reads back into database writes
+    if (isIncomingUpdateRef.current) {
+      return;
+    }
     if (isAdminActive) {
       const timer = setTimeout(() => {
+        if (isIncomingUpdateRef.current) return;
         const payload = {
           settings,
           trips,
@@ -465,7 +573,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         syncToLiveServer(payload);
         pushFullSiteContentToRTDB(payload);
         pushSiteContentToRTDB('packages', trips);
-      }, 400);
+      }, 500);
       return () => clearTimeout(timer);
     }
   }, [isAdminActive, settings, trips, destinations, offers, blogPosts, testimonials, faqs, adminInbox, mediaList]);

@@ -16,6 +16,7 @@ export interface TripPackage {
   destination: string;
   country: string;
   countryFlag: string;
+  countryAcronym?: string;
   year: number;
   dates: string;
   hotel: string;
@@ -37,6 +38,7 @@ export interface TripPackage {
   featuredImage: string;
   gallery: string[];
   status: TripStatus;
+  availabilityNote?: string;
   isFeatured?: boolean;
   is2026Featured?: boolean;
   is2027Collection?: boolean;

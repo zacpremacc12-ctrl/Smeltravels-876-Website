@@ -72,7 +72,7 @@ export const HomePage: React.FC = () => {
         unsubscribe();
       }
     };
-  }, [applyFirestoreContent]);
+  }, []);
 
   return (
     <main className="relative">

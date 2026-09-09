@@ -33,9 +33,15 @@ import {
   LogOut,
   Calendar,
   RefreshCw,
+  ArrowUp,
+  ArrowDown,
+  Globe,
+  ListCheck,
+  ListPlus,
+  AlignLeft,
 } from 'lucide-react';
 import { useApp, formatPriceJMD } from '../../context/AppContext';
-import { BookingInquiry, TripPackage, BlogPost, FAQItem, PromotionalOffer, TestimonialItem, Destination, Ambassador, SiteSettings } from '../../types';
+import { BookingInquiry, TripPackage, TripStatus, BlogPost, FAQItem, PromotionalOffer, TestimonialItem, Destination, Ambassador, SiteSettings } from '../../types';
 import { AdminLoginLock } from './AdminLoginLock';
 import { ImageUploader } from './ImageUploader';
 import { MultiGalleryUploader } from './MultiGalleryUploader';
@@ -85,6 +91,9 @@ export const AdminDashboard: React.FC = () => {
 
   // Quick edit trip state
   const [editingTrip, setEditingTrip] = useState<TripPackage | null>(null);
+  const [newInclusionInput, setNewInclusionInput] = useState<string>('');
+  const [bulkInclusionsMode, setBulkInclusionsMode] = useState<boolean>(false);
+  const [bulkInclusionsText, setBulkInclusionsText] = useState<string>('');
 
   // Quick edit destination state
   const [editingDestination, setEditingDestination] = useState<Destination | null>(null);
@@ -750,6 +759,8 @@ export const AdminDashboard: React.FC = () => {
                     slug: `new-group-trip-${Date.now()}`,
                     name: 'New Group Adventure',
                     country: 'Caribbean',
+                    countryAcronym: 'CAR',
+                    availabilityNote: 'Accepting Deposits',
                     destination: 'New Destination',
                     countryFlag: '✈️',
                     year: 2027,
@@ -778,6 +789,9 @@ export const AdminDashboard: React.FC = () => {
                     orderIndex: trips.length + 1,
                   };
                   setEditingTrip(newTrip);
+                  setNewInclusionInput('');
+                  setBulkInclusionsMode(false);
+                  setBulkInclusionsText(newTrip.packageInclusions.join('\n'));
                 }}
                 className="bg-gradient-to-r from-[#2E0249] to-purple-900 hover:from-purple-900 hover:to-[#2E0249] text-[#FFC72C] text-xs font-bold px-4 py-2.5 rounded-xl shadow-md border border-[#FFC72C]/40 hover:border-[#FFC72C] transition-all flex items-center gap-2 cursor-pointer group"
                 id="admin-add-new-trip-btn"
@@ -792,7 +806,7 @@ export const AdminDashboard: React.FC = () => {
             {/* Trip Cards in Admin */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {trips.map((t) => (
-                <div key={t.id} className="bg-white rounded-2xl border border-neutral-200 p-5 shadow-sm space-y-4">
+                <div key={t.id} className="bg-white rounded-2xl border border-neutral-200 p-5 shadow-sm space-y-4 hover:border-purple-200 transition-colors">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
                       <div className="relative">
@@ -807,9 +821,15 @@ export const AdminDashboard: React.FC = () => {
                         )}
                       </div>
                       <div>
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-base">{t.countryFlag}</span>
-                          <span className="text-xs font-bold text-purple-900">{t.year}</span>
+                          <span className="text-xs font-semibold text-neutral-800">{t.country}</span>
+                          {t.countryAcronym && (
+                            <span className="bg-[#FFC72C] text-[#2E0249] px-1.5 py-0.5 rounded font-black text-[10px] tracking-wider uppercase shadow-2xs">
+                              {t.countryAcronym}
+                            </span>
+                          )}
+                          <span className="text-xs font-bold text-purple-900">• {t.year}</span>
                           {t.is2026Featured && <span className="bg-[#FFC72C] text-[#2E0249] text-[9px] px-1.5 py-0.5 rounded font-black">2026 FEATURED</span>}
                           {t.is2027Collection && <span className="bg-purple-100 text-purple-900 text-[9px] px-1.5 py-0.5 rounded font-bold">2027 COLLECTION</span>}
                           {t.gallery && t.gallery.length > 0 && (
@@ -818,25 +838,78 @@ export const AdminDashboard: React.FC = () => {
                             </span>
                           )}
                         </div>
-                        <h3 className="font-bold text-neutral-900 font-['Outfit',sans-serif] text-base">{t.name}</h3>
+                        <h3 className="font-bold text-neutral-900 font-['Outfit',sans-serif] text-base mt-0.5">{t.name}</h3>
                         <p className="text-xs text-neutral-500">{t.dates} • {t.hotel}</p>
                       </div>
                     </div>
 
-                    <div className="text-right">
+                    <div className="text-right shrink-0">
                       <div className="text-base font-black text-neutral-900">{formatPriceJMD(t.price)}</div>
                       <div className="text-[11px] text-neutral-500">Dep: {formatPriceJMD(t.deposit)}</div>
                     </div>
                   </div>
 
-                  <div className="pt-3 border-t border-neutral-100 flex items-center justify-between text-xs">
-                    <span className="px-2 py-0.5 rounded bg-neutral-100 text-neutral-700 font-semibold">
-                      Status: {t.status}
-                    </span>
+                  {/* What is Included Preview Bar */}
+                  <div className="bg-neutral-50/80 p-2.5 rounded-xl border border-neutral-200/80 text-[11px] text-neutral-600 space-y-1">
+                    <div className="flex items-center justify-between font-bold text-neutral-800">
+                      <span className="flex items-center gap-1.5">
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>What is Included ({t.packageInclusions?.length || 0} items):</span>
+                      </span>
+                      <span className="text-[10px] text-purple-800 font-semibold cursor-pointer hover:underline" onClick={() => {
+                        setEditingTrip(t);
+                        setNewInclusionInput('');
+                        setBulkInclusionsMode(false);
+                        setBulkInclusionsText((t.packageInclusions || []).join('\n'));
+                      }}>
+                        Edit Inclusions
+                      </span>
+                    </div>
+                    <p className="text-neutral-500 truncate text-[11px]">
+                      {t.packageInclusions && t.packageInclusions.length > 0
+                        ? t.packageInclusions.slice(0, 3).join(' • ') + (t.packageInclusions.length > 3 ? ` • +${t.packageInclusions.length - 3} more` : '')
+                        : 'No package inclusions set yet'}
+                    </p>
+                  </div>
 
-                    <div className="space-x-2">
+                  {/* Quick Availability Selector & Action Buttons */}
+                  <div className="pt-3 border-t border-neutral-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold text-neutral-600">Availability:</span>
+                      <select
+                        value={t.status}
+                        onChange={async (e) => {
+                          const newStatus = e.target.value as TripStatus;
+                          const updated = { ...t, status: newStatus };
+                          const updatedTrips = trips.map(item => item.id === t.id ? updated : item);
+                          saveTrip(updated);
+                          await pushSiteContentToRTDB('trips', updatedTrips);
+                          await pushFullSiteContentToRTDB({ trips: updatedTrips, settings: localSettings });
+                          showNotification('Availability Updated', `Set "${t.name}" availability to ${newStatus}.`);
+                        }}
+                        className="px-2.5 py-1 rounded-lg border border-neutral-300 bg-white text-xs font-bold text-neutral-800 cursor-pointer shadow-2xs hover:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-900/20"
+                      >
+                        <option value="Available">🟢 Available</option>
+                        <option value="Limited Availability">🟡 Limited Availability</option>
+                        <option value="Coming Soon">🔵 Coming Soon</option>
+                        <option value="Sold Out">🔴 Sold Out</option>
+                        <option value="Closed">⚪ Closed</option>
+                      </select>
+                      {t.availabilityNote && (
+                        <span className="bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                          {t.availabilityNote}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-x-2 shrink-0">
                       <button
-                        onClick={() => setEditingTrip(t)}
+                        onClick={() => {
+                          setEditingTrip(t);
+                          setNewInclusionInput('');
+                          setBulkInclusionsMode(false);
+                          setBulkInclusionsText((t.packageInclusions || []).join('\n'));
+                        }}
                         className="p-1.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 rounded-lg transition-colors font-semibold"
                       >
                         Edit Details
@@ -871,6 +944,7 @@ export const AdminDashboard: React.FC = () => {
                   </div>
 
                   <div className="space-y-4 text-xs">
+                    {/* Basic Info */}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="font-bold text-neutral-700 block mb-1">Trip Name</label>
@@ -878,7 +952,7 @@ export const AdminDashboard: React.FC = () => {
                           type="text"
                           value={editingTrip.name}
                           onChange={(e) => setEditingTrip({ ...editingTrip, name: e.target.value })}
-                          className="w-full p-2 border border-neutral-300 rounded-xl"
+                          className="w-full p-2 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-purple-900/20 focus:outline-none"
                         />
                       </div>
                       <div>
@@ -887,7 +961,7 @@ export const AdminDashboard: React.FC = () => {
                           type="text"
                           value={editingTrip.dates}
                           onChange={(e) => setEditingTrip({ ...editingTrip, dates: e.target.value })}
-                          className="w-full p-2 border border-neutral-300 rounded-xl"
+                          className="w-full p-2 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-purple-900/20 focus:outline-none"
                         />
                       </div>
                     </div>
@@ -899,7 +973,7 @@ export const AdminDashboard: React.FC = () => {
                           type="number"
                           value={editingTrip.price}
                           onChange={(e) => setEditingTrip({ ...editingTrip, price: Number(e.target.value) })}
-                          className="w-full p-2 border border-neutral-300 rounded-xl"
+                          className="w-full p-2 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-purple-900/20 focus:outline-none"
                         />
                       </div>
                       <div>
@@ -908,7 +982,7 @@ export const AdminDashboard: React.FC = () => {
                           type="number"
                           value={editingTrip.deposit}
                           onChange={(e) => setEditingTrip({ ...editingTrip, deposit: Number(e.target.value) })}
-                          className="w-full p-2 border border-neutral-300 rounded-xl"
+                          className="w-full p-2 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-purple-900/20 focus:outline-none"
                         />
                       </div>
                       <div>
@@ -916,7 +990,7 @@ export const AdminDashboard: React.FC = () => {
                         <select
                           value={editingTrip.year}
                           onChange={(e) => setEditingTrip({ ...editingTrip, year: Number(e.target.value) })}
-                          className="w-full p-2 border border-neutral-300 rounded-xl"
+                          className="w-full p-2 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-purple-900/20 focus:outline-none"
                         >
                           <option value={2026}>2026</option>
                           <option value={2027}>2027</option>
@@ -924,6 +998,427 @@ export const AdminDashboard: React.FC = () => {
                       </div>
                     </div>
 
+                    {/* SECTION 1: TRIP AVAILABILITY & BOOKING STATUS */}
+                    <div className="p-4 bg-amber-50/60 rounded-2xl border border-amber-200/80 space-y-3">
+                      <div className="flex items-center justify-between pb-2 border-b border-amber-200/60">
+                        <div className="flex items-center gap-2 font-bold text-amber-950">
+                          <CheckCircle2 className="w-4 h-4 text-amber-600" />
+                          <span className="text-xs uppercase tracking-wider">Trip Availability & Booking Status</span>
+                        </div>
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-200/70 text-amber-900">
+                          Current: {editingTrip.status}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="font-bold text-neutral-700 block mb-1">Availability Status</label>
+                          <select
+                            value={editingTrip.status}
+                            onChange={(e) => setEditingTrip({ ...editingTrip, status: e.target.value as TripStatus })}
+                            className="w-full p-2 border border-neutral-300 rounded-xl bg-white font-bold text-neutral-900 focus:ring-2 focus:ring-amber-500/30 focus:outline-none"
+                          >
+                            <option value="Available">🟢 Available (Accepting Bookings & Deposits)</option>
+                            <option value="Limited Availability">🟡 Limited Availability (Selling Fast / Few Spots)</option>
+                            <option value="Coming Soon">🔵 Coming Soon (Pre-registration & Inquiries)</option>
+                            <option value="Sold Out">🔴 Sold Out (Fully Booked)</option>
+                            <option value="Closed">⚪ Closed (Registration Closed / Departed)</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="font-bold text-neutral-700 block mb-1">
+                            Availability Note / Spots Remaining <span className="text-neutral-400 font-normal">(Optional Badge)</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Only 3 spots left! or 80% Booked"
+                            value={editingTrip.availabilityNote || ''}
+                            onChange={(e) => setEditingTrip({ ...editingTrip, availabilityNote: e.target.value })}
+                            className="w-full p-2 border border-neutral-300 rounded-xl bg-white focus:ring-2 focus:ring-amber-500/30 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Quick preset availability chips */}
+                      <div>
+                        <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                          Quick Availability Badges:
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {[
+                            'Only 2 spots left!',
+                            'Few spots remaining',
+                            '80% Booked',
+                            'Accepting Deposits',
+                            'Early Bird Open',
+                            'Waitlist Open',
+                          ].map((chip) => (
+                            <button
+                              key={chip}
+                              type="button"
+                              onClick={() => setEditingTrip({ ...editingTrip, availabilityNote: chip })}
+                              className="px-2 py-0.5 rounded-lg bg-white hover:bg-amber-100 text-amber-900 border border-amber-300/80 text-[10px] font-bold transition-colors cursor-pointer"
+                            >
+                              + {chip}
+                            </button>
+                          ))}
+                          {editingTrip.availabilityNote && (
+                            <button
+                              type="button"
+                              onClick={() => setEditingTrip({ ...editingTrip, availabilityNote: '' })}
+                              className="px-2 py-0.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[10px] font-bold transition-colors cursor-pointer"
+                            >
+                              ✕ Clear Note
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* SECTION 2: COUNTRY, LOCATION & COUNTRY ACRONYM */}
+                    <div className="p-4 bg-purple-50/60 rounded-2xl border border-purple-200/80 space-y-3">
+                      <div className="flex items-center justify-between pb-2 border-b border-purple-200/60">
+                        <div className="flex items-center gap-2 font-bold text-purple-950">
+                          <Globe className="w-4 h-4 text-purple-700" />
+                          <span className="text-xs uppercase tracking-wider">Country, Location & Country Acronym</span>
+                        </div>
+                        {editingTrip.countryAcronym && (
+                          <div className="flex items-center gap-1 bg-[#FFC72C] text-[#2E0249] px-2 py-0.5 rounded font-black text-[11px] uppercase tracking-wider shadow-2xs">
+                            <span>{editingTrip.countryFlag}</span>
+                            <span>{editingTrip.countryAcronym}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <div className="sm:col-span-2">
+                          <label className="font-bold text-neutral-700 block mb-1">Country Name</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Panama, Colombia, Antigua and Barbuda"
+                            value={editingTrip.country}
+                            onChange={(e) => setEditingTrip({ ...editingTrip, country: e.target.value })}
+                            className="w-full p-2 border border-neutral-300 rounded-xl bg-white focus:ring-2 focus:ring-purple-900/20 focus:outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="font-bold text-neutral-700 block mb-1">
+                            Country Acronym <span className="text-purple-900 font-black text-[10px]">(e.g. PAN, ATG)</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="PAN"
+                            maxLength={8}
+                            value={editingTrip.countryAcronym || ''}
+                            onChange={(e) => setEditingTrip({ ...editingTrip, countryAcronym: e.target.value.toUpperCase() })}
+                            className="w-full p-2 border border-neutral-300 rounded-xl bg-white uppercase font-black tracking-wider text-purple-950 focus:ring-2 focus:ring-purple-900/20 focus:outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="font-bold text-neutral-700 block mb-1">Flag Emoji</label>
+                          <input
+                            type="text"
+                            placeholder="🇵🇦"
+                            value={editingTrip.countryFlag}
+                            onChange={(e) => setEditingTrip({ ...editingTrip, countryFlag: e.target.value })}
+                            className="w-full p-2 border border-neutral-300 rounded-xl bg-white text-base text-center focus:ring-2 focus:ring-purple-900/20 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="font-bold text-neutral-700 block mb-1">Destination / City Name</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Panama City & Canal, Jolly Beach, Punta Cana"
+                          value={editingTrip.destination}
+                          onChange={(e) => setEditingTrip({ ...editingTrip, destination: e.target.value })}
+                          className="w-full p-2 border border-neutral-300 rounded-xl bg-white focus:ring-2 focus:ring-purple-900/20 focus:outline-none"
+                        />
+                      </div>
+
+                      {/* Quick 1-Click Country & Acronym Presets */}
+                      <div>
+                        <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                          1-Click Country & Acronym Presets:
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {[
+                            { name: 'Panama', acronym: 'PAN', flag: '🇵🇦', dest: 'Panama City & Canal' },
+                            { name: 'Antigua and Barbuda', acronym: 'ATG', flag: '🇦🇬', dest: 'Antigua' },
+                            { name: 'Dominican Republic', acronym: 'DOM', flag: '🇩🇴', dest: 'Punta Cana' },
+                            { name: 'Colombia', acronym: 'COL', flag: '🇨🇴', dest: 'Medellín' },
+                            { name: 'Germany + Italy', acronym: 'GER/ITA', flag: '🇩🇪🇮🇹', dest: 'Frankfurt & Milan' },
+                            { name: 'Jamaica', acronym: 'JAM', flag: '🇯🇲', dest: 'Kingston & North Coast' },
+                            { name: 'United States', acronym: 'USA', flag: '🇺🇸', dest: 'Miami / New York' },
+                            { name: 'Barbados', acronym: 'BRB', flag: '🇧🇧', dest: 'Bridgetown' },
+                            { name: 'Trinidad and Tobago', acronym: 'TTO', flag: '🇹🇹', dest: 'Port of Spain' },
+                            { name: 'France', acronym: 'FRA', flag: '🇫🇷', dest: 'Paris' },
+                            { name: 'Spain', acronym: 'ESP', flag: '🇪🇸', dest: 'Madrid & Barcelona' },
+                          ].map((preset) => (
+                            <button
+                              key={preset.acronym}
+                              type="button"
+                              onClick={() => {
+                                setEditingTrip({
+                                  ...editingTrip,
+                                  country: preset.name,
+                                  countryAcronym: preset.acronym,
+                                  countryFlag: preset.flag,
+                                  destination: editingTrip.destination || preset.dest,
+                                });
+                              }}
+                              className="px-2 py-1 rounded-lg bg-white hover:bg-purple-100 text-purple-950 border border-purple-200 text-[10px] font-bold transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
+                            >
+                              <span>{preset.flag}</span>
+                              <span>{preset.name}</span>
+                              <span className="bg-purple-900 text-[#FFC72C] px-1 py-0.2 rounded font-black text-[9px]">{preset.acronym}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* SECTION 3: WHAT IS INCLUDED IN THIS PACKAGE */}
+                    <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200/80 space-y-3">
+                      <div className="flex items-center justify-between pb-2 border-b border-emerald-200/60 flex-wrap gap-2">
+                        <div className="flex items-center gap-2 font-bold text-emerald-950">
+                          <ListCheck className="w-4 h-4 text-emerald-700" />
+                          <span className="text-xs uppercase tracking-wider">
+                            What is Included in this Package ({editingTrip.packageInclusions?.length || 0} items)
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!bulkInclusionsMode) {
+                                setBulkInclusionsText((editingTrip.packageInclusions || []).join('\n'));
+                              } else {
+                                const parsed = bulkInclusionsText.split('\n').map(s => s.trim()).filter(Boolean);
+                                setEditingTrip({ ...editingTrip, packageInclusions: parsed });
+                              }
+                              setBulkInclusionsMode(!bulkInclusionsMode);
+                            }}
+                            className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-white text-emerald-900 border border-emerald-300 hover:bg-emerald-100 transition-colors cursor-pointer flex items-center gap-1"
+                          >
+                            {bulkInclusionsMode ? (
+                              <>
+                                <ListCheck className="w-3 h-3" />
+                                <span>Switch to List View</span>
+                              </>
+                            ) : (
+                              <>
+                                <AlignLeft className="w-3 h-3" />
+                                <span>Bulk Paste / Edit Mode</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-emerald-900/80 leading-relaxed">
+                        Customize the exact services, accommodations, flights, and perks displayed to customers in the package breakdown.
+                      </p>
+
+                      {/* Mode A: Visual List Editor */}
+                      {!bulkInclusionsMode ? (
+                        <div className="space-y-2.5">
+                          {/* List of current inclusions */}
+                          <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+                            {(editingTrip.packageInclusions || []).map((inclusion, index) => (
+                              <div
+                                key={index}
+                                className="flex items-center gap-2 p-2 bg-white rounded-xl border border-emerald-200 shadow-2xs group"
+                              >
+                                <span className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 text-[10px] font-black flex items-center justify-center shrink-0">
+                                  {index + 1}
+                                </span>
+                                <input
+                                  type="text"
+                                  value={inclusion}
+                                  onChange={(e) => {
+                                    const next = [...(editingTrip.packageInclusions || [])];
+                                    next[index] = e.target.value;
+                                    setEditingTrip({ ...editingTrip, packageInclusions: next });
+                                  }}
+                                  className="flex-1 p-1.5 text-xs text-neutral-800 bg-transparent border border-transparent hover:border-neutral-200 focus:border-emerald-500 focus:bg-emerald-50/30 rounded-lg focus:outline-none"
+                                />
+
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {/* Move Up */}
+                                  <button
+                                    type="button"
+                                    disabled={index === 0}
+                                    onClick={() => {
+                                      if (index === 0) return;
+                                      const next = [...(editingTrip.packageInclusions || [])];
+                                      const temp = next[index - 1];
+                                      next[index - 1] = next[index];
+                                      next[index] = temp;
+                                      setEditingTrip({ ...editingTrip, packageInclusions: next });
+                                    }}
+                                    className={`p-1 rounded text-neutral-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors ${
+                                      index === 0 ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
+                                    }`}
+                                    title="Move Up"
+                                  >
+                                    <ArrowUp className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  {/* Move Down */}
+                                  <button
+                                    type="button"
+                                    disabled={index === (editingTrip.packageInclusions?.length || 0) - 1}
+                                    onClick={() => {
+                                      if (index >= (editingTrip.packageInclusions?.length || 0) - 1) return;
+                                      const next = [...(editingTrip.packageInclusions || [])];
+                                      const temp = next[index + 1];
+                                      next[index + 1] = next[index];
+                                      next[index] = temp;
+                                      setEditingTrip({ ...editingTrip, packageInclusions: next });
+                                    }}
+                                    className={`p-1 rounded text-neutral-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors ${
+                                      index >= (editingTrip.packageInclusions?.length || 0) - 1 ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
+                                    }`}
+                                    title="Move Down"
+                                  >
+                                    <ArrowDown className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  {/* Delete */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const next = (editingTrip.packageInclusions || []).filter((_, i) => i !== index);
+                                      setEditingTrip({ ...editingTrip, packageInclusions: next });
+                                    }}
+                                    className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
+                                    title="Remove Inclusion"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+
+                            {(!editingTrip.packageInclusions || editingTrip.packageInclusions.length === 0) && (
+                              <div className="p-4 text-center text-neutral-400 bg-white rounded-xl border border-dashed border-neutral-200">
+                                No package inclusions added yet. Type below or click quick presets.
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Add New Inclusion Input */}
+                          <div className="flex gap-2 pt-1">
+                            <input
+                              type="text"
+                              placeholder="Type new inclusion (e.g. Flight from Kingston (KIN), Hotel stay, etc.)"
+                              value={newInclusionInput}
+                              onChange={(e) => setNewInclusionInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  if (newInclusionInput.trim()) {
+                                    setEditingTrip({
+                                      ...editingTrip,
+                                      packageInclusions: [...(editingTrip.packageInclusions || []), newInclusionInput.trim()],
+                                    });
+                                    setNewInclusionInput('');
+                                  }
+                                }
+                              }}
+                              className="flex-1 p-2 border border-neutral-300 rounded-xl bg-white focus:ring-2 focus:ring-emerald-500/30 focus:outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (newInclusionInput.trim()) {
+                                  setEditingTrip({
+                                    ...editingTrip,
+                                    packageInclusions: [...(editingTrip.packageInclusions || []), newInclusionInput.trim()],
+                                  });
+                                  setNewInclusionInput('');
+                                }
+                              }}
+                              className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1 cursor-pointer shrink-0"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Add Inclusion</span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Mode B: Bulk multi-line text editor */
+                        <div className="space-y-2">
+                          <label className="text-[11px] font-bold text-neutral-700 block">
+                            Paste or type each inclusion on a separate line:
+                          </label>
+                          <textarea
+                            rows={6}
+                            value={bulkInclusionsText}
+                            onChange={(e) => setBulkInclusionsText(e.target.value)}
+                            placeholder="Flight from Kingston (KIN)&#10;Hotel accommodation&#10;Bed and breakfast daily&#10;Roundtrip airport transfers&#10;Two paid excursions"
+                            className="w-full p-2.5 border border-neutral-300 rounded-xl bg-white font-mono text-xs focus:ring-2 focus:ring-emerald-500/30 focus:outline-none leading-relaxed"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const parsed = bulkInclusionsText.split('\n').map(s => s.trim()).filter(Boolean);
+                              setEditingTrip({ ...editingTrip, packageInclusions: parsed });
+                              setBulkInclusionsMode(false);
+                            }}
+                            className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                          >
+                            ✓ Apply Bulk Inclusions ({bulkInclusionsText.split('\n').map(s => s.trim()).filter(Boolean).length} items)
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Quick Add Inclusion Presets Chips */}
+                      <div>
+                        <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                          1-Click Standard Travel Inclusions:
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {[
+                            'Flight from Kingston (KIN)',
+                            'Hotel accommodation',
+                            'Bed and breakfast daily',
+                            'All meals, snacks, and unlimited drinks',
+                            'Roundtrip airport transfers',
+                            'Two paid excursions',
+                            'Exclusive trip memorabilia',
+                            'Preparation of travel documents',
+                            'Dedicated trip coordinator',
+                            'Carry-on luggage & personal item',
+                            'Checked baggage included',
+                          ].map((item) => (
+                            <button
+                              key={item}
+                              type="button"
+                              onClick={() => {
+                                const current = editingTrip.packageInclusions || [];
+                                if (!current.includes(item)) {
+                                  setEditingTrip({
+                                    ...editingTrip,
+                                    packageInclusions: [...current, item],
+                                  });
+                                }
+                              }}
+                              className="px-2 py-1 rounded-lg bg-white hover:bg-emerald-100 text-emerald-950 border border-emerald-300/80 text-[10px] font-semibold transition-colors cursor-pointer"
+                            >
+                              + {item}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Hotel, Short Description & Accommodations */}
                     <div>
                       <label className="font-bold text-neutral-700 block mb-1">Hotel / Resort Name</label>
                       <input
@@ -1015,25 +1510,37 @@ export const AdminDashboard: React.FC = () => {
                   <div className="pt-3 border-t border-neutral-200 flex justify-end gap-2">
                     <button
                       onClick={() => setEditingTrip(null)}
-                      className="px-4 py-2 bg-neutral-100 text-neutral-700 rounded-xl text-xs font-semibold"
+                      className="px-4 py-2 bg-neutral-100 text-neutral-700 rounded-xl text-xs font-semibold hover:bg-neutral-200 transition-colors"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={async () => {
+                        // If in bulk mode, parse text first
+                        const finalInclusions = bulkInclusionsMode
+                          ? bulkInclusionsText.split('\n').map(s => s.trim()).filter(Boolean)
+                          : (editingTrip.packageInclusions || []);
+
+                        const finalTrip: TripPackage = {
+                          ...editingTrip,
+                          countryAcronym: editingTrip.countryAcronym ? editingTrip.countryAcronym.toUpperCase().trim() : '',
+                          packageInclusions: finalInclusions,
+                        };
+
                         // Calculate updated trips list
-                        const updatedTrips = trips.some(t => t.id === editingTrip.id)
-                          ? trips.map(t => t.id === editingTrip.id ? editingTrip : t)
-                          : [editingTrip, ...trips];
+                        const updatedTrips = trips.some(t => t.id === finalTrip.id)
+                          ? trips.map(t => t.id === finalTrip.id ? finalTrip : t)
+                          : [finalTrip, ...trips];
+
                         // 1. Push directly into Realtime Database at '/siteContent'
                         await pushSiteContentToRTDB('packages', updatedTrips);
                         await pushSiteContentToRTDB('trips', updatedTrips);
                         await pushFullSiteContentToRTDB({ trips: updatedTrips, settings: localSettings });
 
                         // 2. Save in app context
-                        saveTrip(editingTrip);
+                        saveTrip(finalTrip);
                         setEditingTrip(null);
-                        showNotification('Trip Saved to Database', `Pushed "${editingTrip.name}" directly to /siteContent.`);
+                        showNotification('Trip Saved to Database', `Pushed "${finalTrip.name}" directly to /siteContent.`);
                       }}
                       className="px-5 py-2 bg-[#2E0249] text-[#FFC72C] rounded-xl text-xs font-bold hover:bg-[#3B185F] transition-colors cursor-pointer shadow"
                     >

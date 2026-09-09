@@ -72,6 +72,12 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, highlight2026 }) => {
 
         {/* Badges on image */}
         <div className="absolute top-3 left-3 flex flex-col gap-1.5 items-start">
+          {trip.countryAcronym && (
+            <span className="bg-white/95 backdrop-blur-md text-[#2E0249] text-[11px] font-black uppercase px-2 py-0.5 rounded-md shadow border border-purple-200/80 tracking-wider flex items-center gap-1">
+              <span>{trip.countryFlag}</span>
+              <span>{trip.countryAcronym}</span>
+            </span>
+          )}
           {trip.is2026Featured && (
             <span className="bg-[#FFC72C] text-[#2E0249] text-[11px] font-extrabold uppercase px-2.5 py-1 rounded-md shadow">
               2026 Featured Trip
@@ -89,6 +95,11 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, highlight2026 }) => {
           >
             {trip.status}
           </span>
+          {trip.availabilityNote && (
+            <span className="bg-amber-500 text-neutral-950 text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow">
+              {trip.availabilityNote}
+            </span>
+          )}
         </div>
 
         {/* Top Right Controls: Dates & Bookmark */}
@@ -139,9 +150,14 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, highlight2026 }) => {
 
         {/* Destination & Country at Bottom of Image */}
         <div className="absolute bottom-3 left-4 right-4 text-white">
-          <div className="flex items-center gap-2 text-xs font-medium text-neutral-300">
+          <div className="flex items-center gap-2 text-xs font-medium text-neutral-300 flex-wrap">
             <span className="text-base">{trip.countryFlag}</span>
             <span>{trip.country}</span>
+            {trip.countryAcronym && (
+              <span className="bg-[#FFC72C] text-[#2E0249] font-black text-[10px] px-1.5 py-0.5 rounded uppercase tracking-wider shadow-xs">
+                {trip.countryAcronym}
+              </span>
+            )}
             {trip.requiresSchengenVisa && (
               <span className="bg-purple-900/80 text-[#FFC72C] text-[10px] px-1.5 py-0.5 rounded font-semibold border border-[#FFC72C]/30">
                 Schengen Visa Required
@@ -172,21 +188,23 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, highlight2026 }) => {
 
         {/* Included Services Preview */}
         <div className="space-y-1.5 border-t border-neutral-100 pt-3">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 block">
-            Package Inclusions:
-          </span>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 block">
+              What is Included ({trip.packageInclusions?.length || 0}):
+            </span>
+            {trip.packageInclusions && trip.packageInclusions.length > 3 && (
+              <span className="text-[10px] text-purple-800 font-bold bg-purple-50 px-1.5 py-0.5 rounded">
+                +{trip.packageInclusions.length - 3} more
+              </span>
+            )}
+          </div>
           <div className="grid grid-cols-1 gap-1 text-xs text-neutral-700">
-            {trip.packageInclusions.slice(0, 3).map((inc, idx) => (
+            {(trip.packageInclusions || []).slice(0, 3).map((inc, idx) => (
               <div key={idx} className="flex items-center gap-1.5 truncate">
-                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[2.5]" />
                 <span className="truncate">{inc}</span>
               </div>
             ))}
-            {trip.packageInclusions.length > 3 && (
-              <span className="text-[11px] text-purple-700 font-medium pl-5">
-                + {trip.packageInclusions.length - 3} more included services
-              </span>
-            )}
           </div>
         </div>
 

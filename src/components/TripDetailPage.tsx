@@ -133,11 +133,24 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
 
           <div className="absolute bottom-6 left-4 right-4 max-w-7xl mx-auto sm:px-4 flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-xs font-bold text-[#FFC72C] uppercase tracking-wider">
+              <div className="flex items-center gap-2 text-xs font-bold text-[#FFC72C] uppercase tracking-wider flex-wrap">
                 <span className="text-xl">{trip.countryFlag}</span>
                 <span>{trip.country}</span>
+                {trip.countryAcronym && (
+                  <span className="bg-[#FFC72C] text-[#2E0249] px-2 py-0.5 rounded font-black text-xs tracking-wider uppercase shadow-xs">
+                    {trip.countryAcronym}
+                  </span>
+                )}
                 <span>•</span>
                 <span>{trip.destination}</span>
+                <span className="bg-white/20 text-white px-2.5 py-0.5 rounded font-extrabold text-[11px] border border-white/30 tracking-wide">
+                  {trip.status}
+                </span>
+                {trip.availabilityNote && (
+                  <span className="bg-amber-400 text-neutral-950 px-2 py-0.5 rounded text-[11px] font-extrabold shadow-sm">
+                    {trip.availabilityNote}
+                  </span>
+                )}
                 {trip.is2026Featured && (
                   <span className="bg-[#FFC72C] text-[#2E0249] px-2 py-0.5 rounded text-[11px] font-black">
                     2026 FEATURED

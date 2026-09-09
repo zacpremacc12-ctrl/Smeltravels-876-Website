@@ -56,10 +56,23 @@ export const FeaturedTripsSection: React.FC = () => {
 
               <div className="lg:col-span-6 p-6 sm:p-10 flex flex-col justify-between space-y-6">
                 <div>
-                  <div className="flex items-center gap-2 text-xs font-semibold text-[#FFC72C] uppercase tracking-wider mb-2">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-[#FFC72C] uppercase tracking-wider mb-2 flex-wrap">
                     <span>{panamaTrip.countryFlag} {panamaTrip.country}</span>
+                    {panamaTrip.countryAcronym && (
+                      <span className="bg-[#FFC72C] text-[#2E0249] px-2 py-0.5 rounded font-black text-[11px] tracking-wider uppercase shadow-xs">
+                        {panamaTrip.countryAcronym}
+                      </span>
+                    )}
                     <span>•</span>
                     <span>{panamaTrip.dates}</span>
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 text-[10px] font-bold">
+                      {panamaTrip.status}
+                    </span>
+                    {panamaTrip.availabilityNote && (
+                      <span className="px-2 py-0.5 rounded bg-[#FFC72C]/20 text-[#FFC72C] border border-[#FFC72C]/40 text-[10px] font-bold">
+                        {panamaTrip.availabilityNote}
+                      </span>
+                    )}
                   </div>
 
                   <h3 className="text-2xl sm:text-3xl md:text-4xl font-extrabold font-['Outfit',sans-serif] text-white leading-tight">

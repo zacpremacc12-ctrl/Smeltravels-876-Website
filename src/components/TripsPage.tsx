@@ -58,6 +58,7 @@ export const TripsPage: React.FC<TripsPageProps> = ({ initialFilterParam }) => {
         const matches =
           t.name.toLowerCase().includes(kw) ||
           t.country.toLowerCase().includes(kw) ||
+          (t.countryAcronym && t.countryAcronym.toLowerCase().includes(kw)) ||
           t.destination.toLowerCase().includes(kw) ||
           t.hotel.toLowerCase().includes(kw);
         if (!matches) return false;
