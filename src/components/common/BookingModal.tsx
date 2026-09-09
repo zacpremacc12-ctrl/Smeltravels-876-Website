@@ -110,13 +110,36 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
   const [wasFirstDepositTracked, setWasFirstDepositTracked] = useState(false);
 
   const activeTrip = trips.find(t => t.id === selectedTripId) || trip || trips[0];
-  const originalTotalPackagePrice = activeTrip.price * adultsCount;
+  const isAdultsOnlyTrip = !!activeTrip?.isAdultsOnly;
+  const effectiveChildPrice = isAdultsOnlyTrip
+    ? 0
+    : (typeof activeTrip?.childPrice === 'number' && activeTrip.childPrice >= 0
+        ? activeTrip.childPrice
+        : Math.round((activeTrip?.price || 0) * 0.7));
+  const childDepositRate = isAdultsOnlyTrip
+    ? 0
+    : (typeof activeTrip?.childDeposit === 'number' && activeTrip.childDeposit >= 0
+        ? activeTrip.childDeposit
+        : Math.round((activeTrip?.deposit || 0) * (effectiveChildPrice / (activeTrip?.price || 1))));
+
+  const validChildrenCount = isAdultsOnlyTrip ? 0 : childrenCount;
+
+  const adultPackageSubtotal = (activeTrip?.price || 0) * adultsCount;
+  const childPackageSubtotal = effectiveChildPrice * validChildrenCount;
+  const originalTotalPackagePrice = adultPackageSubtotal + childPackageSubtotal;
+
   const discountAmount = appliedDiscountPercentage > 0
     ? Math.round(originalTotalPackagePrice * (appliedDiscountPercentage / 100))
     : 0;
   const totalPackagePrice = originalTotalPackagePrice - discountAmount;
-  const depositDue = activeTrip.deposit * adultsCount;
+  const depositDue = ((activeTrip?.deposit || 0) * adultsCount) + (childDepositRate * validChildrenCount);
   const remainingBalance = Math.max(0, totalPackagePrice - depositDue);
+
+  useEffect(() => {
+    if (activeTrip?.isAdultsOnly && childrenCount > 0) {
+      setChildrenCount(0);
+    }
+  }, [activeTrip?.id, activeTrip?.isAdultsOnly]);
 
   const handleApplyAmbassadorCode = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -284,7 +307,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
     setStep('inquiry_success');
     showNotification(
       'Inquiry Sent Successfully!',
-      'Automatically sent to zbuchanan.smeltravels@gmail.com & smeltravels876@gmail.com.',
+      `Thank you ${customerName.trim()}! Your inquiry for ${activeTrip.name} has been routed directly to our travel directors.`,
       'success'
     );
   };
@@ -350,7 +373,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
       phone: phone.trim(),
       countryOrParish: countryOrParish.trim(),
       adultsCount,
-      childrenCount,
+      childrenCount: validChildrenCount,
       preferredTravelDate: preferredTravelDate || activeTrip.dates,
       travelInterestType: 'ready_to_book',
       specialRequests: specialRequests.trim(),
@@ -608,31 +631,23 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                 </p>
               </div>
 
-              {/* Auto-Dispatch Destination Badge */}
+              {/* Auto-Dispatch Destination Confirmation (Private Routing) */}
               <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 max-w-lg mx-auto text-left space-y-2.5 shadow-2xs">
                 <div className="flex items-center gap-2 text-xs font-bold text-[#2E0249]">
-                  <Mail className="w-4 h-4 text-purple-700" />
-                  <span>Automatically Routed to Travel Directors:</span>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Inquiry Dispatched to SMELTRAVELS876 Directors & Travel Specialists</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  <div className="bg-white p-2.5 rounded-xl border border-purple-100 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-                    <div className="overflow-hidden">
-                      <span className="block font-bold text-neutral-900 text-[11px]">Senior Travel Ambassador</span>
-                      <span className="font-mono text-[10px] text-purple-800 truncate block">zbuchanan.smeltravels@gmail.com</span>
-                    </div>
+                <p className="text-xs text-neutral-600 leading-relaxed">
+                  Your inquiry has been automatically routed to our executive travel directors. Our team reviews every traveler inquiry individually and will contact you via your preferred contact method.
+                </p>
+                <div className="flex items-center justify-between text-[11px] text-neutral-600 pt-1.5 border-t border-purple-200/70">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse"></span>
+                    <span>Synchronized live to Onsite Travel Desk</span>
                   </div>
-                  <div className="bg-white p-2.5 rounded-xl border border-purple-100 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-                    <div className="overflow-hidden">
-                      <span className="block font-bold text-neutral-900 text-[11px]">SMELTRAVELS876 Operations</span>
-                      <span className="font-mono text-[10px] text-purple-800 truncate block">smeltravels876@gmail.com</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 text-[11px] text-neutral-600 pt-1 border-t border-purple-100">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>Synchronized live to our onsite <strong>Admin Inbox</strong> with reference <strong>#{submittedRef}</strong>.</span>
+                  <span className="font-mono font-bold text-purple-900 bg-white px-2 py-0.5 rounded border border-purple-200">
+                    Ref: #{submittedRef}
+                  </span>
                 </div>
               </div>
 
@@ -902,7 +917,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                       </span>
                     </div>
                     <span className="text-xs bg-white/10 px-2.5 py-1 rounded-full text-neutral-200">
-                      {adultsCount} Traveler{adultsCount > 1 ? 's' : ''}
+                      {adultsCount} Adult{adultsCount > 1 ? 's' : ''}
+                      {!isAdultsOnlyTrip && validChildrenCount > 0 ? ` + ${validChildrenCount} Child${validChildrenCount > 1 ? 'ren' : ''}` : ''}
                     </span>
                   </div>
 
@@ -1638,26 +1654,18 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                     </div>
                   </div>
 
-                  {/* Automated Notification Dispatch Banner */}
+                  {/* Automated Notification Dispatch Assurance (No Email Addresses Disclosed) */}
                   <div className="bg-purple-50/90 rounded-2xl p-4 text-xs text-neutral-800 border border-purple-200 space-y-2">
                     <div className="flex items-center gap-2 font-bold text-[#2E0249]">
                       <Mail className="w-4 h-4 text-purple-700" />
-                      <span>Automatic Dispatch (No Sign-Up or Deposit Required):</span>
+                      <span>Automatic Dispatch to Travel Directors (No Sign-Up or Deposit Required):</span>
                     </div>
                     <p className="text-neutral-600 leading-relaxed">
-                      Clicking <strong>Send Inquiry</strong> will <strong>AUTOMATICALLY</strong> deliver your inquiry directly to both travel director addresses:
+                      Clicking <strong>Send Inquiry</strong> automatically delivers your questions and contact details directly to our executive travel directors. No deposit, registration, or credit card is required.
                     </p>
-                    <div className="flex flex-wrap gap-2 pt-0.5">
-                      <span className="bg-white px-2.5 py-1 rounded-lg border border-purple-200 text-purple-950 font-mono text-[11px] font-bold shadow-2xs">
-                        ✉ zbuchanan.smeltravels@gmail.com
-                      </span>
-                      <span className="bg-white px-2.5 py-1 rounded-lg border border-purple-200 text-purple-950 font-mono text-[11px] font-bold shadow-2xs">
-                        ✉ smeltravels876@gmail.com
-                      </span>
-                    </div>
                     <p className="text-[11px] text-neutral-500 pt-0.5 flex items-center gap-1.5">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      <span>Also logged live in the onsite <strong>Admin Inbox</strong> for immediate team review.</span>
+                      <span>Your inquiry will also be logged immediately in our onsite <strong>Admin Inbox</strong> for fast review.</span>
                     </p>
                   </div>
 
@@ -1886,22 +1894,39 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-700 mb-1">
-                    Children (where applicable)
-                  </label>
-                  <select
-                    value={childrenCount}
-                    onChange={(e) => setChildrenCount(Number(e.target.value))}
-                    className="w-full bg-neutral-50 border border-neutral-300 rounded-xl px-3.5 py-2.5 text-sm text-neutral-900 focus:outline-none focus:border-[#2E0249]"
-                  >
-                    {[0, 1, 2, 3, 4].map((n) => (
-                      <option key={n} value={n}>
-                        {n} Child{n !== 1 ? 'ren' : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {isAdultsOnlyTrip ? (
+                  <div>
+                    <label className="block text-xs font-semibold text-neutral-700 mb-1">
+                      Children Policy
+                    </label>
+                    <div className="w-full bg-rose-50 border border-rose-200 rounded-xl px-3 py-2 text-xs text-rose-800 font-bold flex items-center gap-1.5">
+                      <span>🔞</span>
+                      <span>Adults Only (18+) — Children not permitted on this trip</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-semibold text-neutral-700">
+                        Children (Age 2–11)
+                      </label>
+                      <span className="text-[10px] text-emerald-800 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                        +{formatPriceJMD(effectiveChildPrice)} each
+                      </span>
+                    </div>
+                    <select
+                      value={childrenCount}
+                      onChange={(e) => setChildrenCount(Number(e.target.value))}
+                      className="w-full bg-neutral-50 border border-neutral-300 rounded-xl px-3.5 py-2.5 text-sm text-neutral-900 focus:outline-none focus:border-[#2E0249]"
+                    >
+                      {[0, 1, 2, 3, 4].map((n) => (
+                        <option key={n} value={n}>
+                          {n} Child{n !== 1 ? 'ren' : ''} {n > 0 ? `(+${formatPriceJMD(effectiveChildPrice * n)})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-xs font-semibold text-neutral-700 mb-1">
@@ -1931,6 +1956,41 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                   onChange={(e) => setSpecialRequests(e.target.value)}
                   className="w-full bg-neutral-50 border border-neutral-300 rounded-xl p-3 text-sm text-neutral-900 focus:outline-none focus:border-[#2E0249]"
                 ></textarea>
+              </div>
+
+              {/* Dynamic Price Breakdown Card */}
+              <div className="bg-neutral-50 rounded-xl p-3.5 border border-neutral-200 text-xs space-y-2">
+                <div className="flex items-center justify-between font-bold text-neutral-700 pb-1 border-b border-neutral-200">
+                  <span>Price Calculation</span>
+                  <span className="text-purple-900">{activeTrip.name}</span>
+                </div>
+                <div className="flex items-center justify-between text-neutral-600">
+                  <span>Adult Rate ({adultsCount} × {formatPriceJMD(activeTrip.price)}):</span>
+                  <span className="font-semibold text-neutral-900">{formatPriceJMD(adultPackageSubtotal)}</span>
+                </div>
+                {!isAdultsOnlyTrip && validChildrenCount > 0 && (
+                  <div className="flex items-center justify-between text-emerald-800">
+                    <span className="flex items-center gap-1">
+                      <span>👶</span>
+                      <span>Children Rate ({validChildrenCount} × {formatPriceJMD(effectiveChildPrice)}):</span>
+                    </span>
+                    <span className="font-bold text-emerald-900">+{formatPriceJMD(childPackageSubtotal)}</span>
+                  </div>
+                )}
+                {appliedDiscountPercentage > 0 && (
+                  <div className="flex items-center justify-between text-emerald-700">
+                    <span>Ambassador Discount (-{appliedDiscountPercentage}%):</span>
+                    <span className="font-bold">-{formatPriceJMD(discountAmount)}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-sm font-black text-neutral-900 pt-1.5 border-t border-neutral-200">
+                  <span>Total Package Cost:</span>
+                  <span className="text-[#2E0249]">{formatPriceJMD(totalPackagePrice)}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs font-bold text-amber-800 bg-amber-50 p-2 rounded-lg border border-amber-200/80">
+                  <span>Deposit Due Today (Locks In Spot):</span>
+                  <span className="text-sm font-black text-amber-900">{formatPriceJMD(depositDue)}</span>
+                </div>
               </div>
 
               {/* Pricing & Booking Disclaimer */}

@@ -69,8 +69,12 @@ export const TestimonialsSection: React.FC = () => {
 
   const publishedTestimonials = testimonials.filter((t) => t.isPublished);
 
-  // Open Edit Review Modal
+  // Open Edit Review Modal (Admin Only)
   const handleStartEdit = (item: TestimonialItem) => {
+    if (!isAdminLoggedIn) {
+      showNotification('Access Restricted', 'Traveler reviews cannot be modified by users. Only administrators have editing permissions.', 'warning');
+      return;
+    }
     setEditingReview(item);
     setEditForm({
       customerName: item.customerName,
@@ -84,9 +88,14 @@ export const TestimonialsSection: React.FC = () => {
     });
   };
 
-  // Save Edited Review
+  // Save Edited Review (Admin Only)
   const handleSaveEdit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdminLoggedIn) {
+      showNotification('Access Restricted', 'Only administrators are authorized to update reviews.', 'error');
+      setEditingReview(null);
+      return;
+    }
     if (!editingReview) return;
 
     if (!editForm.customerName.trim()) {
@@ -252,17 +261,19 @@ export const TestimonialsSection: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Edit Review Button (accessible to all or admin) */}
-                <button
-                  onClick={() => handleStartEdit(item)}
-                  className="shrink-0 p-2 text-neutral-400 hover:text-purple-900 hover:bg-purple-100 rounded-lg transition-colors flex items-center gap-1 text-xs font-bold cursor-pointer"
-                  title="Edit this review"
-                  aria-label={`Edit review from ${item.customerName}`}
-                  id={`edit-review-btn-${item.id}`}
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline text-[11px]">Edit</span>
-                </button>
+                {/* Admin Only: Edit Review Button (Users cannot edit reviews) */}
+                {isAdminLoggedIn && (
+                  <button
+                    onClick={() => handleStartEdit(item)}
+                    className="shrink-0 px-2 py-1 text-purple-900 hover:bg-purple-100 rounded-lg transition-colors flex items-center gap-1 text-xs font-bold cursor-pointer border border-purple-200"
+                    title="Admin Edit Review"
+                    aria-label={`Admin Edit review from ${item.customerName}`}
+                    id={`edit-review-btn-${item.id}`}
+                  >
+                    <Edit2 className="w-3.5 h-3.5 text-purple-700" />
+                    <span className="text-[11px]">Admin Edit</span>
+                  </button>
+                )}
               </div>
             </div>
           ))}

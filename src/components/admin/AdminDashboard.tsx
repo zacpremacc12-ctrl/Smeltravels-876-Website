@@ -39,6 +39,8 @@ import {
   ListCheck,
   ListPlus,
   AlignLeft,
+  Users,
+  ShieldAlert,
 } from 'lucide-react';
 import { useApp, formatPriceJMD } from '../../context/AppContext';
 import { BookingInquiry, TripPackage, TripStatus, BlogPost, FAQItem, PromotionalOffer, TestimonialItem, Destination, Ambassador, SiteSettings } from '../../types';
@@ -769,6 +771,9 @@ export const AdminDashboard: React.FC = () => {
                     deposit: 40000,
                     currency: 'JMD',
                     status: 'Coming Soon',
+                    isAdultsOnly: false,
+                    childPrice: 175000,
+                    childDeposit: 28000,
                     hotel: 'Selected 4-Star Resort',
                     baggageInfo: '1 Carry-on + Personal item',
                     shortDescription: 'Exciting group trip package coordinated by SMELTRAVELS876.',
@@ -832,6 +837,15 @@ export const AdminDashboard: React.FC = () => {
                           <span className="text-xs font-bold text-purple-900">• {t.year}</span>
                           {t.is2026Featured && <span className="bg-[#FFC72C] text-[#2E0249] text-[9px] px-1.5 py-0.5 rounded font-black">2026 FEATURED</span>}
                           {t.is2027Collection && <span className="bg-purple-100 text-purple-900 text-[9px] px-1.5 py-0.5 rounded font-bold">2027 COLLECTION</span>}
+                          {t.isAdultsOnly ? (
+                            <span className="bg-rose-100 text-rose-800 text-[9px] px-1.5 py-0.5 rounded font-black border border-rose-200">
+                              🔞 ADULTS ONLY (18+)
+                            </span>
+                          ) : (
+                            <span className="bg-emerald-50 text-emerald-800 text-[9px] px-1.5 py-0.5 rounded font-bold border border-emerald-200">
+                              Child: {formatPriceJMD(t.childPrice ?? Math.round(t.price * 0.7))}
+                            </span>
+                          )}
                           {t.gallery && t.gallery.length > 0 && (
                             <span className="bg-neutral-100 text-neutral-600 text-[9px] px-1.5 py-0.5 rounded font-semibold">
                               +{t.gallery.length} photos
@@ -996,6 +1010,119 @@ export const AdminDashboard: React.FC = () => {
                           <option value={2027}>2027</option>
                         </select>
                       </div>
+                    </div>
+
+                    {/* SECTION: ADULTS ONLY & CHILD PRICING (ADMIN CONTROLS) */}
+                    <div className="p-4 bg-purple-50/70 rounded-2xl border border-purple-200/80 space-y-3">
+                      <div className="flex items-center justify-between pb-2 border-b border-purple-200/60 flex-wrap gap-2">
+                        <div className="flex items-center gap-2 font-bold text-purple-950">
+                          <Users className="w-4 h-4 text-purple-700" />
+                          <span className="text-xs uppercase tracking-wider">Age Policy & Child Pricing</span>
+                        </div>
+                        {editingTrip.isAdultsOnly ? (
+                          <span className="bg-rose-100 text-rose-800 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-rose-200">
+                            🔞 Adults Only Trip (18+)
+                          </span>
+                        ) : (
+                          <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
+                            👨‍👩‍👧‍👦 Family Friendly (Children Allowed)
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Adults Only Toggle */}
+                      <div className="bg-white p-3.5 rounded-xl border border-purple-100 flex items-center justify-between gap-4">
+                        <div className="space-y-0.5">
+                          <label className="font-bold text-neutral-900 text-xs block cursor-pointer" htmlFor="toggle-adults-only">
+                            Adults Only Option (18+ Policy)
+                          </label>
+                          <p className="text-[11px] text-neutral-500 leading-snug">
+                            When toggled on, this trip will strictly restrict participation to adults 18+. The booking form will prevent adding children and display an Adults Only badge.
+                          </p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                          <input
+                            type="checkbox"
+                            id="toggle-adults-only"
+                            checked={editingTrip.isAdultsOnly || false}
+                            onChange={(e) => {
+                              const isChecked = e.target.checked;
+                              setEditingTrip({
+                                ...editingTrip,
+                                isAdultsOnly: isChecked,
+                              });
+                            }}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#2E0249]"></div>
+                        </label>
+                      </div>
+
+                      {/* Child Pricing Configuration (when not Adults Only) */}
+                      {!editingTrip.isAdultsOnly ? (
+                        <div className="bg-white p-3.5 rounded-xl border border-purple-100 space-y-3">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <label className="font-bold text-neutral-800 text-xs block">
+                              Trip Price for Children (JMD)
+                            </label>
+                            <span className="text-[10px] text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                              Automatically adds to total when children are booked
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <div className="relative">
+                                <span className="absolute left-3 top-2 text-xs text-neutral-400 font-bold">$</span>
+                                <input
+                                  type="number"
+                                  placeholder={String(Math.round(editingTrip.price * 0.7))}
+                                  value={editingTrip.childPrice !== undefined ? editingTrip.childPrice : ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value === '' ? undefined : Number(e.target.value);
+                                    setEditingTrip({ ...editingTrip, childPrice: val });
+                                  }}
+                                  className="w-full pl-7 pr-3 py-2 border border-neutral-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-purple-900/20 focus:outline-none"
+                                />
+                              </div>
+                              <span className="text-[10px] text-neutral-500 mt-1 block">
+                                Current child rate: <strong>{formatPriceJMD(editingTrip.childPrice !== undefined ? editingTrip.childPrice : Math.round(editingTrip.price * 0.7))}</strong>
+                              </span>
+                            </div>
+
+                            {/* Quick Child Discount Presets */}
+                            <div>
+                              <span className="text-[10px] text-neutral-500 font-bold block mb-1">Quick Child Rate Presets:</span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {[
+                                  { label: '50% Rate', ratio: 0.5 },
+                                  { label: '60% Rate', ratio: 0.6 },
+                                  { label: '70% Rate', ratio: 0.7 },
+                                  { label: '80% Rate', ratio: 0.8 },
+                                ].map((preset) => (
+                                  <button
+                                    key={preset.label}
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingTrip({
+                                        ...editingTrip,
+                                        childPrice: Math.round(editingTrip.price * preset.ratio),
+                                      });
+                                    }}
+                                    className="px-2 py-1 rounded bg-purple-50 hover:bg-purple-100 text-purple-950 text-[10px] font-bold border border-purple-200 transition-colors cursor-pointer"
+                                  >
+                                    {preset.label} ({formatPriceJMD(Math.round(editingTrip.price * preset.ratio))})
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-rose-50/70 p-3 rounded-xl border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                          <span>Child pricing is inactive because this package is designated as <strong>Adults Only (18+)</strong>.</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* SECTION 1: TRIP AVAILABILITY & BOOKING STATUS */}
@@ -1524,6 +1651,12 @@ export const AdminDashboard: React.FC = () => {
 
                         const finalTrip: TripPackage = {
                           ...editingTrip,
+                          isAdultsOnly: !!editingTrip.isAdultsOnly,
+                          childPrice: editingTrip.isAdultsOnly
+                            ? undefined
+                            : (typeof editingTrip.childPrice === 'number'
+                                ? editingTrip.childPrice
+                                : Math.round(editingTrip.price * 0.7)),
                           countryAcronym: editingTrip.countryAcronym ? editingTrip.countryAcronym.toUpperCase().trim() : '',
                           packageInclusions: finalInclusions,
                         };

@@ -42,6 +42,9 @@ export interface TripPackage {
   isFeatured?: boolean;
   is2026Featured?: boolean;
   is2027Collection?: boolean;
+  isAdultsOnly?: boolean; // When true, trip is strictly 18+ and children cannot be added
+  childPrice?: number; // Custom trip package price for children (JMD)
+  childDeposit?: number; // Custom trip deposit for children (JMD)
   occupancyNote?: string;
   orderIndex: number;
   seoTitle?: string;

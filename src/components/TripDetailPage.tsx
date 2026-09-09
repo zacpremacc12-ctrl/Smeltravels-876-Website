@@ -156,6 +156,12 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
                     2026 FEATURED
                   </span>
                 )}
+                {trip.isAdultsOnly && (
+                  <span className="bg-rose-600 text-white px-2.5 py-0.5 rounded text-[11px] font-black uppercase flex items-center gap-1 shadow-sm border border-rose-400">
+                    <span>🔞</span>
+                    <span>Adults Only (18+)</span>
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center gap-3">
@@ -198,6 +204,17 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
               <div className="text-xs text-[#FFC72C] font-semibold mt-0.5">
                 Lock in with {formatPriceJMD(trip.deposit)} deposit
               </div>
+              {trip.isAdultsOnly ? (
+                <div className="mt-2 inline-flex items-center gap-1.5 bg-rose-500/30 border border-rose-400 text-rose-100 text-[11px] font-bold px-2.5 py-1 rounded-lg">
+                  <span>🔞</span>
+                  <span>Adults Only Package (18+ Policy)</span>
+                </div>
+              ) : (
+                <div className="text-xs text-emerald-300 mt-1.5 font-semibold flex items-center gap-1">
+                  <span>👨‍👩‍👧</span>
+                  <span>Child Rate: {formatPriceJMD(trip.childPrice !== undefined ? trip.childPrice : Math.round(trip.price * 0.7))}</span>
+                </div>
+              )}
               {trip.occupancyNote && (
                 <div className="text-[11px] text-neutral-300 mt-1">{trip.occupancyNote}</div>
               )}
@@ -515,6 +532,17 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
                 <div className="text-xs text-neutral-500">
                   Initial deposit: <strong className="text-[#2E0249]">{formatPriceJMD(trip.deposit)}</strong>
                 </div>
+                {trip.isAdultsOnly ? (
+                  <div className="mt-2 bg-rose-50 border border-rose-200 text-rose-800 text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1">
+                    <span>🔞</span>
+                    <span>Adults Only (18+ Policy)</span>
+                  </div>
+                ) : (
+                  <div className="text-xs text-emerald-800 font-semibold bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200 mt-1.5 flex items-center justify-between">
+                    <span>Child Rate (age 2–11):</span>
+                    <strong>{formatPriceJMD(trip.childPrice !== undefined ? trip.childPrice : Math.round(trip.price * 0.7))}</strong>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2.5 pt-2">

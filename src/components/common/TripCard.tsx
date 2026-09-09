@@ -100,6 +100,12 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, highlight2026 }) => {
               {trip.availabilityNote}
             </span>
           )}
+          {trip.isAdultsOnly && (
+            <span className="bg-rose-600 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md shadow flex items-center gap-1 border border-rose-400">
+              <span>🔞</span>
+              <span>Adults Only (18+)</span>
+            </span>
+          )}
         </div>
 
         {/* Top Right Controls: Dates & Bookmark */}
@@ -217,7 +223,18 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, highlight2026 }) => {
             <div className="text-2xl font-black text-[#2E0249] font-['Outfit',sans-serif] leading-none">
               {formatPriceJMD(trip.price)}
             </div>
-            <span className="text-[11px] text-neutral-500 font-medium">per person</span>
+            <div className="flex items-center gap-1 mt-0.5">
+              <span className="text-[11px] text-neutral-500 font-medium">per person</span>
+              {trip.isAdultsOnly ? (
+                <span className="text-[10px] text-rose-700 font-bold bg-rose-50 px-1.5 py-0.2 rounded border border-rose-200">
+                  18+ Only
+                </span>
+              ) : (
+                <span className="text-[10px] text-emerald-800 font-semibold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200" title="Child rate for age 2-11">
+                  Child: {formatPriceJMD(trip.childPrice ?? Math.round(trip.price * 0.7))}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="text-right">
