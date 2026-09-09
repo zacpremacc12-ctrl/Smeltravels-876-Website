@@ -24,6 +24,9 @@ import {
   Wallet,
   BadgeCheck,
   UserCheck,
+  HelpCircle,
+  MessageSquareText,
+  MessageCircle,
 } from 'lucide-react';
 import { TripPackage, TravelInterestType, TravelerDepositRecord } from '../../types';
 import { useApp, formatPriceJMD } from '../../context/AppContext';
@@ -46,21 +49,27 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
     signupUser,
     openAuthModal,
     verifyAmbassadorCode,
+    addInboxItem,
+    submitContactForm,
   } = useApp();
 
-  const [step, setStep] = useState<'details' | 'checkout' | 'confirmation'>('details');
+  const [step, setStep] = useState<'details' | 'checkout' | 'confirmation' | 'inquiry_success'>('details');
 
   const [selectedTripId, setSelectedTripId] = useState<string>(trip ? trip.id : trips[0]?.id || '');
   const [customerName, setCustomerName] = useState(currentUser?.name || '');
   const [email, setEmail] = useState(currentUser?.email || '');
   const [phone, setPhone] = useState(currentUser?.phone || '');
-  const [countryOrParish, setCountryOrParish] = useState(currentUser?.homeParishOrCountry || 'Kingston & St. Andrew, Jamaica');
+  const [countryOrParish, setCountryOrParish] = useState(currentUser?.homeParishOrCountry || 'Kingston & St. Andrew');
   const [adultsCount, setAdultsCount] = useState(1);
   const [childrenCount, setChildrenCount] = useState(0);
   const [preferredTravelDate, setPreferredTravelDate] = useState('');
   const [travelInterestType, setTravelInterestType] = useState<TravelInterestType>('ready_to_book');
   const [specialRequests, setSpecialRequests] = useState('');
+  const [inquiryText, setInquiryText] = useState('');
+  const [inquiryError, setInquiryError] = useState('');
   const [preferredContactMethod, setPreferredContactMethod] = useState<'phone' | 'email' | 'whatsapp'>('whatsapp');
+
+  const isInquiryMode = travelInterestType === 'more_info' || travelInterestType === 'need_help';
 
   // Ambassador selection state
   const ambassadorsList = settings.ambassadors && settings.ambassadors.length > 0
@@ -171,6 +180,114 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
       if (!cardName) setCardName(currentUser.name);
     }
   }, [currentUser]);
+
+  // Inquiry submission (does NOT lead to checkout or depositing money)
+  // Automatically sends to BOTH zbuchanan.smeltravels@gmail.com AND smeltravels876@gmail.com and the onsite admin inbox
+  const handleSendInquiry = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!customerName.trim() || !email.trim() || !phone.trim() || !countryOrParish.trim()) {
+      showNotification('Missing Information', 'Please complete your Full Name, Email, Phone Number, and Parish.', 'warning');
+      return;
+    }
+
+    if (!inquiryText.trim()) {
+      setInquiryError('Please type your inquiry or questions for our travel specialists.');
+      showNotification('Inquiry Required', 'Please enter your inquiry in the text box below.', 'warning');
+      const elem = document.getElementById('inquiry-message-box');
+      if (elem) elem.focus();
+      return;
+    }
+
+    setInquiryError('');
+    setIsSubmitting(true);
+
+    const ref = `INQ-${Math.floor(10000 + Math.random() * 90000)}`;
+    const stageLabel =
+      travelInterestType === 'more_info'
+        ? 'Wants More Information'
+        : 'Interested But Needs Help';
+    const recipients = ['zbuchanan.smeltravels@gmail.com', 'smeltravels876@gmail.com'];
+
+    // 1. Dispatch to server backend endpoint (dispatches notifications & updates server inbox/email logs)
+    try {
+      await fetch('/api/trip-inquiry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tripId: activeTrip.id,
+          tripName: activeTrip.name,
+          customerName: customerName.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          parish: countryOrParish.trim(),
+          inquiryText: inquiryText.trim(),
+          inquiryType: travelInterestType,
+          preferredContactMethod,
+          adultsCount,
+        }),
+      });
+    } catch (err) {
+      console.warn('[Trip Inquiry] Server fetch notification fallback to local sync', err);
+    }
+
+    // 2. Add to Onsite Admin Inbox immediately
+    addInboxItem({
+      type: 'inquiry',
+      title: `Trip Inquiry: ${activeTrip.name} (${stageLabel})`,
+      senderName: customerName.trim(),
+      senderEmail: email.trim(),
+      senderPhone: phone.trim(),
+      summary: `Inquiry from ${customerName.trim()} (${countryOrParish.trim()}) for ${activeTrip.name}. Auto-routed to ${recipients.join(' & ')}.`,
+      details: `Customer: ${customerName.trim()}\nEmail: ${email.trim()}\nPhone: ${phone.trim()}\nParish: ${countryOrParish.trim()}\nStage: ${stageLabel}\nPackage: ${activeTrip.name} (${activeTrip.dates})\nInquiry Details: ${inquiryText.trim()}\nPreferred Contact: ${preferredContactMethod}\nAutomated Email Recipients: ${recipients.join(', ')}`,
+      tripId: activeTrip.id,
+      tripName: activeTrip.name,
+      referenceNumber: ref,
+    });
+
+    // 3. Register as contact lead (no sign up required)
+    submitContactForm({
+      name: customerName.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      countryOrParish: countryOrParish.trim(),
+      tripId: activeTrip.id,
+      interestedTrip: activeTrip.name,
+      subject: `[Trip Inquiry] ${activeTrip.name} - ${stageLabel}`,
+      message: inquiryText.trim(),
+      preferredContactMethod,
+    });
+
+    // 4. Record booking lead with deposit = 0
+    createBooking({
+      tripId: activeTrip.id,
+      tripName: activeTrip.name,
+      customerName: customerName.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      countryOrParish: countryOrParish.trim(),
+      adultsCount,
+      childrenCount: 0,
+      preferredTravelDate: preferredTravelDate || activeTrip.dates,
+      travelInterestType,
+      specialRequests: inquiryText.trim(),
+      preferredContactMethod,
+      status: 'New',
+      depositPaid: 0,
+      totalPrice: activeTrip.price * adultsCount,
+      currency: 'JMD',
+      ambassadorId: selectedAmbassadorId || undefined,
+    });
+
+    setIsSubmitting(false);
+    setSubmittedRef(ref);
+    setStep('inquiry_success');
+    showNotification(
+      'Inquiry Sent Successfully!',
+      'Automatically sent to zbuchanan.smeltravels@gmail.com & smeltravels876@gmail.com.',
+      'success'
+    );
+  };
 
   // Step 1 -> Step 2: Proceed to Checkout
   const handleProceedToCheckout = (e: React.FormEvent) => {
@@ -353,11 +470,15 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
             </div>
             <div>
               <h3 className="text-lg sm:text-xl font-extrabold font-['Outfit',sans-serif] text-white">
-                {step === 'confirmation'
+                {step === 'inquiry_success'
+                  ? 'Inquiry Dispatched to Directors!'
+                  : step === 'confirmation'
                   ? 'Deposit Confirmed & Spot Secured!'
                   : step === 'checkout'
                   ? 'Deposit Checkout & Reservation'
-                  : 'Trip Reservation & Inquiry'}
+                  : isInquiryMode
+                  ? 'Trip Inquiry (No Deposit Needed)'
+                  : 'Trip Reservation & Deposit'}
               </h3>
               <p className="text-xs text-[#FFC72C]">
                 SMELTRAVELS876 • Travel More. Worry Less.
@@ -375,60 +496,199 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
         </div>
 
         {/* Steps Progress Indicator */}
-        <div className="bg-purple-950/20 px-6 py-2.5 border-b border-neutral-100 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2">
-            <span
-              className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                step === 'details'
-                  ? 'bg-[#2E0249] text-white'
-                  : 'bg-emerald-600 text-white'
-              }`}
-            >
-              {step === 'details' ? '1' : '✓'}
-            </span>
-            <span className={step === 'details' ? 'font-bold text-[#2E0249]' : 'text-neutral-500'}>
-              Traveler Details
-            </span>
+        {isInquiryMode ? (
+          <div className="bg-purple-950/20 px-6 py-2.5 border-b border-neutral-100 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2">
+              <span
+                className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                  step === 'details'
+                    ? 'bg-[#2E0249] text-white'
+                    : 'bg-emerald-600 text-white'
+                }`}
+              >
+                {step === 'details' ? '1' : '✓'}
+              </span>
+              <span className={step === 'details' ? 'font-bold text-[#2E0249]' : 'text-neutral-500'}>
+                Inquiry Details
+              </span>
+            </div>
+
+            <div className="w-8 h-[1px] bg-neutral-300"></div>
+
+            <div className="flex items-center gap-2">
+              <span
+                className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                  step === 'inquiry_success'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-neutral-200 text-neutral-600'
+                }`}
+              >
+                {step === 'inquiry_success' ? '✓' : '2'}
+              </span>
+              <span className={step === 'inquiry_success' ? 'font-bold text-emerald-800' : 'text-neutral-500'}>
+                Sent to Directors
+              </span>
+            </div>
+
+            <div className="text-[11px] font-bold text-[#2E0249] bg-[#FFC72C]/40 px-2.5 py-0.5 rounded-full">
+              No Deposit Required
+            </div>
           </div>
+        ) : (
+          <div className="bg-purple-950/20 px-6 py-2.5 border-b border-neutral-100 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2">
+              <span
+                className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                  step === 'details'
+                    ? 'bg-[#2E0249] text-white'
+                    : 'bg-emerald-600 text-white'
+                }`}
+              >
+                {step === 'details' ? '1' : '✓'}
+              </span>
+              <span className={step === 'details' ? 'font-bold text-[#2E0249]' : 'text-neutral-500'}>
+                Traveler Details
+              </span>
+            </div>
 
-          <div className="w-6 h-[1px] bg-neutral-300"></div>
+            <div className="w-6 h-[1px] bg-neutral-300"></div>
 
-          <div className="flex items-center gap-2">
-            <span
-              className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                step === 'checkout'
-                  ? 'bg-[#2E0249] text-white'
-                  : step === 'confirmation'
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-neutral-200 text-neutral-600'
-              }`}
-            >
-              {step === 'confirmation' ? '✓' : '2'}
-            </span>
-            <span className={step === 'checkout' ? 'font-bold text-[#2E0249]' : 'text-neutral-500'}>
-              Deposit Checkout
-            </span>
+            <div className="flex items-center gap-2">
+              <span
+                className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                  step === 'checkout'
+                    ? 'bg-[#2E0249] text-white'
+                    : step === 'confirmation'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-neutral-200 text-neutral-600'
+                }`}
+              >
+                {step === 'confirmation' ? '✓' : '2'}
+              </span>
+              <span className={step === 'checkout' ? 'font-bold text-[#2E0249]' : 'text-neutral-500'}>
+                Deposit Checkout
+              </span>
+            </div>
+
+            <div className="w-6 h-[1px] bg-neutral-300"></div>
+
+            <div className="flex items-center gap-2">
+              <span
+                className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                  step === 'confirmation' ? 'bg-emerald-600 text-white' : 'bg-neutral-200 text-neutral-600'
+                }`}
+              >
+                3
+              </span>
+              <span className={step === 'confirmation' ? 'font-bold text-emerald-800' : 'text-neutral-500'}>
+                Confirmed
+              </span>
+            </div>
           </div>
-
-          <div className="w-6 h-[1px] bg-neutral-300"></div>
-
-          <div className="flex items-center gap-2">
-            <span
-              className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                step === 'confirmation' ? 'bg-emerald-600 text-white' : 'bg-neutral-200 text-neutral-600'
-              }`}
-            >
-              3
-            </span>
-            <span className={step === 'confirmation' ? 'font-bold text-emerald-800' : 'text-neutral-500'}>
-              Confirmed
-            </span>
-          </div>
-        </div>
+        )}
 
         {/* Modal Body */}
         <div className="p-5 sm:p-7 overflow-y-auto flex-1">
-          {step === 'confirmation' ? (
+          {step === 'inquiry_success' ? (
+            /* INQUIRY SUCCESS SCREEN */
+            <div className="space-y-6 text-center py-2 animate-in fade-in zoom-in-95 duration-200">
+              <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                <Send className="w-8 h-8 text-emerald-600 ml-1" />
+              </div>
+
+              <div className="space-y-2">
+                <span className="inline-block bg-emerald-100 text-emerald-800 font-extrabold text-xs px-3.5 py-1 rounded-full uppercase tracking-wider">
+                  Inquiry Dispatched • No Deposit Taken
+                </span>
+                <h4 className="text-2xl font-black text-neutral-900 font-['Outfit',sans-serif]">
+                  Thank You, {customerName}!
+                </h4>
+                <p className="text-sm text-neutral-600 max-w-lg mx-auto">
+                  Your inquiry for <strong>{activeTrip.name}</strong> has been received. Our directors have been notified automatically and will get in touch with you shortly.
+                </p>
+              </div>
+
+              {/* Auto-Dispatch Destination Badge */}
+              <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 max-w-lg mx-auto text-left space-y-2.5 shadow-2xs">
+                <div className="flex items-center gap-2 text-xs font-bold text-[#2E0249]">
+                  <Mail className="w-4 h-4 text-purple-700" />
+                  <span>Automatically Routed to Travel Directors:</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <div className="bg-white p-2.5 rounded-xl border border-purple-100 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                    <div className="overflow-hidden">
+                      <span className="block font-bold text-neutral-900 text-[11px]">Senior Travel Ambassador</span>
+                      <span className="font-mono text-[10px] text-purple-800 truncate block">zbuchanan.smeltravels@gmail.com</span>
+                    </div>
+                  </div>
+                  <div className="bg-white p-2.5 rounded-xl border border-purple-100 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                    <div className="overflow-hidden">
+                      <span className="block font-bold text-neutral-900 text-[11px]">SMELTRAVELS876 Operations</span>
+                      <span className="font-mono text-[10px] text-purple-800 truncate block">smeltravels876@gmail.com</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px] text-neutral-600 pt-1 border-t border-purple-100">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Synchronized live to our onsite <strong>Admin Inbox</strong> with reference <strong>#{submittedRef}</strong>.</span>
+                </div>
+              </div>
+
+              {/* Inquiry Summary Box */}
+              <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 max-w-lg mx-auto text-left text-xs space-y-2">
+                <div className="flex items-center justify-between pb-2 border-b border-neutral-200">
+                  <span className="font-bold text-neutral-700">Trip Package:</span>
+                  <span className="font-semibold text-neutral-900">{activeTrip.countryFlag} {activeTrip.name}</span>
+                </div>
+                <div className="flex items-center justify-between pb-2 border-b border-neutral-200">
+                  <span className="font-bold text-neutral-700">Parish of Residence:</span>
+                  <span className="font-semibold text-neutral-900">{countryOrParish}</span>
+                </div>
+                <div className="flex items-center justify-between pb-2 border-b border-neutral-200">
+                  <span className="font-bold text-neutral-700">Contact Method:</span>
+                  <span className="font-semibold text-neutral-900 capitalize">{preferredContactMethod} ({phone})</span>
+                </div>
+                <div className="pt-1">
+                  <span className="font-bold text-neutral-700 block mb-1">Your Question / Inquiry:</span>
+                  <p className="italic text-neutral-600 bg-white p-2.5 rounded-xl border border-neutral-200 text-[11px] whitespace-pre-wrap">
+                    "{inquiryText}"
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 max-w-lg mx-auto text-left text-xs text-amber-900 flex items-start gap-2">
+                <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                <span>
+                  No account sign-up is required. You do not need to log in to receive your response. Our travel coordinators will follow up directly.
+                </span>
+              </div>
+
+              {/* Actions */}
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl border border-neutral-300 text-neutral-700 text-sm font-semibold hover:bg-neutral-100 transition-colors cursor-pointer"
+                >
+                  Done & Close
+                </button>
+
+                <a
+                  href={`https://wa.me/${settings.whatsappNumber}?text=${encodeURIComponent(
+                    `Hi SMELTRAVELS876! I just submitted an inquiry (${submittedRef}) for "${activeTrip.name}". My name is ${customerName}.`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold shadow-md transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Phone className="w-4 h-4" />
+                  <span>Chat on WhatsApp Now</span>
+                </a>
+              </div>
+            </div>
+          ) : step === 'confirmation' ? (
             /* STEP 3: Confirmation Screen */
             <div className="space-y-6 text-center py-2">
               <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner animate-in zoom-in-75 duration-300">
@@ -1084,7 +1344,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
             </form>
           ) : (
             /* STEP 1: Traveler Details Form */
-            <form onSubmit={handleProceedToCheckout} className="space-y-6">
+            <form onSubmit={isInquiryMode ? handleSendInquiry : handleProceedToCheckout} className="space-y-6">
               {/* Trip Selector & Rate Banner */}
               <div className="bg-purple-50 p-4 rounded-2xl border border-purple-200 space-y-3">
                 <label className="block text-xs font-bold uppercase tracking-wider text-purple-950">
@@ -1106,8 +1366,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                   <span className="text-neutral-600">
                     Required Lock-In Deposit: <strong className="text-[#2E0249] font-bold">{formatPriceJMD(activeTrip.deposit)}</strong> / person
                   </span>
-                  <span className="text-purple-900 font-bold bg-[#FFC72C]/40 px-2 py-0.5 rounded-full text-[11px]">
-                    Direct Deposit Checkout Available
+                  <span className={`font-bold px-2.5 py-0.5 rounded-full text-[11px] ${
+                    isInquiryMode
+                      ? 'bg-purple-100 text-purple-950 border border-purple-300'
+                      : 'text-purple-900 bg-[#FFC72C]/40'
+                  }`}>
+                    {isInquiryMode ? 'Inquiry Mode • No Deposit Needed' : 'Direct Deposit Checkout Available'}
                   </span>
                 </div>
               </div>
@@ -1117,41 +1381,101 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                 <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-2">
                   What is your booking stage?
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                  {/* Option 1: Ready to book */}
                   <button
                     type="button"
-                    onClick={() => setTravelInterestType('ready_to_book')}
-                    className={`p-3 rounded-xl border text-left font-semibold transition-all cursor-pointer ${
+                    onClick={() => {
+                      setTravelInterestType('ready_to_book');
+                      setInquiryError('');
+                    }}
+                    id="btn-intent-ready-to-book"
+                    className={`p-3.5 rounded-2xl border text-left font-semibold transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden group ${
                       travelInterestType === 'ready_to_book'
-                        ? 'bg-[#2E0249] text-[#FFC72C] border-[#2E0249] shadow-sm'
-                        : 'bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50'
+                        ? 'bg-[#2E0249] text-[#FFC72C] border-[#2E0249] shadow-md ring-2 ring-[#FFC72C]/70 scale-[1.01]'
+                        : 'bg-white text-neutral-800 border-neutral-300 hover:border-purple-400 hover:bg-purple-50/40 hover:shadow-2xs'
                     }`}
                   >
-                    ✓ I'm ready to book & deposit
+                    <div className="flex items-center justify-between gap-1 mb-1.5 w-full">
+                      <span className={`text-xs font-bold flex items-center gap-1.5 ${travelInterestType === 'ready_to_book' ? 'text-[#FFC72C]' : 'text-[#2E0249]'}`}>
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                        <span>Ready to book</span>
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 ${
+                        travelInterestType === 'ready_to_book'
+                          ? 'bg-[#FFC72C] text-[#2E0249]'
+                          : 'bg-emerald-100 text-emerald-900'
+                      }`}>
+                        Deposit
+                      </span>
+                    </div>
+                    <p className={`text-[11px] leading-snug ${travelInterestType === 'ready_to_book' ? 'text-purple-200' : 'text-neutral-500'}`}>
+                      Lock in spot with direct checkout
+                    </p>
                   </button>
 
+                  {/* Option 2: I want more information (CSS selector 1) */}
                   <button
                     type="button"
-                    onClick={() => setTravelInterestType('more_info')}
-                    className={`p-3 rounded-xl border text-left font-semibold transition-all cursor-pointer ${
+                    onClick={() => {
+                      setTravelInterestType('more_info');
+                      setInquiryError('');
+                    }}
+                    id="btn-intent-more-info"
+                    className={`p-3.5 rounded-2xl border text-left font-semibold transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden group ${
                       travelInterestType === 'more_info'
-                        ? 'bg-[#2E0249] text-[#FFC72C] border-[#2E0249] shadow-sm'
-                        : 'bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50'
+                        ? 'bg-[#2E0249] text-[#FFC72C] border-[#2E0249] shadow-md ring-2 ring-[#FFC72C]/80 scale-[1.01]'
+                        : 'bg-white text-neutral-800 border-neutral-300 hover:border-purple-400 hover:bg-purple-50/40 hover:shadow-2xs'
                     }`}
                   >
-                    ℹ I want more information
+                    <div className="flex items-center justify-between gap-1 mb-1.5 w-full">
+                      <span className={`text-xs font-bold flex items-center gap-1.5 ${travelInterestType === 'more_info' ? 'text-[#FFC72C]' : 'text-[#2E0249]'}`}>
+                        <HelpCircle className="w-4 h-4 shrink-0" />
+                        <span>I want more info</span>
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 ${
+                        travelInterestType === 'more_info'
+                          ? 'bg-[#FFC72C] text-[#2E0249]'
+                          : 'bg-purple-100 text-purple-900 group-hover:bg-purple-200'
+                      }`}>
+                        No Deposit
+                      </span>
+                    </div>
+                    <p className={`text-[11px] leading-snug ${travelInterestType === 'more_info' ? 'text-purple-200' : 'text-neutral-500'}`}>
+                      Ask questions directly • No checkout
+                    </p>
                   </button>
 
+                  {/* Option 3: Interested but need help (CSS selector 2) */}
                   <button
                     type="button"
-                    onClick={() => setTravelInterestType('need_help')}
-                    className={`p-3 rounded-xl border text-left font-semibold transition-all cursor-pointer ${
+                    onClick={() => {
+                      setTravelInterestType('need_help');
+                      setInquiryError('');
+                    }}
+                    id="btn-intent-need-help"
+                    className={`p-3.5 rounded-2xl border text-left font-semibold transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden group ${
                       travelInterestType === 'need_help'
-                        ? 'bg-[#2E0249] text-[#FFC72C] border-[#2E0249] shadow-sm'
-                        : 'bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50'
+                        ? 'bg-[#2E0249] text-[#FFC72C] border-[#2E0249] shadow-md ring-2 ring-[#FFC72C]/80 scale-[1.01]'
+                        : 'bg-white text-neutral-800 border-neutral-300 hover:border-purple-400 hover:bg-purple-50/40 hover:shadow-2xs'
                     }`}
                   >
-                    💬 Interested but need help
+                    <div className="flex items-center justify-between gap-1 mb-1.5 w-full">
+                      <span className={`text-xs font-bold flex items-center gap-1.5 ${travelInterestType === 'need_help' ? 'text-[#FFC72C]' : 'text-[#2E0249]'}`}>
+                        <MessageSquareText className="w-4 h-4 shrink-0" />
+                        <span>Interested, need help</span>
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 ${
+                        travelInterestType === 'need_help'
+                          ? 'bg-[#FFC72C] text-[#2E0249]'
+                          : 'bg-amber-100 text-amber-900 group-hover:bg-amber-200'
+                      }`}>
+                        No Deposit
+                      </span>
+                    </div>
+                    <p className={`text-[11px] leading-snug ${travelInterestType === 'need_help' ? 'text-purple-200' : 'text-neutral-500'}`}>
+                      Payment plans & help • No checkout
+                    </p>
                   </button>
                 </div>
               </div>
@@ -1202,21 +1526,174 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
 
                 <div>
                   <label className="block text-xs font-semibold text-neutral-700 mb-1">
-                    Parish / Country of Residence
+                    Parish of Residence *
                   </label>
                   <input
                     type="text"
+                    required
+                    list="jamaica-parishes"
                     placeholder="e.g. Kingston, St. Catherine, Montego Bay"
                     value={countryOrParish}
                     onChange={(e) => setCountryOrParish(e.target.value)}
                     className="w-full bg-neutral-50 border border-neutral-300 rounded-xl px-3.5 py-2.5 text-sm text-neutral-900 focus:outline-none focus:border-[#2E0249]"
+                    id="input-customer-parish"
                   />
+                  <datalist id="jamaica-parishes">
+                    <option value="Kingston" />
+                    <option value="St. Andrew" />
+                    <option value="St. Catherine" />
+                    <option value="Clarendon" />
+                    <option value="Manchester" />
+                    <option value="St. Elizabeth" />
+                    <option value="Westmoreland" />
+                    <option value="Hanover" />
+                    <option value="St. James (Montego Bay)" />
+                    <option value="Trelawny" />
+                    <option value="St. Ann" />
+                    <option value="St. Mary" />
+                    <option value="Portland" />
+                    <option value="St. Thomas" />
+                    <option value="Overseas / International" />
+                  </datalist>
                 </div>
               </div>
 
-              {/* MANDATORY AMBASSADOR SELECTION */}
-              <div
-                id="ambassador-selection-section"
+              {/* Conditional view: Inquiry Mode vs Ready to Book Checkout */}
+              {isInquiryMode ? (
+                /* INQUIRY MODE: Text box, Preferred contact, Automated notification notice, Send CTA */
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  {/* Inquiry Text Area */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-[#2E0249] flex items-center gap-1.5">
+                        <MessageSquareText className="w-4 h-4 text-purple-700" />
+                        <span>
+                          {travelInterestType === 'more_info'
+                            ? 'What information would you like about this package? *'
+                            : 'How can our travel specialists assist you with this trip? *'}
+                        </span>
+                      </label>
+                      <span className="text-[10px] font-bold text-purple-900 bg-purple-100 px-2.5 py-0.5 rounded-full">
+                        Direct to Directors
+                      </span>
+                    </div>
+
+                    <textarea
+                      rows={4}
+                      required
+                      id="inquiry-message-box"
+                      placeholder={
+                        travelInterestType === 'more_info'
+                          ? "e.g. Hi SMELTRAVELS876 team! I am interested in this package and would like more details about flight timings, luggage allowance, hotel room arrangements, or travel document preparation..."
+                          : "e.g. Hi! I want to join this trip but need help setting up an installment payment plan, finding a roommate for double occupancy, or have questions regarding visas. Please reach out with details..."
+                      }
+                      value={inquiryText}
+                      onChange={(e) => {
+                        setInquiryText(e.target.value);
+                        if (inquiryError) setInquiryError('');
+                      }}
+                      className="w-full bg-neutral-50 border border-purple-200 focus:border-[#2E0249] focus:bg-white rounded-2xl p-3.5 text-sm text-neutral-900 focus:outline-none transition-all shadow-inner"
+                    ></textarea>
+
+                    {inquiryError && (
+                      <p className="text-xs text-rose-600 font-semibold mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{inquiryError}</span>
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Contact Preference & Travelers Count */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-neutral-700 mb-1">
+                        Preferred Contact Method
+                      </label>
+                      <select
+                        value={preferredContactMethod}
+                        onChange={(e) => setPreferredContactMethod(e.target.value as any)}
+                        className="w-full bg-neutral-50 border border-neutral-300 rounded-xl px-3.5 py-2.5 text-sm text-neutral-900 focus:outline-none focus:border-[#2E0249]"
+                      >
+                        <option value="whatsapp">WhatsApp (Fastest response)</option>
+                        <option value="phone">Phone Call</option>
+                        <option value="email">Email</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-neutral-700 mb-1">
+                        Number of Travelers Interested
+                      </label>
+                      <select
+                        value={adultsCount}
+                        onChange={(e) => setAdultsCount(Number(e.target.value))}
+                        className="w-full bg-neutral-50 border border-neutral-300 rounded-xl px-3.5 py-2.5 text-sm text-neutral-900 focus:outline-none focus:border-[#2E0249]"
+                      >
+                        {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                          <option key={n} value={n}>
+                            {n} Traveler{n > 1 ? 's' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Automated Notification Dispatch Banner */}
+                  <div className="bg-purple-50/90 rounded-2xl p-4 text-xs text-neutral-800 border border-purple-200 space-y-2">
+                    <div className="flex items-center gap-2 font-bold text-[#2E0249]">
+                      <Mail className="w-4 h-4 text-purple-700" />
+                      <span>Automatic Dispatch (No Sign-Up or Deposit Required):</span>
+                    </div>
+                    <p className="text-neutral-600 leading-relaxed">
+                      Clicking <strong>Send Inquiry</strong> will <strong>AUTOMATICALLY</strong> deliver your inquiry directly to both travel director addresses:
+                    </p>
+                    <div className="flex flex-wrap gap-2 pt-0.5">
+                      <span className="bg-white px-2.5 py-1 rounded-lg border border-purple-200 text-purple-950 font-mono text-[11px] font-bold shadow-2xs">
+                        ✉ zbuchanan.smeltravels@gmail.com
+                      </span>
+                      <span className="bg-white px-2.5 py-1 rounded-lg border border-purple-200 text-purple-950 font-mono text-[11px] font-bold shadow-2xs">
+                        ✉ smeltravels876@gmail.com
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-neutral-500 pt-0.5 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>Also logged live in the onsite <strong>Admin Inbox</strong> for immediate team review.</span>
+                    </p>
+                  </div>
+
+                  {/* Inquiry Submit CTA */}
+                  <div className="pt-2 flex items-center justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="px-5 py-3 rounded-xl border border-neutral-300 text-neutral-700 text-sm font-semibold hover:bg-neutral-100 transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      id="btn-send-inquiry"
+                      className="bg-[#2E0249] hover:bg-[#3B185F] text-[#FFC72C] font-bold text-sm px-8 py-3 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+                    >
+                      {isSubmitting ? (
+                        <span>Sending Inquiry...</span>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4" />
+                          <span>Send Inquiry to SMELTRAVELS876 (No Deposit)</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* READY TO BOOK MODE: Ambassador selection, discount code, deposit checkout */
+                <>
+                  {/* MANDATORY AMBASSADOR SELECTION */}
+                  <div
+                    id="ambassador-selection-section"
                 className={`p-4 sm:p-5 rounded-2xl border transition-all ${
                   ambassadorError
                     ? 'bg-red-50/80 border-red-300 ring-2 ring-red-400'
@@ -1493,8 +1970,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                   )}
                 </button>
               </div>
-            </form>
+            </>
           )}
+        </form>
+      )}
         </div>
       </div>
     </div>

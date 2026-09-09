@@ -118,9 +118,11 @@ export interface ContactSubmission {
   name: string;
   email: string;
   phone: string;
+  countryOrParish?: string;
   subject: string;
   message: string;
   interestedTrip?: string;
+  tripId?: string;
   preferredContactMethod: 'phone' | 'email' | 'whatsapp';
   status: 'New' | 'Replied' | 'Archived';
   createdAt: string;
