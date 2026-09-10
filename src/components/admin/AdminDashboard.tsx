@@ -356,26 +356,14 @@ export const AdminDashboard: React.FC = () => {
     };
 
     try {
-      // 1. Push directly into Realtime Database at '/siteContent'
-      await pushSiteContentToRTDB('settings', finalizedSettings);
-      await pushFullSiteContentToRTDB({
-        settings: finalizedSettings,
-        trips,
-        destinations,
-        offers,
-        faqs,
-        blog: blogPosts,
-        testimonials,
-      });
-
       await updateSettings(finalizedSettings);
       setLocalSettings(finalizedSettings);
       setSettingsSyncSuccess(true);
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       setLastSyncedTimestamp(timeStr);
       showNotification(
-        'Realtime Database Sync Complete',
-        'Agency settings and text pushed to Realtime Database path /siteContent & live site.',
+        'Settings Saved & Live for All Users',
+        'Website settings have been saved permanently to cloud database and synchronized to all visitors and administrators.',
         'success'
       );
       setTimeout(() => {
@@ -892,13 +880,10 @@ export const AdminDashboard: React.FC = () => {
                       <span className="text-[11px] font-bold text-neutral-600">Availability:</span>
                       <select
                         value={t.status}
-                        onChange={async (e) => {
+                        onChange={(e) => {
                           const newStatus = e.target.value as TripStatus;
                           const updated = { ...t, status: newStatus };
-                          const updatedTrips = trips.map(item => item.id === t.id ? updated : item);
                           saveTrip(updated);
-                          await pushSiteContentToRTDB('trips', updatedTrips);
-                          await pushFullSiteContentToRTDB({ trips: updatedTrips, settings: localSettings });
                           showNotification('Availability Updated', `Set "${t.name}" availability to ${newStatus}.`);
                         }}
                         className="px-2.5 py-1 rounded-lg border border-neutral-300 bg-white text-xs font-bold text-neutral-800 cursor-pointer shadow-2xs hover:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-900/20"
@@ -1666,15 +1651,10 @@ export const AdminDashboard: React.FC = () => {
                           ? trips.map(t => t.id === finalTrip.id ? finalTrip : t)
                           : [finalTrip, ...trips];
 
-                        // 1. Push directly into Realtime Database at '/siteContent'
-                        await pushSiteContentToRTDB('packages', updatedTrips);
-                        await pushSiteContentToRTDB('trips', updatedTrips);
-                        await pushFullSiteContentToRTDB({ trips: updatedTrips, settings: localSettings });
-
-                        // 2. Save in app context
+                        // Save and sync trip across all backends & clients
                         saveTrip(finalTrip);
                         setEditingTrip(null);
-                        showNotification('Trip Saved to Database', `Pushed "${finalTrip.name}" directly to /siteContent.`);
+                        showNotification('Trip Saved & Live for All Users', `Pushed "${finalTrip.name}" to cloud database and synced live.`);
                       }}
                       className="px-5 py-2 bg-[#2E0249] text-[#FFC72C] rounded-xl text-xs font-bold hover:bg-[#3B185F] transition-colors cursor-pointer shadow"
                     >
@@ -1865,14 +1845,10 @@ export const AdminDashboard: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={async () => {
-                        const updatedDest = destinations.some(d => d.id === editingDestination.id)
-                          ? destinations.map(d => d.id === editingDestination.id ? editingDestination : d)
-                          : [editingDestination, ...destinations];
-                        await pushSiteContentToRTDB('destinations', updatedDest);
+                      onClick={() => {
                         saveDestination(editingDestination);
                         setEditingDestination(null);
-                        showNotification('Destination Saved', `Updated "${editingDestination.name}" to /siteContent.`);
+                        showNotification('Destination Saved', `Updated "${editingDestination.name}" across all devices.`);
                       }}
                       className="px-5 py-2 bg-[#2E0249] text-[#FFC72C] rounded-xl text-xs font-bold"
                     >
@@ -2037,14 +2013,10 @@ export const AdminDashboard: React.FC = () => {
                       Cancel
                     </button>
                     <button
-                      onClick={async () => {
-                        const updatedFaqs = faqs.some(f => f.id === editingFaq.id)
-                          ? faqs.map(f => f.id === editingFaq.id ? editingFaq : f)
-                          : [...faqs, editingFaq];
-                        await pushSiteContentToRTDB('faqs', updatedFaqs);
+                      onClick={() => {
                         saveFaq(editingFaq);
                         setEditingFaq(null);
-                        showNotification('FAQ Saved', 'Knowledge base updated in /siteContent.');
+                        showNotification('FAQ Saved', 'Knowledge base updated and synced live to all users.');
                       }}
                       className="px-4 py-2 bg-[#2E0249] text-[#FFC72C] rounded-xl text-xs font-bold"
                     >

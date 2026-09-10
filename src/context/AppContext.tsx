@@ -37,6 +37,7 @@ import {
   pushFullSiteContentToRTDB,
   fetchSiteContentFromRTDB,
   subscribeToSiteContent,
+  syncAllBackends,
 } from '../lib/firebase';
 
 interface AppContextType {
@@ -329,6 +330,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => { setStoredItem('admin_role', currentAdminRole); }, [currentAdminRole]);
   useEffect(() => { setStoredItem('traveler_user', currentUser); }, [currentUser]);
 
+  // Helper to convert arrays or Firebase RTDB keyed objects into clean typed arrays
+  function parseAsArray<T>(val: any): T[] | null {
+    if (!val) return null;
+    if (Array.isArray(val)) return val.filter(Boolean);
+    if (typeof val === 'object') {
+      return Object.values(val).filter(Boolean) as T[];
+    }
+    return null;
+  }
+
   // Centralized state updater for live website feed updates
   const isIncomingUpdateRef = useRef(false);
 
@@ -337,119 +348,152 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     isIncomingUpdateRef.current = true;
 
     if (d.settings && typeof d.settings === 'object') {
-      setSettings(prev => {
+      const inc = d.settings;
+      setSettings((prev) => {
+        const merged: SiteSettings = {
+          ...prev,
+          ...inc,
+          companyBanking: {
+            ...(prev.companyBanking || {}),
+            ...(inc.companyBanking || {}),
+          },
+          ambassadors: Array.isArray(inc.ambassadors)
+            ? inc.ambassadors
+            : inc.ambassadors && typeof inc.ambassadors === 'object'
+            ? (Object.values(inc.ambassadors) as Ambassador[])
+            : prev.ambassadors,
+        };
         try {
-          if (JSON.stringify(prev) === JSON.stringify({ ...prev, ...d.settings })) {
+          if (JSON.stringify(prev) === JSON.stringify(merged)) {
             return prev;
           }
         } catch (e) {}
-        return {
-          ...prev,
-          ...d.settings,
-          ambassadors: Array.isArray(d.settings.ambassadors) && d.settings.ambassadors.length > 0
-            ? d.settings.ambassadors
-            : prev.ambassadors,
-        };
+        setStoredItem('settings', merged);
+        return merged;
       });
     }
 
-    const tripsArray = (Array.isArray(d.trips) && d.trips) || (Array.isArray(d.packages) && d.packages) || (Array.isArray(d.travelPackages) && d.travelPackages);
-    if (tripsArray) {
-      setTrips(prev => {
+    const tripsArray =
+      parseAsArray<TripPackage>(d.trips) ||
+      parseAsArray<TripPackage>(d.packages) ||
+      parseAsArray<TripPackage>(d.travelPackages);
+    if (tripsArray && tripsArray.length > 0) {
+      setTrips((prev) => {
         try {
           if (JSON.stringify(prev) === JSON.stringify(tripsArray)) return prev;
         } catch (e) {}
+        setStoredItem('trips', tripsArray);
         return tripsArray;
       });
     }
 
-    if (d.destinations && Array.isArray(d.destinations)) {
-      setDestinations(prev => {
+    const destinationsArray = parseAsArray<Destination>(d.destinations);
+    if (destinationsArray && destinationsArray.length > 0) {
+      setDestinations((prev) => {
         try {
-          if (JSON.stringify(prev) === JSON.stringify(d.destinations)) return prev;
+          if (JSON.stringify(prev) === JSON.stringify(destinationsArray)) return prev;
         } catch (e) {}
-        return d.destinations;
+        setStoredItem('destinations', destinationsArray);
+        return destinationsArray;
       });
     }
 
-    if (d.bookings && Array.isArray(d.bookings)) {
-      setBookings(prev => {
+    const bookingsArray = parseAsArray<BookingSubmission>(d.bookings);
+    if (bookingsArray) {
+      setBookings((prev) => {
         try {
-          if (JSON.stringify(prev) === JSON.stringify(d.bookings)) return prev;
+          if (JSON.stringify(prev) === JSON.stringify(bookingsArray)) return prev;
         } catch (e) {}
-        return d.bookings;
+        setStoredItem('bookings', bookingsArray);
+        return bookingsArray;
       });
     }
 
-    if (d.contacts && Array.isArray(d.contacts)) {
-      setContactSubmissions(prev => {
+    const contactsArray = parseAsArray<ContactSubmission>(d.contacts);
+    if (contactsArray) {
+      setContactSubmissions((prev) => {
         try {
-          if (JSON.stringify(prev) === JSON.stringify(d.contacts)) return prev;
+          if (JSON.stringify(prev) === JSON.stringify(contactsArray)) return prev;
         } catch (e) {}
-        return d.contacts;
+        setStoredItem('contacts', contactsArray);
+        return contactsArray;
       });
     }
 
-    if (d.customers && Array.isArray(d.customers)) {
-      setCustomers(prev => {
+    const customersArray = parseAsArray<CustomerRecord>(d.customers);
+    if (customersArray) {
+      setCustomers((prev) => {
         try {
-          if (JSON.stringify(prev) === JSON.stringify(d.customers)) return prev;
+          if (JSON.stringify(prev) === JSON.stringify(customersArray)) return prev;
         } catch (e) {}
-        return d.customers;
+        setStoredItem('customers', customersArray);
+        return customersArray;
       });
     }
 
-    if (d.blog && Array.isArray(d.blog)) {
-      setBlogPosts(prev => {
+    const blogArray = parseAsArray<BlogPost>(d.blog);
+    if (blogArray && blogArray.length > 0) {
+      setBlogPosts((prev) => {
         try {
-          if (JSON.stringify(prev) === JSON.stringify(d.blog)) return prev;
+          if (JSON.stringify(prev) === JSON.stringify(blogArray)) return prev;
         } catch (e) {}
-        return d.blog;
+        setStoredItem('blog', blogArray);
+        return blogArray;
       });
     }
 
-    if (d.offers && Array.isArray(d.offers)) {
-      setOffers(prev => {
+    const offersArray = parseAsArray<OfferItem>(d.offers);
+    if (offersArray && offersArray.length > 0) {
+      setOffers((prev) => {
         try {
-          if (JSON.stringify(prev) === JSON.stringify(d.offers)) return prev;
+          if (JSON.stringify(prev) === JSON.stringify(offersArray)) return prev;
         } catch (e) {}
-        return d.offers;
+        setStoredItem('offers', offersArray);
+        return offersArray;
       });
     }
 
-    if (d.testimonials && Array.isArray(d.testimonials)) {
-      setTestimonials(prev => {
+    const testimonialsArray = parseAsArray<TestimonialItem>(d.testimonials);
+    if (testimonialsArray && testimonialsArray.length > 0) {
+      setTestimonials((prev) => {
         try {
-          if (JSON.stringify(prev) === JSON.stringify(d.testimonials)) return prev;
+          if (JSON.stringify(prev) === JSON.stringify(testimonialsArray)) return prev;
         } catch (e) {}
-        return d.testimonials;
+        setStoredItem('testimonials', testimonialsArray);
+        return testimonialsArray;
       });
     }
 
-    if (d.faqs && Array.isArray(d.faqs)) {
-      setFaqs(prev => {
+    const faqsArray = parseAsArray<FAQItem>(d.faqs);
+    if (faqsArray && faqsArray.length > 0) {
+      setFaqs((prev) => {
         try {
-          if (JSON.stringify(prev) === JSON.stringify(d.faqs)) return prev;
+          if (JSON.stringify(prev) === JSON.stringify(faqsArray)) return prev;
         } catch (e) {}
-        return d.faqs;
+        setStoredItem('faqs', faqsArray);
+        return faqsArray;
       });
     }
 
-    if (d.adminInbox && Array.isArray(d.adminInbox)) {
-      setAdminInbox(prev => {
+    const adminInboxArray = parseAsArray<AdminInboxItem>(d.adminInbox);
+    if (adminInboxArray) {
+      setAdminInbox((prev) => {
         try {
-          if (JSON.stringify(prev) === JSON.stringify(d.adminInbox)) return prev;
+          if (JSON.stringify(prev) === JSON.stringify(adminInboxArray)) return prev;
         } catch (e) {}
-        return d.adminInbox;
+        setStoredItem('admin_inbox', adminInboxArray);
+        return adminInboxArray;
       });
     }
 
-    if (d.media && Array.isArray(d.media)) {
-      setMediaList(prev => {
+    const mediaArray = parseAsArray<MediaItem>(d.media);
+    if (mediaArray && mediaArray.length > 0) {
+      setMediaList((prev) => {
         try {
-          if (JSON.stringify(prev) === JSON.stringify(d.media)) return prev;
+          if (JSON.stringify(prev) === JSON.stringify(mediaArray)) return prev;
         } catch (e) {}
-        return d.media;
+        setStoredItem('media', mediaArray);
+        return mediaArray;
       });
     }
 
@@ -460,42 +504,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const applyServerData = applyFirestoreContent;
 
-  // Real-time Realtime Database '/siteContent' listener & initial fetch
+  // Real-time live synchronization for ALL users (authenticated, unauthenticated, and other admins)
   useEffect(() => {
+    // 1. Initial fetch from Firebase Realtime Database
     fetchSiteContentFromRTDB().then((data) => {
       if (data) {
         applyFirestoreContent(data);
       }
     });
 
+    // 2. Initial fetch from persistent server cache with cache-busting
+    fetch(`/api/site-data?_t=${Date.now()}`, { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((res) => {
+        if (res && res.success && res.data) {
+          applyFirestoreContent(res.data);
+        }
+      })
+      .catch(() => {});
+
+    // 3. Realtime Database subscription (listens to all changes live)
     const unsubscribe = subscribeToSiteContent((realtimeData) => {
       if (realtimeData) {
         applyFirestoreContent(realtimeData);
       }
     });
 
+    // 4. Server-Sent Events (SSE) stream listener (connects all visitors & admins)
+    let eventSource: EventSource | null = null;
+    try {
+      if (typeof EventSource !== 'undefined') {
+        eventSource = new EventSource('/api/site-stream');
+        eventSource.onmessage = (e) => {
+          try {
+            const parsed = JSON.parse(e.data);
+            if (parsed && (parsed.type === 'SITE_DATA_UPDATE' || parsed.type === 'INIT') && parsed.data) {
+              applyFirestoreContent(parsed.data);
+            }
+          } catch (err) {}
+        };
+      }
+    } catch (e) {}
+
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe();
+      eventSource?.close();
     };
-  }, []);
+  }, [applyFirestoreContent]);
 
-  // Helper to persist admin changes directly to Firebase Realtime Database path '/siteContent'
+  // Helper to persist admin changes directly across Firebase Realtime Database, Express server, and BroadcastChannel
   const syncToLiveServer = async (payload: Record<string, any>): Promise<boolean> => {
     try {
-      // Instant cross-tab broadcast within the browser (0ms delay)
-      try {
-        if (typeof BroadcastChannel !== 'undefined') {
-          const ch = new BroadcastChannel('smeltravels_live_feed');
-          ch.postMessage({ type: 'LIVE_FEED_SYNC', payload });
-          ch.close();
-        }
-      } catch (e) {}
-
-      // Push directly to Realtime Database '/siteContent' path using native SDK set
-      const ok = await pushFullSiteContentToRTDB(payload);
-      return ok;
+      return await syncAllBackends(payload);
     } catch (e) {
-      console.error('[RTDB Save Error]:', e);
+      console.error('[Live Sync Error]:', e);
       return false;
     }
   };
@@ -517,7 +579,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => {
       channel?.close();
     };
-  }, []);
+  }, [applyFirestoreContent]);
 
   // Listen for storage events (e.g. from other tabs) or custom sync events
   useEffect(() => {
@@ -542,42 +604,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
-  // Auto-sync to LIVE WEBSITE FEED: When an administrator is logged in, any modification to site data
-  // is automatically synchronized and published to the live backend server and live website feed.
-  const isAdminActive = isAdminLoggedIn || (currentUser?.isAdmin ?? false);
-  const adminSyncInitialRef = useRef(false);
-
-  useEffect(() => {
-    if (!adminSyncInitialRef.current) {
-      adminSyncInitialRef.current = true;
-      return;
-    }
-    // Avoid echoing database reads back into database writes
-    if (isIncomingUpdateRef.current) {
-      return;
-    }
-    if (isAdminActive) {
-      const timer = setTimeout(() => {
-        if (isIncomingUpdateRef.current) return;
-        const payload = {
-          settings,
-          trips,
-          destinations,
-          offers,
-          blog: blogPosts,
-          testimonials,
-          faqs,
-          adminInbox,
-          media: mediaList,
-        };
-        syncToLiveServer(payload);
-        pushFullSiteContentToRTDB(payload);
-        pushSiteContentToRTDB('packages', trips);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [isAdminActive, settings, trips, destinations, offers, blogPosts, testimonials, faqs, adminInbox, mediaList]);
-
   const showNotification = (title: string, message: string, type: 'success' | 'info' | 'warning' = 'success') => {
     setActiveNotification({ title, message, type });
     setTimeout(() => {
@@ -597,7 +623,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateSettings = async (newSettings: Partial<SiteSettings>): Promise<boolean> => {
     let updatedSnapshot: SiteSettings = settings;
     setSettings(prev => {
-      const updated = { ...prev, ...newSettings };
+      const updated = {
+        ...prev,
+        ...newSettings,
+        companyBanking: {
+          ...(prev.companyBanking || {}),
+          ...(newSettings.companyBanking || {}),
+        },
+      };
       updatedSnapshot = updated;
       setStoredItem('settings', updated);
       return updated;
@@ -608,9 +641,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       window.dispatchEvent(new CustomEvent('site-settings-updated', { detail: updatedSnapshot }));
     } catch (e) {}
 
-    // Push directly to Realtime Database '/siteContent' path
-    await pushSiteContentToRTDB('settings', updatedSnapshot);
-    await pushFullSiteContentToRTDB({ settings: updatedSnapshot });
+    // Push directly to Realtime Database and persistent server store
     const isLiveSynced = await syncToLiveServer({ settings: updatedSnapshot });
     return isLiveSynced;
   };
@@ -1446,11 +1477,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else {
         updated = [trip, ...prev];
       }
-      syncToLiveServer({ trips: updated });
-      // Push directly into Realtime Database '/siteContent' path
-      pushSiteContentToRTDB('packages', updated);
-      pushSiteContentToRTDB('trips', updated);
-      pushFullSiteContentToRTDB({ trips: updated, settings });
+      setStoredItem('trips', updated);
+      syncToLiveServer({ trips: updated, packages: updated });
       return updated;
     });
   };

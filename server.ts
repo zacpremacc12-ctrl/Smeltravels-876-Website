@@ -113,9 +113,23 @@ app.post('/api/site-data', (req, res) => {
   try {
     const updates = req.body;
     if (updates && typeof updates === 'object') {
+      const mergedSettings = updates.settings && typeof updates.settings === 'object'
+        ? {
+            ...(siteDataCache.settings || {}),
+            ...updates.settings,
+            companyBanking: {
+              ...((siteDataCache.settings && siteDataCache.settings.companyBanking) || {}),
+              ...(updates.settings.companyBanking || {}),
+            },
+          }
+        : siteDataCache.settings;
+
       siteDataCache = {
         ...siteDataCache,
         ...updates,
+        ...(updates.settings ? { settings: mergedSettings } : {}),
+        ...(updates.trips ? { packages: updates.trips } : {}),
+        ...(updates.packages ? { trips: updates.packages } : {}),
         lastUpdated: new Date().toISOString(),
       };
       persistData();

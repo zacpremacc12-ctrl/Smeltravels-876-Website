@@ -3,6 +3,7 @@ import {
   getDatabase,
   ref,
   set,
+  update,
   get,
   onValue,
   Database,
@@ -48,6 +49,13 @@ export async function pushSiteContentToRTDB(sectionKey: string, data: any): Prom
     const sectionRef = ref(db, `${SITE_CONTENT_PATH}/${sectionKey}`);
     await set(sectionRef, cleanData);
 
+    // Keep packages & trips mirrors in sync
+    if (sectionKey === 'trips') {
+      await set(ref(db, `${SITE_CONTENT_PATH}/packages`), cleanData);
+    } else if (sectionKey === 'packages') {
+      await set(ref(db, `${SITE_CONTENT_PATH}/trips`), cleanData);
+    }
+
     // Also update timestamp at /siteContent/updatedAt
     await set(ref(db, `${SITE_CONTENT_PATH}/updatedAt`), timestamp);
 
@@ -59,7 +67,8 @@ export async function pushSiteContentToRTDB(sectionKey: string, data: any): Prom
 }
 
 /**
- * Pushes full site payload to Realtime Database at '/siteContent'
+ * Pushes site payload to Realtime Database at '/siteContent' using atomic update()
+ * to guarantee that other sections are NEVER overwritten or wiped out.
  */
 export async function pushFullSiteContentToRTDB(payload: Record<string, any>): Promise<boolean> {
   try {
@@ -73,13 +82,64 @@ export async function pushFullSiteContentToRTDB(payload: Record<string, any>): P
       }
     }
 
-    // Save to /siteContent
+    // Also mirror trips & packages if either is present
+    if (cleanPayload.trips && !cleanPayload.packages) {
+      cleanPayload.packages = cleanPayload.trips;
+    } else if (cleanPayload.packages && !cleanPayload.trips) {
+      cleanPayload.trips = cleanPayload.packages;
+    }
+
+    // Critical: Use update() instead of set() so that saving one section never wipes out other sections!
     const contentRef = ref(db, SITE_CONTENT_PATH);
-    await set(contentRef, cleanPayload);
+    await update(contentRef, cleanPayload);
 
     return true;
   } catch (err) {
-    console.error('[Firebase RTDB] Error pushing full payload to /siteContent:', err);
+    console.error('[Firebase RTDB] Error pushing payload to /siteContent:', err);
+    return false;
+  }
+}
+
+/**
+ * Synchronizes updates across BOTH Firebase Realtime Database and Express Backend Disk Store,
+ * plus local cross-tab broadcast for instant multi-user reflection.
+ */
+export async function syncAllBackends(payload: Record<string, any>): Promise<boolean> {
+  try {
+    const cleanPayload: Record<string, any> = {};
+    for (const [key, value] of Object.entries(payload)) {
+      if (value !== undefined) {
+        cleanPayload[key] = sanitizeData(value);
+      }
+    }
+    cleanPayload.updatedAt = new Date().toISOString();
+
+    // 1. Cross-tab BroadcastChannel for 0ms same-browser sync
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        const ch = new BroadcastChannel('smeltravels_live_feed');
+        ch.postMessage({ type: 'LIVE_FEED_SYNC', payload: cleanPayload });
+        ch.close();
+      }
+    } catch (e) {}
+
+    // 2. Firebase RTDB atomic update
+    const rtdbPromise = pushFullSiteContentToRTDB(cleanPayload);
+
+    // 3. Express backend persistence & SSE broadcast to all connected devices (signed in or not)
+    const serverPromise = fetch('/api/site-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cleanPayload),
+    }).catch((err) => {
+      console.warn('[Server Sync Notice] /api/site-data unreachable:', err);
+      return null;
+    });
+
+    const [rtdbOk] = await Promise.all([rtdbPromise, serverPromise]);
+    return rtdbOk;
+  } catch (err) {
+    console.error('[syncAllBackends] Error syncing data:', err);
     return false;
   }
 }
