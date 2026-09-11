@@ -136,8 +136,9 @@ export async function syncAllBackends(payload: Record<string, any>): Promise<boo
       return null;
     });
 
-    const [rtdbOk] = await Promise.all([rtdbPromise, serverPromise]);
-    return rtdbOk;
+    const [rtdbOk, serverRes] = await Promise.all([rtdbPromise, serverPromise]);
+    const serverOk = !!(serverRes && (serverRes as Response).ok);
+    return rtdbOk || serverOk;
   } catch (err) {
     console.error('[syncAllBackends] Error syncing data:', err);
     return false;

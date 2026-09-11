@@ -1,15 +1,15 @@
 {
   "testKey": "broadcast_verified",
-  "lastUpdated": "2026-09-07T23:52:02.972Z",
+  "lastUpdated": "2026-09-11T03:54:55.949Z",
   "settings": {
     "siteName": "SMELTRAVELS876",
     "tagline": "Travel More. Worry Less.",
     "primaryPhone": "(876) 834-1537",
     "primaryEmail": "smeltravels876@gmail.com",
-    "ambassadorName": "Zachary Buchanan",
-    "ambassadorTitle": "Travel Ambassador",
-    "ambassadorPhone": "(876) 848-9772",
-    "ambassadorEmail": "zbuchanan.smeltravels@gmail.com",
+    "ambassadorName": "Elvoy Bennett",
+    "ambassadorTitle": "CEO",
+    "ambassadorPhone": "(876) 834-1537",
+    "ambassadorEmail": "smeltravels876@gmail.com",
     "ambassadors": [
       {
         "id": "amb-1",
@@ -58,7 +58,46 @@
     "whatsappMessageTemplate": "Hi SMELTRAVELS876! I am interested in exploring upcoming group trips and travel packages.",
     "addressSummary": "Kingston, Jamaica • Serving Caribbean & International Travelers",
     "operatingBase": "Kingston, Jamaica",
-    "businessHours": "Monday - Saturday: 8:30 AM - 6:30 PM EST"
+    "businessHours": "Monday - Saturday: 8:30 AM - 6:30 PM EST",
+    "brandColors": {
+      "accentGold": "#FFC72C",
+      "darkCharcoal": "#1A1824",
+      "primaryPurple": "#3B185F"
+    },
+    "announcementBanner": {
+      "enabled": true,
+      "link": "#trips",
+      "text": "✈️ 2026 & 2027 Group Trips Now Open for Deposits! Secure your spot today."
+    },
+    "socialLinks": {
+      "facebook": "https://facebook.com/smeltravels876",
+      "instagram": "https://instagram.com/smeltravels876",
+      "tiktok": "https://tiktok.com/@smeltravels876",
+      "whatsapp": "https://wa.me/18768341537"
+    },
+    "homepageSections": {
+      "bookingCta": true,
+      "faq": true,
+      "featured2026": true,
+      "featuredUpcoming": true,
+      "groupTrips2027": true,
+      "hero": true,
+      "howItWorks": true,
+      "newsletter": true,
+      "offers": true,
+      "popularDestinations": true,
+      "testimonials": true,
+      "travelGuides": true,
+      "whyChoose": true
+    },
+    "seo": {
+      "canonicalDomain": "https://smeltravels876.com",
+      "defaultDescription": "Discover unforgettable group travel experiences with SMELTRAVELS876. Curated international group trips from Jamaica to Panama, Antigua, Germany, Italy, Punta Cana, and Medellín.",
+      "defaultTitle": "SMELTRAVELS876 | Travel More. Worry Less. | Jamaican Group Travel Agency",
+      "googleAnalyticsId": "G-SMEL876TRV",
+      "metaPixelId": ""
+    },
+    "companyBanking": {}
   },
   "trips": [
     {
@@ -745,28 +784,28 @@
   ],
   "testimonials": [
     {
-      "id": "test-1",
+      "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
       "customerName": "Aaliyah Campbell",
+      "date": "August 18, 2026",
+      "id": "test-1",
+      "isPublished": false,
+      "isSamplePlaceholder": false,
       "location": "Kingston, Jamaica",
       "rating": 5,
       "reviewText": "Booking with SMELTRAVELS876 was so seamless! Having flights, transfers, and accommodations completely coordinated made all the difference on our Panama trip. Zachary kept our group informed throughout.",
-      "tripName": "Panama Experience 2026",
-      "date": "August 18, 2026",
-      "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
-      "isPublished": true,
-      "isSamplePlaceholder": false
+      "tripName": "Panama Experience 2026"
     },
     {
-      "id": "test-2",
+      "avatarUrl": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
       "customerName": "Marcus Sterling",
+      "date": "August 28, 2026",
+      "id": "test-2",
+      "isPublished": false,
+      "isSamplePlaceholder": false,
       "location": "Portmore, St. Catherine",
       "rating": 5,
       "reviewText": "The group atmosphere was electric! As a first-time international traveler, the document preparation guidance gave me complete confidence. The payment schedule was flexible and transparent.",
-      "tripName": "Cartagena Sun & Salsa 2026",
-      "date": "August 28, 2026",
-      "avatarUrl": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
-      "isPublished": true,
-      "isSamplePlaceholder": false
+      "tripName": "Cartagena Sun & Salsa 2026"
     },
     {
       "id": "test-3",
@@ -777,7 +816,7 @@
       "tripName": "Dubai Luxury Experience 2026",
       "date": "September 2, 2026",
       "avatarUrl": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80",
-      "isPublished": true,
+      "isPublished": false,
       "isSamplePlaceholder": false
     }
   ],
@@ -938,5 +977,75 @@
       "updatedAt": "2026-08-19T16:00:00Z"
     }
   ],
-  "adminInbox": []
+  "adminInbox": [
+    {
+      "id": "inbox-inq-1789098895950-865",
+      "type": "inquiry",
+      "title": "Trip Inquiry: Panama Experience 2026 (Trip Inquiry)",
+      "senderName": "Shanice Campbell",
+      "senderEmail": "shanice.c@example.com",
+      "senderPhone": "876-555-0144",
+      "summary": "Inquiry from Shanice Campbell (Kingston). Notified both Admins: Elvoy Bennett & Zachary Buchanan. Email dispatched to zbuchanan.smeltravels@gmail.com & smeltravels876@gmail.com.",
+      "details": "Customer: Shanice Campbell\nEmail: shanice.c@example.com\nPhone: 876-555-0144\nParish: Kingston\nStage: Trip Inquiry\nTrip: Panama Experience 2026\nInquiry: Looking forward to booking for 2 adults in November.\nPreferred Contact: WhatsApp\nDesignated Admins: Elvoy Bennett & Zachary Buchanan\nAuto-Dispatched Emails: zbuchanan.smeltravels@gmail.com, smeltravels876@gmail.com",
+      "tripName": "Panama Experience 2026",
+      "referenceNumber": "INQ-54311",
+      "timestamp": "2026-09-11T03:54:55.949Z",
+      "isRead": false,
+      "adminRecipients": [
+        "Elvoy Bennett",
+        "Zachary Buchanan"
+      ],
+      "recipientEmails": [
+        "zbuchanan.smeltravels@gmail.com",
+        "smeltravels876@gmail.com"
+      ],
+      "emailStatus": "Delivered"
+    }
+  ],
+  "updatedAt": "2026-09-11T03:44:51.648Z",
+  "contacts": [
+    {
+      "id": "contact-1789098895950",
+      "referenceNumber": "INQ-54311",
+      "name": "Shanice Campbell",
+      "email": "shanice.c@example.com",
+      "phone": "876-555-0144",
+      "countryOrParish": "Kingston",
+      "tripId": "",
+      "tripName": "Panama Experience 2026",
+      "subject": "[Trip Inquiry] Panama Experience 2026 - Trip Inquiry",
+      "preferredContactMethod": "whatsapp",
+      "status": "New",
+      "createdAt": "2026-09-11T03:54:55.949Z"
+    }
+  ],
+  "dispatchedEmails": [
+    {
+      "id": "email-1789098895950",
+      "referenceNumber": "INQ-54311",
+      "to": [
+        "zbuchanan.smeltravels@gmail.com",
+        "smeltravels876@gmail.com"
+      ],
+      "adminRecipients": [
+        "Elvoy Bennett",
+        "Zachary Buchanan"
+      ],
+      "from": "SMELTRAVELS876 Traveler Notification <no-reply@smeltravels876.com>",
+      "replyTo": "shanice.c@example.com",
+      "subject": "[SMELTRAVELS876 Inquiry INQ-54311] Panama Experience 2026 - Shanice Campbell",
+      "content": {
+        "customerName": "Shanice Campbell",
+        "email": "shanice.c@example.com",
+        "phone": "876-555-0144",
+        "parish": "Kingston",
+        "tripName": "Panama Experience 2026",
+        "stageLabel": "Trip Inquiry",
+        "preferredContactMethod": "whatsapp"
+      },
+      "sentAt": "2026-09-11T03:54:55.949Z",
+      "status": "Delivered to Elvoy Bennett & Zachary Buchanan",
+      "messageId": "msg-1789098895949-4873"
+    }
+  ]
 }

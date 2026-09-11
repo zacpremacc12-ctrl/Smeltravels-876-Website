@@ -376,4 +376,7 @@ export interface AdminInboxItem {
   referenceNumber?: string;
   timestamp: string;
   isRead: boolean;
+  adminRecipients?: string[];
+  recipientEmails?: string[];
+  emailStatus?: 'Sent' | 'Delivered' | 'Pending';
 }

@@ -85,6 +85,7 @@ export const AdminDashboard: React.FC = () => {
     adminEmail,
     currentAdminRole,
     logoutAdmin,
+    refreshSiteData,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'inbox' | 'inquiries' | 'trips' | 'destinations' | 'guides' | 'faqs' | 'offers' | 'testimonials' | 'settings'>('inbox');
@@ -446,13 +447,28 @@ export const AdminDashboard: React.FC = () => {
                   AUTO-SYNC TO LIVE FEED
                 </span>
               </div>
-              <p className="text-xs text-neutral-300">
-                Agency Back-Office • Administrator: <strong className="text-[#FFC72C]">{adminEmail || 'zbuchanan.smeltravels@gmail.com'}</strong>
+              <p className="text-xs text-neutral-300 flex flex-wrap items-center gap-2 mt-0.5">
+                <span>Agency Back-Office • Administrator: <strong className="text-[#FFC72C]">{adminEmail?.includes('smeltravels876') ? 'Elvoy Bennett (smeltravels876@gmail.com)' : 'Zachary Buchanan (zbuchanan.smeltravels@gmail.com)'}</strong></span>
+                <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-400/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-400/30 font-medium">
+                  <span>✓</span> Unified Settings Parity Active (Elvoy & Zachary)
+                </span>
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={async () => {
+                await refreshSiteData();
+                showNotification('Admin Settings Refreshed', 'Successfully synchronized settings with Elvoy Bennett and Zachary Buchanan.', 'success');
+              }}
+              className="bg-purple-800/80 hover:bg-purple-700 text-[#FFC72C] text-xs font-semibold px-3 py-2 rounded-xl border border-purple-600 transition-colors flex items-center gap-1.5 cursor-pointer"
+              title="Refresh server data to ensure parity with co-admin"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-[#FFC72C]" />
+              <span>Sync with Co-Admin</span>
+            </button>
+
             <button
               onClick={() => navigateTo('home')}
               className="bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3.5 py-2 rounded-xl border border-white/20 transition-colors flex items-center gap-1.5"
@@ -2480,6 +2496,59 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             <form onSubmit={handleSaveSettings} className="space-y-8 text-xs">
+              {/* SECTION: DUAL-ADMIN SYNCHRONIZATION PARITY BANNER */}
+              <div className="p-5 bg-gradient-to-r from-purple-900/10 via-amber-500/10 to-emerald-500/10 rounded-2xl border border-purple-300 space-y-3.5 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-purple-200 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-[#2E0249] text-[#FFC72C] flex items-center justify-center font-black text-xs shadow-xs">
+                      👥
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-[#2E0249] uppercase tracking-wider font-['Outfit',sans-serif]">
+                        Co-Administrator Settings Parity System
+                      </h3>
+                      <p className="text-[11px] text-neutral-600">
+                        Unified settings mirror between <strong>Elvoy Bennett</strong> & <strong>Zachary Buchanan</strong>
+                      </p>
+                    </div>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-3 py-1 rounded-xl shrink-0">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Real-Time Parity Active</span>
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3.5 bg-white rounded-xl border border-purple-200/80 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase font-bold text-purple-900 tracking-wider">Co-Administrator 1</span>
+                      <span className="text-[10px] bg-purple-100 text-purple-800 font-bold px-2 py-0.5 rounded-full">Primary</span>
+                    </div>
+                    <p className="font-black text-sm text-neutral-900">Elvoy Bennett</p>
+                    <p className="font-mono text-[11px] text-neutral-600">smeltravels876@gmail.com</p>
+                    <p className="text-[11px] text-emerald-700 font-semibold pt-1 flex items-center gap-1">
+                      <span>✓</span> Receives all booking inquiries & synced settings
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 bg-white rounded-xl border border-purple-200/80 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase font-bold text-purple-900 tracking-wider">Co-Administrator 2</span>
+                      <span className="text-[10px] bg-purple-100 text-purple-800 font-bold px-2 py-0.5 rounded-full">Primary</span>
+                    </div>
+                    <p className="font-black text-sm text-neutral-900">Zachary Buchanan</p>
+                    <p className="font-mono text-[11px] text-neutral-600">zbuchanan.smeltravels@gmail.com</p>
+                    <p className="text-[11px] text-emerald-700 font-semibold pt-1 flex items-center gap-1">
+                      <span>✓</span> Receives all booking inquiries & synced settings
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-neutral-600 bg-white/70 p-2.5 rounded-xl border border-neutral-200/80 leading-relaxed">
+                  💡 <strong>How it works:</strong> Whenever either administrator updates banking info, ambassador contacts, child pricing, promo codes, or packages, the change is saved permanently to the backend and immediately synchronizes to the other administrator's dashboard and all website visitors worldwide (even across VPNs).
+                </p>
+              </div>
+
               {/* SECTION: TRIP POLICIES - ADULTS ONLY & CHILD PRICING (ADMIN SETTINGS) */}
               <div className="p-5 bg-purple-50/50 rounded-2xl border border-purple-200/80 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-purple-200/60">

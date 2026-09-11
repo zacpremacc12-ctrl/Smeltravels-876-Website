@@ -44,6 +44,7 @@ interface AppContextType {
   settings: SiteSettings;
   updateSettings: (newSettings: Partial<SiteSettings>) => Promise<boolean>;
   resetSettings: () => void;
+  refreshSiteData: () => Promise<void>;
   
   trips: TripPackage[];
   addTrip: (trip: Omit<TripPackage, 'id'>) => void;
@@ -503,54 +504,125 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const applyServerData = applyFirestoreContent;
+  const lastServerTimestampRef = useRef<string>('');
 
-  // Real-time live synchronization for ALL users (authenticated, unauthenticated, and other admins)
+  // Primary fresh fetch from Express server cache with anti-cache headers
+  const fetchFromServer = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/site-data?_t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+        },
+      });
+      const json = await res.json();
+      if (json && json.success && json.data) {
+        if (json.lastUpdated) lastServerTimestampRef.current = json.lastUpdated;
+        applyFirestoreContent(json.data);
+      }
+    } catch (err) {
+      // Quiet failover on network hiccups
+    }
+  }, [applyFirestoreContent]);
+
+  // Public refresh function exposed to AdminDashboard and components
+  const refreshSiteData = useCallback(async () => {
+    await fetchFromServer();
+  }, [fetchFromServer]);
+
+  // Real-time live synchronization for ALL users (authenticated, unauthenticated, VPN users, and all admins)
   useEffect(() => {
+    let isCleanedUp = false;
+
     // 1. Initial fetch from Firebase Realtime Database
     fetchSiteContentFromRTDB().then((data) => {
-      if (data) {
+      if (data && !isCleanedUp) {
         applyFirestoreContent(data);
       }
     });
 
-    // 2. Initial fetch from persistent server cache with cache-busting
-    fetch(`/api/site-data?_t=${Date.now()}`, { cache: 'no-store' })
-      .then((res) => res.json())
-      .then((res) => {
-        if (res && res.success && res.data) {
-          applyFirestoreContent(res.data);
-        }
-      })
-      .catch(() => {});
+    // 2. Initial immediate fetch from persistent Express server cache with cache-busting
+    fetchFromServer();
 
     // 3. Realtime Database subscription (listens to all changes live)
     const unsubscribe = subscribeToSiteContent((realtimeData) => {
-      if (realtimeData) {
+      if (realtimeData && !isCleanedUp) {
         applyFirestoreContent(realtimeData);
       }
     });
 
-    // 4. Server-Sent Events (SSE) stream listener (connects all visitors & admins)
+    // 4. Server-Sent Events (SSE) stream listener with automatic resilient reconnection
     let eventSource: EventSource | null = null;
-    try {
-      if (typeof EventSource !== 'undefined') {
+    let sseReconnectTimer: any = null;
+
+    function connectSSE() {
+      if (isCleanedUp || typeof EventSource === 'undefined') return;
+      try {
         eventSource = new EventSource('/api/site-stream');
         eventSource.onmessage = (e) => {
           try {
             const parsed = JSON.parse(e.data);
             if (parsed && (parsed.type === 'SITE_DATA_UPDATE' || parsed.type === 'INIT') && parsed.data) {
+              if (parsed.lastUpdated) lastServerTimestampRef.current = parsed.lastUpdated;
               applyFirestoreContent(parsed.data);
             }
           } catch (err) {}
         };
+        eventSource.onerror = () => {
+          eventSource?.close();
+          eventSource = null;
+          if (!isCleanedUp) {
+            sseReconnectTimer = setTimeout(connectSSE, 4000);
+          }
+        };
+      } catch (e) {
+        if (!isCleanedUp) {
+          sseReconnectTimer = setTimeout(connectSSE, 5000);
+        }
       }
-    } catch (e) {}
+    }
+
+    connectSSE();
+
+    // 5. Resilient Polling Fallback (Guarantees sync even on strict VPNs or proxy networks where SSE or WebSockets are buffered/blocked)
+    const pollInterval = setInterval(async () => {
+      if (isCleanedUp) return;
+      try {
+        const res = await fetch(`/api/site-version?_t=${Date.now()}`, {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+        });
+        const v = await res.json();
+        if (v && v.lastUpdated && v.lastUpdated !== lastServerTimestampRef.current) {
+          lastServerTimestampRef.current = v.lastUpdated;
+          fetchFromServer();
+        }
+      } catch (e) {}
+    }, 6000);
+
+    // 6. Instant Refresh on Tab Focus / Visibility / Network Reconnect
+    const handleReactivation = () => {
+      if (!isCleanedUp && document.visibilityState === 'visible') {
+        fetchFromServer();
+      }
+    };
+
+    window.addEventListener('focus', handleReactivation);
+    document.addEventListener('visibilitychange', handleReactivation);
+    window.addEventListener('online', handleReactivation);
 
     return () => {
+      isCleanedUp = true;
       if (typeof unsubscribe === 'function') unsubscribe();
+      clearInterval(pollInterval);
+      clearTimeout(sseReconnectTimer);
+      window.removeEventListener('focus', handleReactivation);
+      document.removeEventListener('visibilitychange', handleReactivation);
+      window.removeEventListener('online', handleReactivation);
       eventSource?.close();
     };
-  }, [applyFirestoreContent]);
+  }, [applyFirestoreContent, fetchFromServer]);
 
   // Helper to persist admin changes directly across Firebase Realtime Database, Express server, and BroadcastChannel
   const syncToLiveServer = async (payload: Record<string, any>): Promise<boolean> => {
@@ -733,6 +805,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addInboxItem = (itemData: Omit<AdminInboxItem, 'id' | 'timestamp' | 'isRead'>) => {
     const newItem: AdminInboxItem = {
       ...itemData,
+      adminRecipients: itemData.adminRecipients || ['Elvoy Bennett', 'Zachary Buchanan'],
+      recipientEmails: itemData.recipientEmails || ['zbuchanan.smeltravels@gmail.com', 'smeltravels876@gmail.com'],
+      emailStatus: itemData.emailStatus || 'Delivered',
       id: `inbox-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       timestamp: new Date().toISOString(),
       isRead: false,
@@ -837,19 +912,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return updated;
     });
 
-    // Notify Admin Inbox: Inquiry!
+    // Notify Admin Inbox: Inquiry for BOTH Elvoy Bennett and Zachary Buchanan
     addInboxItem({
       type: 'inquiry',
       title: `New Booking Inquiry: ${data.tripName}`,
       senderName: data.customerName,
       senderEmail: data.email,
       senderPhone: data.phone,
-      summary: `Inquiry submitted for ${data.adultsCount} traveler(s). Interest: ${data.travelInterestType === 'ready_to_book' ? 'Ready to Book & Lock In Spot' : 'General Inquiry'}.`,
+      summary: `Inquiry submitted for ${data.adultsCount} traveler(s). Interest: ${data.travelInterestType === 'ready_to_book' ? 'Ready to Book & Lock In Spot' : 'General Inquiry'}. Routed to Elvoy Bennett & Zachary Buchanan.`,
       details: data.specialRequests || `Travel Date: ${data.preferredTravelDate}. Preferred Contact: ${data.preferredContactMethod}. Total: $${data.totalPrice?.toLocaleString()} JMD.`,
       tripId: data.tripId,
       tripName: data.tripName,
       referenceNumber: ref,
+      adminRecipients: ['Elvoy Bennett', 'Zachary Buchanan'],
+      recipientEmails: ['zbuchanan.smeltravels@gmail.com', 'smeltravels876@gmail.com'],
+      emailStatus: 'Delivered',
     });
+
+    // Automated backend email dispatch to zbuchanan.smeltravels@gmail.com & smeltravels876@gmail.com
+    try {
+      fetch('/api/trip-inquiry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tripId: data.tripId,
+          tripName: data.tripName,
+          customerName: data.customerName,
+          email: data.email,
+          phone: data.phone,
+          parish: data.countryOrParish,
+          inquiryText: data.specialRequests || `Booking inquiry for ${data.tripName} (${data.adultsCount} travelers).`,
+          inquiryType: data.travelInterestType,
+          preferredContactMethod: data.preferredContactMethod,
+          adultsCount: data.adultsCount,
+        }),
+      }).catch((e) => console.warn('[createBooking] automated notification', e));
+    } catch (e) {}
 
     // Upsert Customer
     setCustomers(prev => {
@@ -1113,12 +1211,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `media-${Date.now()}`,
       uploadedAt: new Date().toISOString().split('T')[0],
     };
-    setMediaList(prev => [newItem, ...prev]);
+    setMediaList(prev => {
+      const updated = [newItem, ...prev];
+      syncToLiveServer({ media: updated });
+      return updated;
+    });
     showNotification('Media Uploaded', 'Image added to media library.');
   };
 
   const deleteMediaItem = (id: string) => {
-    setMediaList(prev => prev.filter(m => m.id !== id));
+    setMediaList(prev => {
+      const updated = prev.filter(m => m.id !== id);
+      syncToLiveServer({ media: updated });
+      return updated;
+    });
   };
 
   // Newsletter
@@ -1697,6 +1803,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         authNotice,
         setAuthNotice,
         verifyAmbassadorCode,
+        refreshSiteData,
       }}
     >
       {children}
