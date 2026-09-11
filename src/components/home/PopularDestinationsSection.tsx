@@ -1,6 +1,7 @@
 import React from 'react';
 import { Compass, ArrowRight, MapPin } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { getSafeTripImageUrl, handleTripImageError } from '../../lib/imageUtils';
 
 export const PopularDestinationsSection: React.FC = () => {
   const { destinations, navigateTo } = useApp();
@@ -40,10 +41,12 @@ export const PopularDestinationsSection: React.FC = () => {
               className="group cursor-pointer relative rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-neutral-200 flex flex-col h-80 bg-neutral-900"
             >
               <img
-                src={dest.image}
+                src={getSafeTripImageUrl(dest.image, `${dest.name} ${dest.country}`)}
                 alt={dest.name}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-85 group-hover:opacity-100"
                 loading="lazy"
+                referrerPolicy="no-referrer"
+                onError={(e) => handleTripImageError(e, `${dest.name} ${dest.country}`)}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent"></div>
 

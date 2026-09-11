@@ -1,6 +1,7 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { Bookmark, X, ArrowRight, Calendar, MapPin, Trash2, CheckCircle2, Sparkles } from 'lucide-react';
+import { getSafeTripImageUrl, handleTripImageError } from '../../lib/imageUtils';
 
 export const SavedTripsDrawer: React.FC = () => {
   const {
@@ -108,10 +109,11 @@ export const SavedTripsDrawer: React.FC = () => {
                       <div className="flex gap-3">
                         <div className="w-20 h-20 rounded-xl overflow-hidden shrink-0 relative bg-neutral-200">
                           <img
-                            src={tripImg}
+                            src={getSafeTripImageUrl(tripImg, tripName)}
                             alt={tripName}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             referrerPolicy="no-referrer"
+                            onError={(e) => handleTripImageError(e, tripName)}
                           />
                         </div>
 

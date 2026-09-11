@@ -1056,6 +1056,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateTestimonial = (id: string, testData: Partial<TestimonialItem>) => {
+    if (!isAdminLoggedIn) {
+      showNotification('Action Denied', 'Traveler reviews cannot be modified or edited by users.', 'warning');
+      return;
+    }
     setTestimonials(prev => {
       const updated = prev.map(t => (t.id === id ? { ...t, ...testData } : t));
       syncToLiveServer({ testimonials: updated });

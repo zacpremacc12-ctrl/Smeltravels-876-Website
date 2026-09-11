@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { TripPackage } from '../../types';
 import { formatPriceJMD, useApp } from '../../context/AppContext';
+import { getSafeTripImageUrl, handleTripImageError } from '../../lib/imageUtils';
 
 interface TripCardProps {
   trip: TripPackage;
@@ -63,10 +64,12 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, highlight2026 }) => {
         title={`View full package details for ${trip.name}`}
       >
         <img
-          src={trip.featuredImage}
+          src={getSafeTripImageUrl(trip.featuredImage, `${trip.destination} ${trip.country}`)}
           alt={`${trip.name} - ${trip.destination}`}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={(e) => handleTripImageError(e, `${trip.destination} ${trip.country}`)}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
 

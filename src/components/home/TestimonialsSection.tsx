@@ -470,8 +470,9 @@ export const TestimonialsSection: React.FC = () => {
                     <Star className="w-4 h-4 fill-[#FFC72C]" />
                     <span>POST TRAVELER REVIEW TO SITE</span>
                   </button>
-                  <p className="text-[11px] text-center text-neutral-500 mt-2">
-                    Verified review will be published instantly with your date of submission.
+                  <p className="text-[11px] text-center text-neutral-500 mt-2 flex items-center justify-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Verified reviews are published instantly. To ensure community integrity, traveler reviews cannot be edited by users after submission.</span>
                   </p>
                 </div>
               </form>
@@ -480,8 +481,8 @@ export const TestimonialsSection: React.FC = () => {
         </div>
       </div>
 
-      {/* EDIT REVIEW MODAL */}
-      {editingReview && (
+      {/* EDIT REVIEW MODAL (Admin Only - Users Cannot Edit Reviews) */}
+      {isAdminLoggedIn && editingReview && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
           role="dialog"

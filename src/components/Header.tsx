@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useApp, formatPriceJMD } from '../context/AppContext';
 import { BrandLogo } from './common/BrandLogo';
+import { getSafeTripImageUrl, handleTripImageError } from '../lib/imageUtils';
 
 interface HeaderProps {
   onOpenSearch?: () => void;
@@ -235,7 +236,14 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
                             >
                               <div className="flex items-center gap-2.5 min-w-0">
                                 <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-neutral-700 bg-neutral-800">
-                                  <img src={t.featuredImage} alt={t.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                  <img
+                                    src={getSafeTripImageUrl(t.featuredImage, `${t.destination} ${t.country}`)}
+                                    alt={t.name}
+                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                                    loading="lazy"
+                                    referrerPolicy="no-referrer"
+                                    onError={(e) => handleTripImageError(e, `${t.destination} ${t.country}`)}
+                                  />
                                   {t.tripLogo && (
                                     <img src={t.tripLogo} alt="" className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded bg-white p-0.5 object-contain" />
                                   )}
@@ -278,7 +286,14 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
                             >
                               <div className="flex items-center gap-2.5 min-w-0">
                                 <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-neutral-700 bg-neutral-800">
-                                  <img src={t.featuredImage} alt={t.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                  <img
+                                    src={getSafeTripImageUrl(t.featuredImage, `${t.destination} ${t.country}`)}
+                                    alt={t.name}
+                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                                    loading="lazy"
+                                    referrerPolicy="no-referrer"
+                                    onError={(e) => handleTripImageError(e, `${t.destination} ${t.country}`)}
+                                  />
                                   {t.tripLogo && (
                                     <img src={t.tripLogo} alt="" className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded bg-white p-0.5 object-contain" />
                                   )}
@@ -324,7 +339,14 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
                             >
                               <div className="flex items-center gap-2.5 min-w-0">
                                 <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-neutral-700 bg-neutral-800">
-                                  <img src={t.featuredImage} alt={t.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                  <img
+                                    src={getSafeTripImageUrl(t.featuredImage, `${t.destination} ${t.country}`)}
+                                    alt={t.name}
+                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                                    loading="lazy"
+                                    referrerPolicy="no-referrer"
+                                    onError={(e) => handleTripImageError(e, `${t.destination} ${t.country}`)}
+                                  />
                                 </div>
                                 <div className="min-w-0">
                                   <span className="font-bold text-white text-xs group-hover:text-[#FFC72C] transition-colors truncate block">

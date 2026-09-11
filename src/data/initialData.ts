@@ -299,10 +299,10 @@ export const INITIAL_TRIPS: TripPackage[] = [
     ],
     baggageInfo: 'Includes Carry-on + Personal item. Checked bag add-on available upon request.',
     paymentPlanInfo: 'Flexible payment plans available after your deposit of $85,000 JMD is placed. Pay convenient installments up to departure.',
-    featuredImage: 'https://images.unsplash.com/photo-1512815777174-88db0fb1bd74?auto=format&fit=crop&w=1200&q=80',
+    featuredImage: 'https://images.unsplash.com/photo-1518638150340-f706e86654de?auto=format&fit=crop&w=1200&q=80',
     gallery: [
-      'https://images.unsplash.com/photo-1512815777174-88db0fb1bd74?auto=format&fit=crop&w=800&q=80',
       'https://images.unsplash.com/photo-1518638150340-f706e86654de?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1568402102990-bc541580b59f?auto=format&fit=crop&w=800&q=80',
       'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80'
     ],
     status: 'Available',
@@ -670,11 +670,11 @@ export const INITIAL_TRIPS: TripPackage[] = [
     ],
     baggageInfo: 'Personal item + Carry-on standard; checked bag options available.',
     paymentPlanInfo: 'Payment plans available after your deposit of $52,000 JMD is made.',
-    featuredImage: 'https://images.unsplash.com/photo-1599827552599-eadf5e0a0d93?auto=format&fit=crop&w=1200&q=80',
+    featuredImage: 'https://images.unsplash.com/photo-1583531352515-8884af319dc1?auto=format&fit=crop&w=1200&q=80',
     gallery: [
-      'https://images.unsplash.com/photo-1599827552599-eadf5e0a0d93?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1517411032315-54ef2cb783bb?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1583531352515-8884af319dc1?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1583531352515-8884af319dc1?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1568632234157-ce7aecd03d0d?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1517411032315-54ef2cb783bb?auto=format&fit=crop&w=800&q=80'
     ],
     status: 'Available',
     isFeatured: true,
@@ -700,8 +700,8 @@ export const INITIAL_DESTINATIONS: Destination[] = [
     countryCode: 'MX',
     tagline: 'Ancient Mayan Wonders, Turquoise Waters & Vibrant Culture',
     description: 'Mexico is a captivating world of stunning Caribbean beaches, crystal-clear mystical cenotes, ancient Mayan temples, mouthwatering culinary traditions, and warm hospitality.',
-    image: 'https://images.unsplash.com/photo-1512815777174-88db0fb1bd74?auto=format&fit=crop&w=800&q=80',
-    heroImage: 'https://images.unsplash.com/photo-1512815777174-88db0fb1bd74?auto=format&fit=crop&w=1600&q=80',
+    image: 'https://images.unsplash.com/photo-1518638150340-f706e86654de?auto=format&fit=crop&w=800&q=80',
+    heroImage: 'https://images.unsplash.com/photo-1518638150340-f706e86654de?auto=format&fit=crop&w=1600&q=80',
     popularExperiences: [
       'Chichen Itza UNESCO World Wonder Guided Tour',
       'Swimming in Freshwater Limestone Cenotes',
@@ -828,8 +828,8 @@ export const INITIAL_DESTINATIONS: Destination[] = [
     countryCode: 'CO',
     tagline: 'The City of Eternal Spring, Innovation & Mountain Culture',
     description: 'Surrounded by the dramatic Aburrá Valley mountains, Medellín combines perpetual pleasant spring temperatures with groundbreaking urban architecture, rich coffee heritage, and warm paisa culture.',
-    image: 'https://images.unsplash.com/photo-1599827552599-eadf5e0a0d93?auto=format&fit=crop&w=800&q=80',
-    heroImage: 'https://images.unsplash.com/photo-1599827552599-eadf5e0a0d93?auto=format&fit=crop&w=1600&q=80',
+    image: 'https://images.unsplash.com/photo-1583531352515-8884af319dc1?auto=format&fit=crop&w=800&q=80',
+    heroImage: 'https://images.unsplash.com/photo-1583531352515-8884af319dc1?auto=format&fit=crop&w=1600&q=80',
     popularExperiences: [
       'Comuna 13 Outdoor Escalators & Street Art Tour',
       'El Peñol Rock & Guatapé Lakeside Village',
@@ -1136,7 +1136,7 @@ export const INITIAL_MEDIA: MediaItem[] = [
   {
     id: 'med-6',
     name: 'Medellin Mountain Valley Landscape',
-    url: 'https://images.unsplash.com/photo-1599827552599-eadf5e0a0d93?auto=format&fit=crop&w=1200&q=80',
+    url: 'https://images.unsplash.com/photo-1583531352515-8884af319dc1?auto=format&fit=crop&w=1200&q=80',
     category: 'Destinations',
     altText: 'Panoramic view of Medellin in the Aburrá Valley Colombia',
     uploadedAt: '2026-08-01'

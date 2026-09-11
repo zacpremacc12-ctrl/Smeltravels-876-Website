@@ -2,6 +2,7 @@ import React from 'react';
 import { Sparkles, ArrowRight, ShieldCheck, Calendar, Plane } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { TripCard } from '../common/TripCard';
+import { getSafeTripImageUrl, handleTripImageError } from '../../lib/imageUtils';
 
 export const FeaturedTripsSection: React.FC = () => {
   const { trips, navigateTo } = useApp();
@@ -43,9 +44,11 @@ export const FeaturedTripsSection: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-12 items-stretch">
               <div className="lg:col-span-6 relative min-h-[300px] lg:min-h-[420px]">
                 <img
-                  src={featuredTrip.featuredImage}
+                  src={getSafeTripImageUrl(featuredTrip.featuredImage, `${featuredTrip.destination} ${featuredTrip.country}`)}
                   alt={featuredTrip.name}
                   className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => handleTripImageError(e, `${featuredTrip.destination} ${featuredTrip.country}`)}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t lg:bg-gradient-to-r from-transparent to-[#2E0249]/80"></div>
                 <div className="absolute top-4 left-4">

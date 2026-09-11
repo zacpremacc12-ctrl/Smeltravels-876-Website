@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Compass, MapPin, ArrowRight, ArrowLeft, Calendar, Plane, CheckCircle2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Destination } from '../types';
+import { getSafeTripImageUrl, handleTripImageError } from '../lib/imageUtils';
 
 interface DestinationsPageProps {
   initialSlug?: string | null;
@@ -38,9 +39,11 @@ export const DestinationsPage: React.FC<DestinationsPageProps> = ({ initialSlug 
         {/* Hero */}
         <div className="relative h-80 sm:h-96 w-full bg-neutral-900 overflow-hidden">
           <img
-            src={activeDestination.heroImage}
+            src={getSafeTripImageUrl(activeDestination.heroImage || activeDestination.image, `${activeDestination.name} ${activeDestination.country}`)}
             alt={activeDestination.name}
             className="w-full h-full object-cover opacity-80"
+            referrerPolicy="no-referrer"
+            onError={(e) => handleTripImageError(e, `${activeDestination.name} ${activeDestination.country}`)}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
           <div className="absolute bottom-6 left-4 right-4 max-w-7xl mx-auto sm:px-4 text-white space-y-2">
@@ -98,9 +101,12 @@ export const DestinationsPage: React.FC<DestinationsPageProps> = ({ initialSlug 
                       >
                         <div className="flex items-center gap-4">
                           <img
-                            src={rt.featuredImage}
+                            src={getSafeTripImageUrl(rt.featuredImage, `${rt.destination} ${rt.country}`)}
                             alt={rt.name}
                             className="w-16 h-16 rounded-xl object-cover shrink-0"
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                            onError={(e) => handleTripImageError(e, `${rt.destination} ${rt.country}`)}
                           />
                           <div>
                             <span className="text-xs font-bold text-[#2E0249] block">{rt.dates}</span>
@@ -195,10 +201,12 @@ export const DestinationsPage: React.FC<DestinationsPageProps> = ({ initialSlug 
               <div>
                 <div className="relative h-56 w-full overflow-hidden bg-neutral-900">
                   <img
-                    src={dest.image}
+                    src={getSafeTripImageUrl(dest.image, `${dest.name} ${dest.country}`)}
                     alt={dest.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     loading="lazy"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => handleTripImageError(e, `${dest.name} ${dest.country}`)}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
                   <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold text-white border border-white/20 flex items-center gap-1.5">

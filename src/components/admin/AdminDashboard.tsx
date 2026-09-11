@@ -49,6 +49,7 @@ import { ImageUploader } from './ImageUploader';
 import { MultiGalleryUploader } from './MultiGalleryUploader';
 import { AdminInboxView } from './AdminInboxView';
 import { pushSiteContentToRTDB, pushFullSiteContentToRTDB } from '../../lib/firebase';
+import { getSafeTripImageUrl, handleTripImageError } from '../../lib/imageUtils';
 
 export const AdminDashboard: React.FC = () => {
   const {
@@ -162,6 +163,47 @@ export const AdminDashboard: React.FC = () => {
         [field]: value,
       },
     }));
+  };
+
+  // Admin Settings - Trip Age Policies & Child Pricing State & Handlers
+  const [tripChildPriceDrafts, setTripChildPriceDrafts] = useState<Record<string, number | undefined>>({});
+
+  const handleToggleAdultsOnlyInSettings = (trip: TripPackage) => {
+    const nextAdultsOnly = !trip.isAdultsOnly;
+    const updatedTrip: TripPackage = {
+      ...trip,
+      isAdultsOnly: nextAdultsOnly,
+      childPrice: nextAdultsOnly ? undefined : (trip.childPrice !== undefined ? trip.childPrice : Math.round(trip.price * 0.7)),
+    };
+    saveTrip(updatedTrip);
+    showNotification(
+      nextAdultsOnly ? 'Adults Only (18+) Enabled' : 'Family Friendly Policy Enabled',
+      `"${trip.name}" is now ${nextAdultsOnly ? 'Adults Only (18+)' : 'Family Friendly (Children Allowed)'}. Synced across website.`
+    );
+  };
+
+  const handleSaveChildPriceInSettings = (trip: TripPackage, customPrice?: number) => {
+    const rawVal = customPrice !== undefined
+      ? customPrice
+      : (tripChildPriceDrafts[trip.id] !== undefined
+          ? tripChildPriceDrafts[trip.id]
+          : (trip.childPrice !== undefined ? trip.childPrice : Math.round(trip.price * 0.7)));
+
+    if (rawVal === undefined || isNaN(rawVal) || rawVal < 0) {
+      showNotification('Invalid Rate', 'Please provide a valid child price rate.', 'warning');
+      return;
+    }
+
+    const updatedPrice = Math.round(rawVal);
+    const updatedTrip: TripPackage = {
+      ...trip,
+      childPrice: updatedPrice,
+    };
+    saveTrip(updatedTrip);
+    showNotification(
+      'Child Price Saved & Live',
+      `Child price for "${trip.name}" set to ${formatPriceJMD(updatedPrice)}. Updated across all devices.`
+    );
   };
 
   // Ambassador Modal & Management State
@@ -2438,6 +2480,178 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             <form onSubmit={handleSaveSettings} className="space-y-8 text-xs">
+              {/* SECTION: TRIP POLICIES - ADULTS ONLY & CHILD PRICING (ADMIN SETTINGS) */}
+              <div className="p-5 bg-purple-50/50 rounded-2xl border border-purple-200/80 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-purple-200/60">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-purple-800" />
+                      <h3 className="text-sm font-black text-[#2E0249] uppercase tracking-wider">
+                        Trip Age Policies & Child Pricing Controls
+                      </h3>
+                    </div>
+                    <p className="text-xs text-neutral-600">
+                      Toggle <strong>Adults Only (18+)</strong> restrictions and customize <strong>Child Package Rates (JMD)</strong> per trip. Changes instantly deploy live across the entire website for all users.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold shrink-0">
+                    <span className="px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1">
+                      <span>🔞</span>
+                      <span>{trips.filter(t => t.isAdultsOnly).length} Adults Only</span>
+                    </span>
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                      <span>👨‍👩‍👧</span>
+                      <span>{trips.filter(t => !t.isAdultsOnly).length} Family Friendly</span>
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3.5">
+                  {trips.map((trip) => {
+                    const isAdultsOnly = !!trip.isAdultsOnly;
+                    const effectiveChildPrice = tripChildPriceDrafts[trip.id] !== undefined
+                      ? tripChildPriceDrafts[trip.id]!
+                      : (trip.childPrice !== undefined ? trip.childPrice : Math.round(trip.price * 0.7));
+
+                    return (
+                      <div
+                        key={trip.id}
+                        className={`p-3.5 sm:p-4 rounded-2xl border transition-all ${
+                          isAdultsOnly
+                            ? 'bg-rose-50/50 border-rose-200 shadow-2xs'
+                            : 'bg-white border-neutral-200 hover:border-neutral-300 shadow-2xs'
+                        }`}
+                      >
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                          {/* Trip Identity */}
+                          <div className="flex items-center gap-3.5 min-w-0">
+                            <img
+                              src={getSafeTripImageUrl(trip.featuredImage, trip.name)}
+                              alt={trip.name}
+                              onError={(e) => handleTripImageError(e, trip.name)}
+                              referrerPolicy="no-referrer"
+                              className="w-16 h-14 object-cover rounded-xl border border-neutral-200 shrink-0 shadow-xs"
+                            />
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="font-bold text-sm text-neutral-900 truncate">
+                                  {trip.name}
+                                </h4>
+                                {isAdultsOnly ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-600 text-white shadow-xs">
+                                    <span>🔞</span>
+                                    <span>Adults Only (18+)</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                    <span>👨‍👩‍👧</span>
+                                    <span>Family Friendly</span>
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-neutral-500 mt-0.5">
+                                Adult Package Rate: <strong className="text-neutral-900">{formatPriceJMD(trip.price)}</strong> • Deposit: {formatPriceJMD(trip.deposit)}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Controls */}
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+                            {/* Adults Only Toggle */}
+                            <div className="flex items-center justify-between sm:justify-start gap-2.5 bg-neutral-50 px-3.5 py-2 rounded-xl border border-neutral-200">
+                              <div className="text-left">
+                                <span className="text-xs font-bold text-neutral-800 block">
+                                  Adults Only (18+)
+                                </span>
+                                <span className="text-[10px] text-neutral-500">
+                                  {isAdultsOnly ? 'Children blocked' : 'Children allowed'}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleAdultsOnlyInSettings(trip)}
+                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                  isAdultsOnly ? 'bg-rose-600' : 'bg-neutral-300'
+                                }`}
+                                title={isAdultsOnly ? 'Turn OFF Adults Only' : 'Turn ON Adults Only'}
+                              >
+                                <span
+                                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                    isAdultsOnly ? 'translate-x-5' : 'translate-x-0'
+                                  }`}
+                                />
+                              </button>
+                            </div>
+
+                            {/* Child Price Control (if not adults only) */}
+                            {!isAdultsOnly ? (
+                              <div className="flex flex-wrap items-center gap-2 bg-purple-50/70 px-3 py-2 rounded-xl border border-purple-200">
+                                <div className="space-y-0.5">
+                                  <label className="text-xs font-bold text-purple-950 block">
+                                    Child Rate (JMD):
+                                  </label>
+                                  <span className="text-[10px] text-neutral-500 block">
+                                    Age 2–11
+                                  </span>
+                                </div>
+                                <div className="relative">
+                                  <span className="absolute left-2.5 top-1.5 text-xs text-neutral-400 font-bold">$</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="1000"
+                                    value={effectiveChildPrice}
+                                    onChange={(e) => {
+                                      const val = e.target.value === '' ? 0 : Number(e.target.value);
+                                      setTripChildPriceDrafts(prev => ({ ...prev, [trip.id]: val }));
+                                    }}
+                                    className="w-24 pl-5 pr-2 py-1 text-xs font-bold text-purple-950 bg-white border border-purple-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-600"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  {[
+                                    { label: '50%', ratio: 0.5 },
+                                    { label: '60%', ratio: 0.6 },
+                                    { label: '70%', ratio: 0.7 },
+                                    { label: '80%', ratio: 0.8 },
+                                  ].map((preset) => (
+                                    <button
+                                      key={preset.label}
+                                      type="button"
+                                      onClick={() => {
+                                        const newP = Math.round(trip.price * preset.ratio);
+                                        setTripChildPriceDrafts(prev => ({ ...prev, [trip.id]: newP }));
+                                        handleSaveChildPriceInSettings(trip, newP);
+                                      }}
+                                      className="px-1.5 py-1 text-[10px] font-bold rounded bg-white hover:bg-purple-100 text-purple-900 border border-purple-200 transition-colors cursor-pointer"
+                                      title={`Set to ${preset.label} (${formatPriceJMD(Math.round(trip.price * preset.ratio))})`}
+                                    >
+                                      {preset.label}
+                                    </button>
+                                  ))}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveChildPriceInSettings(trip)}
+                                  className="px-3 py-1 bg-[#2E0249] hover:bg-[#3B185F] text-[#FFC72C] text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-xs"
+                                >
+                                  Save Rate
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="bg-rose-100/80 border border-rose-300 text-rose-900 text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-2">
+                                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                                <span>Child rate inactive (Package is strictly Adults Only)</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* SECTION: GENERAL CONTACT INFO */}
               <div className="space-y-4">
                 <h3 className="text-sm font-bold text-neutral-800 uppercase tracking-wider flex items-center gap-2">

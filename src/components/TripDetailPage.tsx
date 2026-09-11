@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { TripPackage } from '../types';
 import { useApp, formatPriceJMD } from '../context/AppContext';
+import { getSafeTripImageUrl, handleTripImageError } from '../lib/imageUtils';
 
 interface TripDetailPageProps {
   slug: string;
@@ -125,9 +126,11 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
       <div className="relative bg-[#1A1824] text-white">
         <div className="relative h-72 sm:h-96 w-full overflow-hidden">
           <img
-            src={trip.featuredImage}
+            src={getSafeTripImageUrl(trip.featuredImage, `${trip.destination} ${trip.country}`)}
             alt={trip.name}
             className="w-full h-full object-cover opacity-75"
+            referrerPolicy="no-referrer"
+            onError={(e) => handleTripImageError(e, `${trip.destination} ${trip.country}`)}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#1A1824] via-black/40 to-transparent"></div>
 
@@ -323,7 +326,14 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       {trip.gallery.map((img, i) => (
                         <div key={i} className="h-40 rounded-xl overflow-hidden bg-neutral-100 shadow-xs">
-                          <img src={img} alt={`${trip.destination} view ${i}`} className="w-full h-full object-cover hover:scale-105 transition-transform" />
+                          <img
+                            src={getSafeTripImageUrl(img, `${trip.destination} ${trip.country}`)}
+                            alt={`${trip.destination} view ${i}`}
+                            className="w-full h-full object-cover hover:scale-105 transition-transform"
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                            onError={(e) => handleTripImageError(e, `${trip.destination} ${trip.country}`)}
+                          />
                         </div>
                       ))}
                     </div>
