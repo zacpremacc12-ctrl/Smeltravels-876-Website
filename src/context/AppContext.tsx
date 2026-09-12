@@ -118,6 +118,7 @@ interface AppContextType {
   savedTripIds: string[];
   savedTrips: TripPackage[];
   toggleSaveTrip: (tripId: string) => void;
+  clearAllSavedTrips: () => void;
   isTripSaved: (tripId: string) => boolean;
   isSavedTripsDrawerOpen: boolean;
   setIsSavedTripsDrawerOpen: (open: boolean) => void;
@@ -864,6 +865,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const isTripSaved = (tripId: string): boolean => {
     return savedTripIds.includes(tripId);
+  };
+
+  const clearAllSavedTrips = () => {
+    setSavedTripIds([]);
+    showNotification('Saved Trips Cleared', 'All bookmarks have been removed.', 'info');
   };
 
   const savedTrips: TripPackage[] = trips.filter(t => savedTripIds.includes(t.id));
@@ -1792,6 +1798,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         savedTripIds,
         savedTrips,
         toggleSaveTrip,
+        clearAllSavedTrips,
         isTripSaved,
         isSavedTripsDrawerOpen,
         setIsSavedTripsDrawerOpen,

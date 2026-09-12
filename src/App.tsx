@@ -22,6 +22,7 @@ import { QuickSearchModal } from './components/common/QuickSearchModal';
 import { WhatsAppFloatingButton } from './components/common/WhatsAppFloatingButton';
 import { AuthModal } from './components/common/AuthModal';
 import { ReviewSubmissionModal } from './components/common/ReviewSubmissionModal';
+import { SavedTripsDrawer } from './components/common/SavedTripsDrawer';
 
 const MainContent: React.FC = () => {
   const {
@@ -122,6 +123,9 @@ const MainContent: React.FC = () => {
 
       {/* Traveler Review Submission Modal */}
       <ReviewSubmissionModal />
+
+      {/* Bookmarked / Saved Trips Drawer */}
+      <SavedTripsDrawer />
 
       {/* WhatsApp Floating Button */}
       <WhatsAppFloatingButton />

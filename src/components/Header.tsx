@@ -42,6 +42,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
     openReviewModal,
     savedTripIds,
     openSavedTripsDrawer,
+    closeSavedTripsDrawer,
+    isSavedTripsDrawerOpen,
   } = useApp();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -437,15 +439,19 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
           <div className="flex items-center gap-3">
             {/* Saved Trips Bookmark Button */}
             <button
-              onClick={openSavedTripsDrawer}
-              className="relative p-2 text-neutral-300 hover:text-[#FFC72C] hover:bg-purple-900/40 rounded-full transition-colors cursor-pointer"
-              title="View bookmarked trips you saved to revisit"
+              onClick={() => (isSavedTripsDrawerOpen ? closeSavedTripsDrawer() : openSavedTripsDrawer())}
+              className="relative p-2 text-neutral-300 hover:text-[#FFC72C] hover:bg-purple-900/40 rounded-full transition-all duration-200 cursor-pointer active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#FFC72C]/40"
+              title={savedTripIds.length > 0 ? `View ${savedTripIds.length} bookmarked trip${savedTripIds.length > 1 ? 's' : ''}` : "View bookmarked trips you saved to revisit"}
               id="header-saved-trips-btn"
               aria-label="View saved trips"
             >
-              <Bookmark className={`w-5 h-5 ${savedTripIds.length > 0 ? 'text-[#FFC72C]' : ''}`} />
+              <Bookmark
+                className={`w-5 h-5 transition-transform duration-200 ${
+                  savedTripIds.length > 0 ? 'text-[#FFC72C] fill-[#FFC72C] scale-105' : 'text-neutral-300'
+                }`}
+              />
               {savedTripIds.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#FFC72C] text-[#2E0249] text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                <span className="absolute -top-1 -right-1 bg-[#FFC72C] text-[#2E0249] text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-xs animate-in zoom-in">
                   {savedTripIds.length}
                 </span>
               )}
