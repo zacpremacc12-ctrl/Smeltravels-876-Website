@@ -9,7 +9,7 @@ interface DestinationsPageProps {
 }
 
 export const DestinationsPage: React.FC<DestinationsPageProps> = ({ initialSlug }) => {
-  const { destinations, trips, navigateTo } = useApp();
+  const { destinations, trips, navigateTo, openCustomTripModal } = useApp();
   const [activeDestSlug, setActiveDestSlug] = useState<string | null>(initialSlug || null);
 
   const activeDestination = activeDestSlug ? destinations.find(d => d.slug === activeDestSlug || d.id === activeDestSlug) : null;
@@ -162,10 +162,11 @@ export const DestinationsPage: React.FC<DestinationsPageProps> = ({ initialSlug 
                 </div>
 
                 <button
-                  onClick={() => navigateTo('contact')}
-                  className="w-full bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-bold text-xs py-3 rounded-xl transition-all mt-2"
+                  onClick={() => openCustomTripModal(activeDestination.name)}
+                  className="w-full bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-bold text-xs py-3 rounded-xl transition-all mt-2 flex items-center justify-center gap-2 shadow-md cursor-pointer"
                 >
-                  Inquire About {activeDestination.name}
+                  <Plane className="w-4 h-4" />
+                  <span>Create Custom Trip to {activeDestination.name}</span>
                 </button>
               </div>
             </div>
@@ -178,17 +179,28 @@ export const DestinationsPage: React.FC<DestinationsPageProps> = ({ initialSlug 
   return (
     <div className="bg-[#FAF9F6] min-h-screen py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-10 text-center sm:text-left">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-bold uppercase tracking-wider mb-2">
-            <Compass className="w-3.5 h-3.5 text-amber-600" />
-            <span>GLOBAL DIRECTORY</span>
+        <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6 text-center sm:text-left">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-bold uppercase tracking-wider mb-2">
+              <Compass className="w-3.5 h-3.5 text-amber-600" />
+              <span>GLOBAL DIRECTORY</span>
+            </div>
+            <h1 className="text-3xl sm:text-5xl font-black text-neutral-900 tracking-tight font-['Outfit',sans-serif]">
+              Explore Our Destinations
+            </h1>
+            <p className="text-neutral-600 text-sm sm:text-base mt-2 max-w-2xl">
+              Discover the international cities and tropical coastlines where SMELTRAVELS876 curates stress-free group travel memories.
+            </p>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-black text-neutral-900 tracking-tight font-['Outfit',sans-serif]">
-            Explore Our Destinations
-          </h1>
-          <p className="text-neutral-600 text-sm sm:text-base mt-2 max-w-2xl">
-            Discover the international cities and tropical coastlines where SMELTRAVELS876 curates stress-free group travel memories.
-          </p>
+
+          <button
+            onClick={() => openCustomTripModal()}
+            className="shrink-0 inline-flex items-center justify-center gap-2 bg-[#2E0249] hover:bg-[#3B185F] text-[#FFC72C] font-bold text-sm px-6 py-3.5 rounded-xl shadow-md transition-all cursor-pointer"
+            id="destinations-create-custom-btn"
+          >
+            <Plane className="w-4 h-4" />
+            <span>Create Custom Trip (Any Country)</span>
+          </button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">

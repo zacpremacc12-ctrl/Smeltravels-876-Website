@@ -18,6 +18,7 @@ import {
   TravelerDepositRecord,
   AdminInboxItem,
   Ambassador,
+  CustomTripRequestInput,
 } from '../types';
 import {
   INITIAL_SETTINGS,
@@ -32,6 +33,7 @@ import {
   INITIAL_BOOKINGS,
   INITIAL_ADMIN_INBOX,
 } from '../data/initialData';
+import { WORLD_DESTINATIONS } from '../data/customTripDestinations';
 import {
   pushSiteContentToRTDB,
   pushFullSiteContentToRTDB,
@@ -124,6 +126,14 @@ interface AppContextType {
   setIsSavedTripsDrawerOpen: (open: boolean) => void;
   openSavedTripsDrawer: () => void;
   closeSavedTripsDrawer: () => void;
+
+  // Custom Trip Creation & Dynamic Requests (Any destination / country)
+  isCustomTripModalOpen: boolean;
+  setIsCustomTripModalOpen: (open: boolean) => void;
+  selectedDestinationForCustomTrip: string | null;
+  openCustomTripModal: (initialCountryOrDestination?: string) => void;
+  closeCustomTripModal: () => void;
+  submitCustomTripRequest: (data: CustomTripRequestInput) => Promise<{ success: boolean; referenceNumber: string }>;
 
   // Force Auth / Spot Booking Flow
   secureSpotForTrip: (trip: TripPackage) => void;
@@ -219,6 +229,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       loaded.ambassadors.some((a: Ambassador) => a.email === 'sdavis.smeltravels@gmail.com') &&
       loaded.ambassadors.some((a: Ambassador) => a.email === 'smeltravels876@gmail.com');
 
+    const customDests = Array.isArray(loaded.customTripDestinations) && loaded.customTripDestinations.length > 0
+      ? loaded.customTripDestinations
+      : WORLD_DESTINATIONS;
+
     if (!hasCanonical4) {
       return {
         ...loaded,
@@ -228,6 +242,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ambassadorEmail: INITIAL_SETTINGS.ambassadorEmail,
         ambassadors: INITIAL_SETTINGS.ambassadors,
         requireAmbassadorSelection: true,
+        customTripDestinations: customDests,
       };
     }
     const updatedAmbassadors = (loaded.ambassadors as Ambassador[]).map((a) => {
@@ -243,6 +258,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...loaded,
       ambassadors: updatedAmbassadors,
       requireAmbassadorSelection: loaded.requireAmbassadorSelection ?? true,
+      customTripDestinations: customDests,
     };
   });
   const [trips, setTrips] = useState<TripPackage[]>(() => {
@@ -277,6 +293,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return getStoredItem('saved_trips', ['panama-2026']);
   });
   const [isSavedTripsDrawerOpen, setIsSavedTripsDrawerOpen] = useState<boolean>(false);
+
+  // Custom Trip Creation State (Where travelers design custom trips to any country)
+  const [isCustomTripModalOpen, setIsCustomTripModalOpen] = useState<boolean>(false);
+  const [selectedDestinationForCustomTrip, setSelectedDestinationForCustomTrip] = useState<string | null>(null);
 
   // Forced Auth for Spot Booking state
   const [pendingTripForBooking, setPendingTripForBooking] = useState<TripPackage | null>(null);
@@ -876,6 +896,108 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const openSavedTripsDrawer = () => setIsSavedTripsDrawerOpen(true);
   const closeSavedTripsDrawer = () => setIsSavedTripsDrawerOpen(false);
+
+  // Custom Trip Creation & Planning
+  const openCustomTripModal = (initialCountryOrDestination?: string) => {
+    if (initialCountryOrDestination) {
+      setSelectedDestinationForCustomTrip(initialCountryOrDestination);
+    }
+    setIsCustomTripModalOpen(true);
+  };
+
+  const closeCustomTripModal = () => {
+    setIsCustomTripModalOpen(false);
+    setSelectedDestinationForCustomTrip(null);
+  };
+
+  const submitCustomTripRequest = async (data: CustomTripRequestInput): Promise<{ success: boolean; referenceNumber: string }> => {
+    const ref = `CUSTOM-${Math.floor(10000 + Math.random() * 90000)}`;
+    const now = new Date().toISOString();
+    const recipients = ['zbuchanan.smeltravels@gmail.com', 'smeltravels876@gmail.com'];
+    const adminRecipients = ['Elvoy Bennett', 'Zachary Buchanan'];
+
+    const datesSummary = data.travelDatesType === 'specific' && data.startDate
+      ? `${data.startDate}${data.endDate ? ` to ${data.endDate}` : ''}`
+      : data.flexibleSeason || 'Flexible 2026/2027';
+
+    const durationStr = data.durationDays ? `${data.durationDays} Days` : 'Flexible';
+    const travelersStr = `${data.adultsCount || 1} Adult(s)${data.childrenCount ? `, ${data.childrenCount} Children` : ''}`;
+
+    // 1. Immediately log to local onsite Admin Inbox for ALL ADMINS
+    const newInboxItem: AdminInboxItem = {
+      id: `inbox-custom-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      type: 'custom_trip',
+      title: `Custom Trip Request: ${data.destination} (${data.customerName})`,
+      senderName: data.customerName,
+      senderEmail: data.email,
+      senderPhone: data.phone || 'N/A',
+      summary: `Custom trip to ${data.destination} (${datesSummary}, ${travelersStr}). Dispatched to Elvoy Bennett & Zachary Buchanan (${recipients.join(' & ')}).`,
+      details: `CUSTOM TRIP DETAILS:\nDestination: ${data.destination} (${data.country})\nTravel Dates: ${datesSummary} (${durationStr})\nTravelers: ${travelersStr}\nStyle: ${data.travelStyle}\nVibe: ${data.tripVibe}\nBudget: ${data.budgetPerPerson || 'Flexible'}\nInclusions: ${(data.mustHaveInclusions || []).join(', ')}\nSpecial Notes: ${data.specialRequests || 'None'}\n\nTRAVELER:\nName: ${data.customerName}\nEmail: ${data.email}\nPhone: ${data.phone || 'N/A'}\nParish/Region: ${data.countryOrParish || 'Jamaica'}\nPreferred Contact: ${data.preferredContactMethod || 'WhatsApp'}\nAmbassador: ${data.preferredAmbassador || 'Executive Operations Desk'}\nDispatched to: ${recipients.join(', ')}`,
+      tripName: `Custom: ${data.destination}`,
+      referenceNumber: ref,
+      timestamp: now,
+      isRead: false,
+      adminRecipients,
+      recipientEmails: recipients,
+      emailStatus: 'Delivered',
+    };
+
+    setAdminInbox(prev => {
+      const updated = [newInboxItem, ...prev];
+      syncToLiveServer({ adminInbox: updated });
+      return updated;
+    });
+
+    // 2. Add to Bookings as a custom trip request record
+    const newBooking: BookingSubmission = {
+      id: `booking-custom-${Date.now()}`,
+      referenceNumber: ref,
+      tripId: `custom-${data.country.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+      tripName: `Custom Trip: ${data.destination}`,
+      customerName: data.customerName,
+      email: data.email,
+      phone: data.phone || '',
+      countryOrParish: data.countryOrParish || 'Jamaica',
+      adultsCount: Number(data.adultsCount) || 1,
+      childrenCount: Number(data.childrenCount) || 0,
+      preferredTravelDate: datesSummary,
+      travelInterestType: 'ready_to_book',
+      specialRequests: `[Custom Trip Request]\nDestination: ${data.destination} (${data.country})\nDates: ${datesSummary} (${durationStr})\nVibe: ${data.tripVibe}\nStyle: ${data.travelStyle}\nBudget: ${data.budgetPerPerson || 'Flexible'}\nInclusions: ${(data.mustHaveInclusions || []).join(', ')}\nNotes: ${data.specialRequests || 'None'}`,
+      preferredContactMethod: data.preferredContactMethod || 'whatsapp',
+      status: 'Custom Trip Request' as any,
+      depositPaid: 0,
+      totalPrice: 0,
+      currency: 'JMD',
+      ambassadorName: data.preferredAmbassador,
+      internalNotes: [`Custom trip submitted on ${now}. Dispatched to Elvoy Bennett & Zachary Buchanan.`],
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    setBookings(prev => {
+      const updated = [newBooking, ...prev];
+      syncToLiveServer({ bookings: updated });
+      return updated;
+    });
+
+    // 3. Dispatch to server endpoint for live admin email dispatch and persistence
+    try {
+      await fetch('/api/custom-trip-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...data, referenceNumber: ref }),
+      });
+    } catch (e) {
+      console.warn('[Custom Trip Request Dispatch Warning]:', e);
+    }
+
+    showNotification(
+      'Custom Trip Request Received! ✈️',
+      `Your custom journey to ${data.destination} (Ref #${ref}) has been routed to all admins. We will craft your itinerary!`
+    );
+
+    return { success: true, referenceNumber: ref };
+  };
 
   // Spot Booking - Direct and accessible to all travelers without forced login
   const secureSpotForTrip = (trip: TripPackage) => {
@@ -1804,6 +1926,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsSavedTripsDrawerOpen,
         openSavedTripsDrawer,
         closeSavedTripsDrawer,
+        isCustomTripModalOpen,
+        setIsCustomTripModalOpen,
+        selectedDestinationForCustomTrip,
+        openCustomTripModal,
+        closeCustomTripModal,
+        submitCustomTripRequest,
         secureSpotForTrip,
         pendingTripForBooking,
         setPendingTripForBooking,

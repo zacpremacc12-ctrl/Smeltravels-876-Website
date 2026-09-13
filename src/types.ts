@@ -290,6 +290,29 @@ export interface Ambassador {
   parishOrRegion?: string;
 }
 
+export interface DestinationPhoto {
+  url: string;
+  caption: string;
+  landmark: string;
+}
+
+export interface CountryDestinationInfo {
+  id: string;
+  name: string;
+  country: string;
+  region: 'Caribbean' | 'Americas' | 'Europe' | 'Asia & Middle East' | 'Africa' | 'Global & Islands';
+  flag: string;
+  capitalOrMainCity: string;
+  tagline: string;
+  popularCities: string[];
+  bestMonths: string[];
+  recommendedDuration: string;
+  photos: DestinationPhoto[];
+  highlights: string[];
+  vibes: string[];
+  typicalBudgetTier: 'Affordable' | 'Moderate' | 'Luxury';
+}
+
 export interface SiteSettings {
   siteName: string;
   tagline: string;
@@ -346,6 +369,7 @@ export interface SiteSettings {
     googleAnalyticsId: string;
     metaPixelId: string;
   };
+  customTripDestinations?: CountryDestinationInfo[];
 }
 
 export type AdminRole = 'Super Admin' | 'Content Manager' | 'Booking Manager';
@@ -357,7 +381,41 @@ export interface AdminUser {
   role: AdminRole;
 }
 
-export type AdminInboxCategory = 'inquiry' | 'deposit' | 'review' | 'message';
+export type AdminInboxCategory = 'inquiry' | 'deposit' | 'review' | 'message' | 'custom_trip';
+
+export interface CustomTripRequest {
+  id: string;
+  referenceNumber: string;
+  destination: string;
+  country: string;
+  countryFlag?: string;
+  landmarkPhotos: string[];
+  travelDatesType: 'specific' | 'flexible';
+  startDate?: string;
+  endDate?: string;
+  flexibleSeason?: string;
+  durationDays?: number;
+  adultsCount: number;
+  childrenCount: number;
+  tripVibe: string;
+  travelStyle: string;
+  budgetPerPerson?: string;
+  budgetCurrency?: string;
+  budgetAmount?: string;
+  budgetType?: 'per_person' | 'total_trip';
+  mustHaveInclusions: string[];
+  specialRequests?: string;
+  customerName: string;
+  email: string;
+  phone: string;
+  countryOrParish: string;
+  preferredContactMethod: 'whatsapp' | 'phone' | 'email';
+  preferredAmbassador?: string;
+  createdAt: string;
+  status: 'Pending Admin Review' | 'Trip Proposal Sent' | 'Confirmed' | 'Archived';
+}
+
+export type CustomTripRequestInput = Omit<CustomTripRequest, 'id' | 'referenceNumber' | 'createdAt' | 'status'>;
 
 export interface AdminInboxItem {
   id: string;

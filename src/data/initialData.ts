@@ -11,6 +11,7 @@ import {
   BookingSubmission,
   AdminInboxItem
 } from '../types';
+import { WORLD_DESTINATIONS } from './customTripDestinations';
 
 export const INITIAL_SETTINGS: SiteSettings = {
   siteName: 'SMELTRAVELS876',
@@ -122,6 +123,7 @@ export const INITIAL_SETTINGS: SiteSettings = {
     googleAnalyticsId: 'G-SMEL876TRV',
     metaPixelId: '',
   },
+  customTripDestinations: WORLD_DESTINATIONS,
 };
 
 export const INITIAL_TRIPS: TripPackage[] = [

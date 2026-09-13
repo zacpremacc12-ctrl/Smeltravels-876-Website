@@ -16,7 +16,7 @@ import {
 import { useApp, formatPriceJMD } from '../../context/AppContext';
 
 export const HeroSection: React.FC = () => {
-  const { navigateTo, trips } = useApp();
+  const { navigateTo, trips, openCustomTripModal } = useApp();
   const [selectedYear, setSelectedYear] = useState<'all' | '2026' | '2027'>('all');
   const [selectedDest, setSelectedDest] = useState<string>('all');
 
@@ -74,11 +74,15 @@ export const HeroSection: React.FC = () => {
               </button>
 
               <button
-                onClick={() => navigateTo('contact')}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold text-base px-7 py-4 rounded-xl border border-white/20 backdrop-blur-sm transition-all"
+                onClick={() => openCustomTripModal()}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 bg-gradient-to-r from-purple-800/90 via-purple-900/90 to-[#2E0249] hover:from-purple-700 hover:to-[#3F0463] text-white hover:text-[#FFC72C] font-bold text-base px-7 py-4 rounded-xl border-2 border-[#FFC72C]/70 hover:border-[#FFC72C] backdrop-blur-md shadow-xl shadow-purple-950/40 hover:scale-102 active:scale-98 transition-all group cursor-pointer"
                 id="hero-plan-trip-btn"
               >
-                <span>Plan Your Trip</span>
+                <Sparkles className="w-5 h-5 text-[#FFC72C] group-hover:rotate-12 transition-transform" />
+                <span>Create Your Own Trip</span>
+                <span className="text-[11px] bg-[#FFC72C] text-[#2E0249] font-black px-2.5 py-0.5 rounded-full ml-1 shadow-xs">
+                  Any Country
+                </span>
               </button>
             </div>
 

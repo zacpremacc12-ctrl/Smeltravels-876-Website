@@ -48,6 +48,8 @@ import { AdminLoginLock } from './AdminLoginLock';
 import { ImageUploader } from './ImageUploader';
 import { MultiGalleryUploader } from './MultiGalleryUploader';
 import { AdminInboxView } from './AdminInboxView';
+import { CustomTripDestinationsManager } from './CustomTripDestinationsManager';
+import { WORLD_DESTINATIONS } from '../../data/customTripDestinations';
 import { pushSiteContentToRTDB, pushFullSiteContentToRTDB } from '../../lib/firebase';
 import { getSafeTripImageUrl, handleTripImageError } from '../../lib/imageUtils';
 
@@ -88,7 +90,7 @@ export const AdminDashboard: React.FC = () => {
     refreshSiteData,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'inbox' | 'inquiries' | 'trips' | 'destinations' | 'guides' | 'faqs' | 'offers' | 'testimonials' | 'settings'>('inbox');
+  const [activeTab, setActiveTab] = useState<'inbox' | 'inquiries' | 'trips' | 'destinations' | 'custom-destinations' | 'guides' | 'faqs' | 'offers' | 'testimonials' | 'settings'>('inbox');
   const [inquirySearch, setInquirySearch] = useState('');
   const [inquiryFilterStatus, setInquiryFilterStatus] = useState<string>('All');
   const [selectedInquiry, setSelectedInquiry] = useState<BookingInquiry | null>(null);
@@ -475,6 +477,11 @@ export const AdminDashboard: React.FC = () => {
             { id: 'inquiries', label: `Inquiries (${bookings.length})`, icon: UserCheck },
             { id: 'trips', label: `Trips (${trips.length})`, icon: Plane },
             { id: 'destinations', label: `Destinations (${destinations.length})`, icon: Compass },
+            {
+              id: 'custom-destinations',
+              label: `Custom Trip Destinations (${(localSettings.customTripDestinations?.length ?? WORLD_DESTINATIONS.length)})`,
+              icon: Globe,
+            },
             { id: 'guides', label: `Blog & Guides (${blogPosts.length})`, icon: BookOpen },
             { id: 'faqs', label: `FAQs (${faqs.length})`, icon: HelpCircle },
             { id: 'offers', label: `Offers (${offers.length})`, icon: Tag },
@@ -1875,6 +1882,27 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* TAB: CUSTOM TRIP DESTINATIONS & PHOTO GALLERIES (STANDALONE SECTION) */}
+        {activeTab === 'custom-destinations' && (
+          <div className="space-y-6">
+            <CustomTripDestinationsManager
+              destinations={localSettings.customTripDestinations || WORLD_DESTINATIONS}
+              onUpdateDestinations={(updatedList) => {
+                const newSettings = {
+                  ...localSettings,
+                  customTripDestinations: updatedList,
+                };
+                setLocalSettings(newSettings);
+                updateSettings(newSettings);
+                showNotification(
+                  'Custom Destinations Updated',
+                  'Custom trip destinations and photo galleries updated across all traveler devices.'
+                );
+              }}
+            />
           </div>
         )}
 

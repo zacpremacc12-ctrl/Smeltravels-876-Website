@@ -9,7 +9,7 @@ interface TripsPageProps {
 }
 
 export const TripsPage: React.FC<TripsPageProps> = ({ initialFilterParam }) => {
-  const { trips, navigateTo } = useApp();
+  const { trips, navigateTo, openCustomTripModal } = useApp();
 
   const [selectedYear, setSelectedYear] = useState<string>(() => {
     if (initialFilterParam === '2026') return '2026';
@@ -224,6 +224,33 @@ export const TripsPage: React.FC<TripsPageProps> = ({ initialFilterParam }) => {
             </button>
           </div>
         )}
+
+        {/* Custom Trip Creation Banner - For Any Country & Any Dates */}
+        <div className="mt-14 bg-gradient-to-r from-[#2E0249] via-[#4A0E4E] to-[#2E0249] rounded-3xl p-8 sm:p-10 text-white shadow-xl relative overflow-hidden">
+          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="text-center md:text-left max-w-xl">
+              <span className="inline-flex items-center gap-1.5 bg-[#FFC72C]/20 border border-[#FFC72C]/40 text-[#FFC72C] text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-3">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Custom Private & Group Itineraries</span>
+              </span>
+              <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+                Don't see where you want to go?
+              </h3>
+              <p className="text-neutral-200 text-sm mt-2 leading-relaxed">
+                Choose any country in the world and whenever you want to travel. Select your favorite landmark photos, and your proposal will be routed to all admins to build your custom itinerary!
+              </p>
+            </div>
+
+            <button
+              onClick={() => openCustomTripModal()}
+              className="shrink-0 inline-flex items-center gap-2.5 bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-black text-sm sm:text-base px-8 py-4 rounded-xl shadow-lg hover:scale-102 active:scale-98 transition-all cursor-pointer"
+              id="trips-page-create-custom-trip-btn"
+            >
+              <Sparkles className="w-5 h-5 fill-current" />
+              <span>Create Your Own Trip</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

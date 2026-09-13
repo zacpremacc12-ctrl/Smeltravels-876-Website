@@ -44,6 +44,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
     openSavedTripsDrawer,
     closeSavedTripsDrawer,
     isSavedTripsDrawerOpen,
+    openCustomTripModal,
   } = useApp();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -425,6 +426,16 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
             </button>
 
             <button
+              onClick={() => openCustomTripModal()}
+              className="inline-flex items-center gap-1.5 text-sm font-bold text-[#FFC72C] hover:text-white bg-purple-900/60 hover:bg-purple-900 px-3 py-1 rounded-full border border-[#FFC72C]/40 transition-all cursor-pointer"
+              id="nav-custom-trip-btn"
+              title="Design your own custom trip to any country in the world"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#FFC72C]" />
+              <span>CUSTOM TRIP</span>
+            </button>
+
+            <button
               onClick={() => handleNav('contact')}
               className={`text-sm font-semibold transition-colors ${
                 activePage === 'contact' ? 'text-[#FFC72C]' : 'text-neutral-200 hover:text-white'
@@ -619,6 +630,22 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
               }`}
             >
               FAQ
+            </button>
+            <button
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                openCustomTripModal();
+              }}
+              className="w-full text-left px-3 py-2.5 rounded-lg text-base font-bold bg-[#FFC72C]/20 text-[#FFC72C] hover:bg-[#FFC72C]/30 border border-[#FFC72C]/40 flex items-center justify-between"
+              id="mobile-nav-custom-trip-btn"
+            >
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[#FFC72C]" />
+                <span>CREATE YOUR OWN TRIP</span>
+              </div>
+              <span className="text-[10px] bg-[#FFC72C] text-[#2E0249] px-2 py-0.5 rounded font-black">
+                ANY COUNTRY
+              </span>
             </button>
             <button
               onClick={() => handleNav('contact')}

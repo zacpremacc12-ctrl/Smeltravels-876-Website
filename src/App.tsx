@@ -23,6 +23,7 @@ import { WhatsAppFloatingButton } from './components/common/WhatsAppFloatingButt
 import { AuthModal } from './components/common/AuthModal';
 import { ReviewSubmissionModal } from './components/common/ReviewSubmissionModal';
 import { SavedTripsDrawer } from './components/common/SavedTripsDrawer';
+import { CustomTripModal } from './components/common/CustomTripModal';
 
 const MainContent: React.FC = () => {
   const {
@@ -126,6 +127,9 @@ const MainContent: React.FC = () => {
 
       {/* Bookmarked / Saved Trips Drawer */}
       <SavedTripsDrawer />
+
+      {/* Interactive Custom Trip Creator Modal */}
+      <CustomTripModal />
 
       {/* WhatsApp Floating Button */}
       <WhatsAppFloatingButton />

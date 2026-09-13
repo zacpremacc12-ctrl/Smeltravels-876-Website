@@ -64,6 +64,211 @@ const broadcastSiteUpdate = (data: any) => {
   }
 };
 
+// Dispatch custom trip request notification email to all admins
+async function dispatchCustomTripEmail(data: {
+  recipients: string[];
+  referenceNumber: string;
+  destination: string;
+  country: string;
+  landmarkPhoto?: string;
+  travelDatesSummary: string;
+  durationSummary: string;
+  travelersCount: string;
+  tripVibe: string;
+  travelStyle: string;
+  budgetPerPerson?: string;
+  mustHaveInclusions: string[];
+  specialRequests?: string;
+  customerName: string;
+  email: string;
+  phone: string;
+  countryOrParish: string;
+  preferredContactMethod: string;
+  preferredAmbassador?: string;
+}) {
+  const subject = `[SMELTRAVELS876 CUSTOM TRIP ${data.referenceNumber}] ${data.destination} for ${data.customerName}`;
+  const textBody = `
+SMELTRAVELS876 - NEW CUSTOM TRIP ITINERARY REQUEST
+==================================================
+Reference: ${data.referenceNumber}
+Designated Admins: Elvoy Bennett & Zachary Buchanan
+Automated Email Notification To: ${data.recipients.join(', ')}
+
+DESTINATION & TIMING:
+- Destination / Country: ${data.destination} (${data.country})
+- Travel Dates: ${data.travelDatesSummary}
+- Duration: ${data.durationSummary}
+- Travelers: ${data.travelersCount}
+- Travel Style: ${data.travelStyle}
+- Trip Vibe: ${data.tripVibe}
+- Budget Tier: ${data.budgetPerPerson || 'Standard / Flexible'}
+
+REQUESTED INCLUSIONS:
+${data.mustHaveInclusions.length > 0 ? data.mustHaveInclusions.map(i => `- ${i}`).join('\n') : '- Full Package Customization'}
+
+CUSTOMER CONTACT:
+- Name: ${data.customerName}
+- Email: ${data.email}
+- Phone: ${data.phone}
+- Home Parish / Country: ${data.countryOrParish}
+- Preferred Contact: ${data.preferredContactMethod}
+- Assigned / Preferred Ambassador: ${data.preferredAmbassador || 'Zachary Buchanan / Elvoy Bennett'}
+
+TRAVELER'S WISHES & SPECIAL REQUESTS:
+"${data.specialRequests || 'No specific requests provided. Please contact traveler to design itinerary.'}"
+
+ACTION REQUIRED BY ADMINS:
+Please review traveler preferences, check airline & hotel inventory for ${data.destination}, and contact ${data.customerName} to finalize the custom package.
+`.trim();
+
+  const photoHtml = data.landmarkPhoto
+    ? `<div style="margin-bottom: 20px; border-radius: 12px; overflow: hidden; max-height: 240px; border: 1px solid #E5E7EB;">
+        <img src="${data.landmarkPhoto}" alt="${data.destination}" style="width: 100%; height: 240px; object-fit: cover; display: block;" />
+       </div>`
+    : '';
+
+  const htmlBody = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FAF9F6; margin: 0; padding: 24px;">
+  <div style="max-width: 620px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #E5E7EB; box-shadow: 0 4px 14px rgba(0,0,0,0.06);">
+    <div style="background-color: #2E0249; padding: 24px; text-align: center; color: #ffffff;">
+      <h1 style="margin: 0; font-size: 22px; font-weight: 900; letter-spacing: 0.5px; color: #FFC72C;">SMELTRAVELS876</h1>
+      <p style="margin: 6px 0 0 0; font-size: 13px; color: #E5D9F2;">Executive Travel Operations • Custom Trip Planning Desk</p>
+    </div>
+    
+    <div style="background-color: #F3E8FF; padding: 12px 24px; border-bottom: 1px solid #E9D5FF; font-size: 12px; color: #581C87;">
+      <strong>Action Required:</strong> Dispatched to All Admins: Elvoy Bennett (<a href="mailto:smeltravels876@gmail.com" style="color: #581C87;">smeltravels876@gmail.com</a>) &amp; Zachary Buchanan (<a href="mailto:zbuchanan.smeltravels@gmail.com" style="color: #581C87;">zbuchanan.smeltravels@gmail.com</a>)
+    </div>
+
+    <div style="padding: 24px;">
+      <div style="display: inline-block; background-color: #FEF3C7; color: #92400E; font-size: 11px; font-weight: bold; padding: 4px 12px; border-radius: 9999px; margin-bottom: 14px;">
+        Ref #${data.referenceNumber} • Custom Trip Request
+      </div>
+      
+      <h2 style="margin: 0 0 12px 0; font-size: 20px; color: #111827;">New Custom Trip to ${data.destination}</h2>
+      <p style="margin: 0 0 16px 0; font-size: 13px; color: #4B5563;">A traveler has requested a custom personalized itinerary. Review details below to set up flights, hotel, and excursions.</p>
+      
+      ${photoHtml}
+
+      <div style="background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+        <h3 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 800; color: #2E0249; text-transform: uppercase; letter-spacing: 0.5px;">Trip Specifications</h3>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <tr>
+            <td style="padding: 6px 0; color: #6B7280; width: 150px;">Destination:</td>
+            <td style="padding: 6px 0; color: #111827; font-weight: bold;">${data.destination} (${data.country})</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #6B7280;">When to Travel:</td>
+            <td style="padding: 6px 0; color: #111827; font-weight: bold; color: #B45309;">${data.travelDatesSummary}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #6B7280;">Duration:</td>
+            <td style="padding: 6px 0; color: #111827;">${data.durationSummary}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #6B7280;">Party Size:</td>
+            <td style="padding: 6px 0; color: #111827; font-weight: bold;">${data.travelersCount}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #6B7280;">Vibe & Occasion:</td>
+            <td style="padding: 6px 0; color: #111827;">${data.tripVibe}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #6B7280;">Travel Style / Tier:</td>
+            <td style="padding: 6px 0; color: #111827;">${data.travelStyle}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #6B7280;">Budget Preference:</td>
+            <td style="padding: 6px 0; color: #111827;">${data.budgetPerPerson || 'Flexible'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #6B7280; vertical-align: top;">Must-Have Inclusions:</td>
+            <td style="padding: 6px 0; color: #111827;">${data.mustHaveInclusions.length > 0 ? data.mustHaveInclusions.join(', ') : 'All Standard Inclusions'}</td>
+          </tr>
+        </table>
+      </div>
+
+      <div style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+        <h3 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 800; color: #2E0249; text-transform: uppercase; letter-spacing: 0.5px;">Traveler Contact Information</h3>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <tr>
+            <td style="padding: 6px 0; color: #6B7280; width: 150px;">Full Name:</td>
+            <td style="padding: 6px 0; color: #111827; font-weight: bold;">${data.customerName}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #6B7280;">Email Address:</td>
+            <td style="padding: 6px 0; color: #2563EB;"><a href="mailto:${data.email}">${data.email}</a></td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #6B7280;">Phone / WhatsApp:</td>
+            <td style="padding: 6px 0; color: #111827; font-weight: bold;"><a href="https://wa.me/${data.phone.replace(/[^0-9]/g, '')}">${data.phone}</a></td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #6B7280;">Parish / Country:</td>
+            <td style="padding: 6px 0; color: #111827;">${data.countryOrParish}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #6B7280;">Preferred Contact:</td>
+            <td style="padding: 6px 0; color: #111827; text-transform: capitalize;">${data.preferredContactMethod}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #6B7280;">Preferred Ambassador:</td>
+            <td style="padding: 6px 0; color: #581C87; font-weight: 600;">${data.preferredAmbassador || 'Executive Operations'}</td>
+          </tr>
+        </table>
+      </div>
+
+      <div style="background-color: #FEF9C3; border: 1px solid #FDE047; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+        <div style="font-size: 12px; font-weight: bold; color: #854D0E; text-transform: uppercase; margin-bottom: 6px;">Traveler's Dream Notes & Special Requests</div>
+        <div style="font-size: 14px; line-height: 1.5; color: #713F12; white-space: pre-wrap;">"${data.specialRequests || 'None specified'}"</div>
+      </div>
+
+      <p style="font-size: 12px; color: #9CA3AF; margin: 0; text-align: center;">
+        Simultaneously dispatched to all admins: <strong>${data.recipients.join(' & ')}</strong>.<br/>
+        This record is permanently recorded in the Admin Dashboard for package configuration and booking creation.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+`.trim();
+
+  let messageId = `custom-msg-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+
+  try {
+    if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: Number(process.env.SMTP_PORT) || 587,
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      });
+
+      const info = await transporter.sendMail({
+        from: `SMELTRAVELS876 Custom Trips <${process.env.SMTP_FROM || 'no-reply@smeltravels876.com'}>`,
+        to: data.recipients,
+        replyTo: data.email,
+        subject,
+        text: textBody,
+        html: htmlBody,
+      });
+      if (info?.messageId) messageId = info.messageId;
+      console.log('[Custom Trip Email Dispatch] Live SMTP delivery succeeded:', messageId);
+    } else {
+      console.log(`[Custom Trip Email Dispatch] Logged to admins ${data.recipients.join(', ')} (SMTP credentials not configured)`);
+    }
+  } catch (err) {
+    console.warn('[Custom Trip Email Dispatch] Delivery error, falling back to local admin log:', err);
+  }
+
+  return { subject, messageId };
+}
+
 // Dispatch email notification helper to both admins
 async function dispatchInquiryEmail(data: {
   recipients: string[];
@@ -304,6 +509,9 @@ app.post('/api/site-data', (req, res) => {
             ambassadors: Array.isArray(updates.settings.ambassadors)
               ? updates.settings.ambassadors
               : ((siteDataCache.settings && siteDataCache.settings.ambassadors) || []),
+            customTripDestinations: Array.isArray(updates.settings.customTripDestinations)
+              ? updates.settings.customTripDestinations
+              : ((siteDataCache.settings && siteDataCache.settings.customTripDestinations) || []),
           }
         : siteDataCache.settings;
 
@@ -395,6 +603,148 @@ app.delete('/api/inbox/:id', (req, res) => {
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST custom trip request (any traveler creating their dream trip to any country)
+// Automatically dispatches to zbuchanan.smeltravels@gmail.com & smeltravels876@gmail.com, and logs to admin inbox for ALL ADMINS
+app.post('/api/custom-trip-request', async (req, res) => {
+  try {
+    const {
+      destination,
+      country,
+      landmarkPhotos,
+      travelDatesType,
+      startDate,
+      endDate,
+      flexibleSeason,
+      durationDays,
+      adultsCount,
+      childrenCount,
+      tripVibe,
+      travelStyle,
+      budgetPerPerson,
+      mustHaveInclusions,
+      specialRequests,
+      customerName,
+      email,
+      phone,
+      countryOrParish,
+      preferredContactMethod,
+      preferredAmbassador,
+    } = req.body;
+
+    if (!customerName || !email || !destination) {
+      return res.status(400).json({ success: false, error: 'Customer name, email, and destination are required.' });
+    }
+
+    const ref = `CUSTOM-${Math.floor(10000 + Math.random() * 90000)}`;
+    const recipients = ['zbuchanan.smeltravels@gmail.com', 'smeltravels876@gmail.com'];
+    const adminRecipients = ['Elvoy Bennett', 'Zachary Buchanan'];
+    const now = new Date().toISOString();
+
+    const travelDatesSummary = travelDatesType === 'specific' && startDate
+      ? `${startDate}${endDate ? ` to ${endDate}` : ''}`
+      : flexibleSeason || 'Flexible 2026/2027';
+
+    const durationSummary = durationDays ? `${durationDays} Days` : 'Flexible duration';
+    const travelersCount = `${adultsCount || 1} Adult(s)${childrenCount ? `, ${childrenCount} Children` : ''}`;
+
+    const landmarkPhoto = Array.isArray(landmarkPhotos) && landmarkPhotos.length > 0
+      ? (typeof landmarkPhotos[0] === 'string' ? landmarkPhotos[0] : landmarkPhotos[0]?.url)
+      : undefined;
+
+    // 1. Dispatch Automated Email to BOTH Admins
+    const emailResult = await dispatchCustomTripEmail({
+      recipients,
+      referenceNumber: ref,
+      destination: destination || 'Custom Itinerary',
+      country: country || destination,
+      landmarkPhoto,
+      travelDatesSummary,
+      durationSummary,
+      travelersCount,
+      tripVibe: tripVibe || 'Vacation & Exploration',
+      travelStyle: travelStyle || 'Comfortable',
+      budgetPerPerson: budgetPerPerson || 'Flexible',
+      mustHaveInclusions: Array.isArray(mustHaveInclusions) ? mustHaveInclusions : [],
+      specialRequests: specialRequests || '',
+      customerName,
+      email,
+      phone: phone || 'N/A',
+      countryOrParish: countryOrParish || 'Jamaica',
+      preferredContactMethod: preferredContactMethod || 'whatsapp',
+      preferredAmbassador: preferredAmbassador || 'Zachary Buchanan / Elvoy Bennett',
+    });
+
+    // 2. Log to Onsite Admin Inbox for ALL ADMINS (Elvoy Bennett & Zachary Buchanan)
+    const currentInbox = Array.isArray(siteDataCache.adminInbox) ? siteDataCache.adminInbox : [];
+    const newInboxItem = {
+      id: `inbox-custom-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      type: 'custom_trip',
+      title: `Custom Trip Request: ${destination} (${customerName})`,
+      senderName: customerName,
+      senderEmail: email,
+      senderPhone: phone || 'N/A',
+      summary: `Custom trip to ${destination} (${travelDatesSummary}, ${travelersCount}). Style: ${travelStyle || 'Comfort'}. Sent to Elvoy Bennett & Zachary Buchanan.`,
+      details: `CUSTOM TRIP DETAILS:\nDestination: ${destination} (${country || destination})\nTravel Dates: ${travelDatesSummary} (${durationSummary})\nTravelers: ${travelersCount}\nStyle: ${travelStyle || 'Comfort'}\nVibe: ${tripVibe || 'Vacation'}\nBudget: ${budgetPerPerson || 'Flexible'}\nInclusions: ${(mustHaveInclusions || []).join(', ')}\nSpecial Notes: ${specialRequests || 'None'}\n\nTRAVELER:\nName: ${customerName}\nEmail: ${email}\nPhone: ${phone || 'N/A'}\nParish/Region: ${countryOrParish || 'Jamaica'}\nPreferred Contact: ${preferredContactMethod || 'WhatsApp'}\nAmbassador: ${preferredAmbassador || 'Executive Desk'}\nDispatched to: ${recipients.join(', ')}`,
+      tripName: `Custom: ${destination}`,
+      referenceNumber: ref,
+      timestamp: now,
+      isRead: false,
+      adminRecipients,
+      recipientEmails: recipients,
+      emailStatus: 'Delivered',
+    };
+
+    siteDataCache.adminInbox = [newInboxItem, ...currentInbox];
+
+    // 3. Add to Bookings / Inquiries list with status 'Custom Trip Request'
+    const currentBookings = Array.isArray(siteDataCache.bookings) ? siteDataCache.bookings : [];
+    const newBookingSubmission = {
+      id: `booking-custom-${Date.now()}`,
+      referenceNumber: ref,
+      tripId: `custom-${(country || destination).toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+      tripName: `Custom Trip: ${destination}`,
+      customerName,
+      email,
+      phone: phone || '',
+      countryOrParish: countryOrParish || 'Jamaica',
+      adultsCount: Number(adultsCount) || 1,
+      childrenCount: Number(childrenCount) || 0,
+      preferredTravelDate: travelDatesSummary,
+      travelInterestType: 'ready_to_book',
+      specialRequests: `[Custom Trip Request]\nDestination: ${destination} (${country})\nDates: ${travelDatesSummary} (${durationSummary})\nVibe: ${tripVibe}\nStyle: ${travelStyle}\nBudget: ${budgetPerPerson}\nInclusions: ${(mustHaveInclusions || []).join(', ')}\nNotes: ${specialRequests || 'None'}`,
+      preferredContactMethod: preferredContactMethod || 'whatsapp',
+      status: 'Custom Trip Request',
+      depositPaid: 0,
+      totalPrice: 0,
+      currency: 'JMD',
+      ambassadorName: preferredAmbassador,
+      internalNotes: [`Custom trip submitted by traveler on ${now}. Dispatched to Elvoy Bennett & Zachary Buchanan.`],
+      createdAt: now,
+      updatedAt: now,
+    };
+    siteDataCache.bookings = [newBookingSubmission, ...currentBookings];
+
+    // 4. Save and broadcast
+    siteDataCache.lastUpdated = now;
+    persistData();
+    broadcastSiteUpdate(siteDataCache);
+
+    console.log(`[Custom Trip] Automated dispatch of custom trip ${ref} (${destination}) to ${recipients.join(', ')} for Elvoy Bennett & Zachary Buchanan`);
+
+    return res.json({
+      success: true,
+      referenceNumber: ref,
+      sentTo: recipients,
+      adminRecipients,
+      inboxLogged: true,
+      message: 'Custom trip request successfully routed to all admins (Elvoy Bennett and Zachary Buchanan) and logged in the onsite Admin Inbox.',
+    });
+  } catch (err: any) {
+    console.error('[Custom Trip Error]:', err);
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 

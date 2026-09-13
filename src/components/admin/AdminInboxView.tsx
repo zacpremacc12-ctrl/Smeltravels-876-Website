@@ -66,6 +66,7 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
   const depositCount = adminInbox.filter((i) => i.type === 'deposit').length;
   const reviewCount = adminInbox.filter((i) => i.type === 'review').length;
   const messageCount = adminInbox.filter((i) => i.type === 'message').length;
+  const customTripCount = adminInbox.filter((i) => i.type === 'custom_trip').length;
 
   const totalDepositsLogged = adminInbox
     .filter((i) => i.type === 'deposit' && i.amount)
@@ -79,6 +80,13 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
           bg: 'bg-emerald-100 text-emerald-900 border-emerald-300',
           icon: DollarSign,
           iconColor: 'text-emerald-700 bg-emerald-500/20',
+        };
+      case 'custom_trip':
+        return {
+          label: 'CUSTOM TRIP REQUEST',
+          bg: 'bg-indigo-100 text-indigo-950 border-indigo-300',
+          icon: Sparkles,
+          iconColor: 'text-indigo-700 bg-indigo-500/20',
         };
       case 'inquiry':
         return {
@@ -131,7 +139,7 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
     markInboxItemAsRead(item.id);
     if (!onNavigateToTab) return;
 
-    if (item.type === 'inquiry' || item.type === 'deposit') {
+    if (item.type === 'inquiry' || item.type === 'deposit' || item.type === 'custom_trip') {
       onNavigateToTab('inquiries');
     } else if (item.type === 'review') {
       onNavigateToTab('testimonials');
@@ -279,6 +287,7 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
           <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 scrollbar-none text-xs">
             {[
               { id: 'all', label: `All (${adminInbox.length})` },
+              { id: 'custom_trip', label: `Custom Trips (${customTripCount})` },
               { id: 'inquiry', label: `Inquiries (${inquiryCount})` },
               { id: 'deposit', label: `Deposits (${depositCount})` },
               { id: 'review', label: `Reviews (${reviewCount})` },
