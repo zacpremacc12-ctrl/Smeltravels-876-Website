@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Layers,
   Inbox,
@@ -41,6 +41,9 @@ import {
   AlignLeft,
   Users,
   ShieldAlert,
+  ChevronLeft,
+  ChevronRight,
+  ArrowRight,
 } from 'lucide-react';
 import { useApp, formatPriceJMD } from '../../context/AppContext';
 import { BookingInquiry, TripPackage, TripStatus, BlogPost, FAQItem, PromotionalOffer, TestimonialItem, Destination, Ambassador, SiteSettings } from '../../types';
@@ -94,6 +97,55 @@ export const AdminDashboard: React.FC = () => {
   const [inquirySearch, setInquirySearch] = useState('');
   const [inquiryFilterStatus, setInquiryFilterStatus] = useState<string>('All');
   const [selectedInquiry, setSelectedInquiry] = useState<BookingInquiry | null>(null);
+
+  // Tab Bar Horizontal Scroll & Slide Across Arrow Controls
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+
+  const checkTabScroll = () => {
+    if (tabsContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = tabsContainerRef.current;
+      setCanScrollLeft(scrollLeft > 15);
+      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 15);
+    }
+  };
+
+  const scrollTabs = (direction: 'left' | 'right') => {
+    if (tabsContainerRef.current) {
+      const amount = direction === 'left' ? -280 : 280;
+      tabsContainerRef.current.scrollBy({ left: amount, behavior: 'smooth' });
+      setTimeout(checkTabScroll, 350);
+    }
+  };
+
+  const scrollToAgencySettings = () => {
+    if (tabsContainerRef.current) {
+      tabsContainerRef.current.scrollTo({
+        left: tabsContainerRef.current.scrollWidth,
+        behavior: 'smooth',
+      });
+      setTimeout(checkTabScroll, 350);
+    }
+    setActiveTab('settings');
+  };
+
+  useEffect(() => {
+    checkTabScroll();
+    window.addEventListener('resize', checkTabScroll);
+    return () => window.removeEventListener('resize', checkTabScroll);
+  }, []);
+
+  // When activeTab changes, scroll active tab into view
+  useEffect(() => {
+    if (tabsContainerRef.current) {
+      const activeEl = tabsContainerRef.current.querySelector(`[data-tab-id="${activeTab}"]`);
+      if (activeEl) {
+        activeEl.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+      }
+      setTimeout(checkTabScroll, 300);
+    }
+  }, [activeTab]);
 
   // Quick edit trip state
   const [editingTrip, setEditingTrip] = useState<TripPackage | null>(null);
@@ -464,51 +516,110 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-1 overflow-x-auto scrollbar-none text-xs font-bold pt-1">
-          {[
-            {
-              id: 'inbox',
-              label: 'Admin Inbox',
-              count: adminInbox.length,
-              badge: unreadInboxCount > 0 ? `${unreadInboxCount} new` : undefined,
-              icon: Inbox,
-            },
-            { id: 'inquiries', label: `Inquiries (${bookings.length})`, icon: UserCheck },
-            { id: 'trips', label: `Trips (${trips.length})`, icon: Plane },
-            { id: 'destinations', label: `Destinations (${destinations.length})`, icon: Compass },
-            {
-              id: 'custom-destinations',
-              label: `Custom Trip Destinations (${(localSettings.customTripDestinations?.length ?? WORLD_DESTINATIONS.length)})`,
-              icon: Globe,
-            },
-            { id: 'guides', label: `Blog & Guides (${blogPosts.length})`, icon: BookOpen },
-            { id: 'faqs', label: `FAQs (${faqs.length})`, icon: HelpCircle },
-            { id: 'offers', label: `Offers (${offers.length})`, icon: Tag },
-            { id: 'testimonials', label: `Reviews (${testimonials.length})`, icon: Star },
-            { id: 'settings', label: 'Agency Settings', icon: SettingsIcon },
-          ].map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-4 py-3 rounded-t-xl transition-colors whitespace-nowrap border-b-2 ${
-                  activeTab === tab.id
-                    ? 'bg-neutral-100 text-[#2E0249] border-[#FFC72C]'
-                    : 'text-neutral-300 hover:text-white border-transparent hover:bg-white/5'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span>{tab.label}</span>
-                {tab.badge && (
-                  <span className="bg-amber-400 text-[#2E0249] text-[10px] font-black px-1.5 py-0.5 rounded-full uppercase animate-pulse">
-                    {tab.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+        {/* Tab Navigation with Slide Across Arrow Controls */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-1">
+          <div className="flex items-center gap-2">
+            {/* Left slide arrow button */}
+            <button
+              type="button"
+              onClick={() => scrollTabs('left')}
+              disabled={!canScrollLeft}
+              className={`h-9 w-8 rounded-lg transition-all shrink-0 flex items-center justify-center border ${
+                canScrollLeft
+                  ? 'bg-white/20 hover:bg-white/30 text-white border-white/40 cursor-pointer shadow-xs active:scale-95'
+                  : 'bg-white/5 text-white/25 border-white/10 cursor-not-allowed opacity-40'
+              }`}
+              title="Slide tabs left"
+              aria-label="Slide tabs left"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            {/* Scrollable tabs container */}
+            <div
+              ref={tabsContainerRef}
+              onScroll={checkTabScroll}
+              className="flex-1 flex items-center gap-1 overflow-x-auto scrollbar-none text-xs font-bold scroll-smooth"
+            >
+              {[
+                {
+                  id: 'inbox',
+                  label: 'Admin Inbox',
+                  count: adminInbox.length,
+                  badge: unreadInboxCount > 0 ? `${unreadInboxCount} new` : undefined,
+                  icon: Inbox,
+                },
+                { id: 'inquiries', label: `Inquiries (${bookings.length})`, icon: UserCheck },
+                { id: 'trips', label: `Trips (${trips.length})`, icon: Plane },
+                { id: 'destinations', label: `Destinations (${destinations.length})`, icon: Compass },
+                {
+                  id: 'custom-destinations',
+                  label: `Custom Trip Destinations (${(localSettings.customTripDestinations?.length ?? WORLD_DESTINATIONS.length)})`,
+                  icon: Globe,
+                },
+                { id: 'guides', label: `Blog & Guides (${blogPosts.length})`, icon: BookOpen },
+                { id: 'faqs', label: `FAQs (${faqs.length})`, icon: HelpCircle },
+                { id: 'offers', label: `Offers (${offers.length})`, icon: Tag },
+                { id: 'testimonials', label: `Reviews (${testimonials.length})`, icon: Star },
+                { id: 'settings', label: 'Agency Settings', icon: SettingsIcon },
+              ].map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    data-tab-id={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`flex items-center gap-2 px-4 py-3 rounded-t-xl transition-colors whitespace-nowrap border-b-2 cursor-pointer ${
+                      activeTab === tab.id
+                        ? 'bg-neutral-100 text-[#2E0249] border-[#FFC72C]'
+                        : 'text-neutral-300 hover:text-white border-transparent hover:bg-white/5'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span>{tab.label}</span>
+                    {tab.badge && (
+                      <span className="bg-amber-400 text-[#2E0249] text-[10px] font-black px-1.5 py-0.5 rounded-full uppercase animate-pulse">
+                        {tab.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Right slide arrow button */}
+            <button
+              type="button"
+              onClick={() => scrollTabs('right')}
+              disabled={!canScrollRight}
+              className={`h-9 w-8 rounded-lg transition-all shrink-0 flex items-center justify-center border ${
+                canScrollRight
+                  ? 'bg-white/20 hover:bg-white/30 text-white border-white/40 cursor-pointer shadow-xs active:scale-95'
+                  : 'bg-white/5 text-white/25 border-white/10 cursor-not-allowed opacity-40'
+              }`}
+              title="Slide tabs right"
+              aria-label="Slide tabs right"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+
+            {/* Slide Across Arrow to Agency Settings */}
+            <button
+              type="button"
+              onClick={scrollToAgencySettings}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 border cursor-pointer ${
+                activeTab === 'settings'
+                  ? 'bg-[#FFC72C] text-[#2E0249] border-[#FFC72C] shadow-md'
+                  : 'bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 hover:brightness-105 text-[#2E0249] border-amber-300 shadow-sm hover:scale-102 active:scale-98'
+              }`}
+              title="Slide across directly to Agency Settings"
+            >
+              <SettingsIcon className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Agency Settings</span>
+              <span className="md:hidden">Settings</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 
