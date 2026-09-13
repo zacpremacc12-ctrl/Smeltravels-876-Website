@@ -2999,6 +2999,29 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
+              {/* QUICK ACCESS: CUSTOM TRIP DESTINATIONS & GALLERIES */}
+              <div className="p-4 bg-purple-50/70 rounded-2xl border border-purple-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#2E0249] text-[#FFC72C] flex items-center justify-center font-bold shadow-xs shrink-0">
+                    <Globe className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-[#2E0249]">Custom Trip Destinations & Galleries</h4>
+                    <p className="text-xs text-neutral-600">
+                      Manage world countries, local highlights, and multi-photo trip galleries ({localSettings.customTripDestinations?.length ?? WORLD_DESTINATIONS.length} active destinations).
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('custom-destinations')}
+                  className="px-4 py-2.5 bg-[#2E0249] hover:bg-[#3B185F] text-[#FFC72C] font-bold text-xs rounded-xl shadow-xs shrink-0 flex items-center gap-1.5 cursor-pointer transition-all"
+                >
+                  <Globe className="w-3.5 h-3.5" />
+                  <span>Open Custom Trip Destinations Tab →</span>
+                </button>
+              </div>
+
               <div className="pt-4 border-t border-neutral-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="text-xs text-neutral-600">
                   <span className="font-bold text-neutral-900 block">Instant Live Deployment:</span>
