@@ -24,6 +24,7 @@ import {
   ArrowRight,
   Info,
   Check,
+  AlertCircle,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import {
@@ -42,6 +43,7 @@ export const CustomTripModal: React.FC = () => {
     currentUser,
     settings,
     openInquiryTracker,
+    showNotification,
   } = useApp();
 
   // Wizard Steps: 1: Destination & Country, 2: Dates & Group, 3: Style & Inclusions, 4: Traveler Details, 5: Success
@@ -112,6 +114,7 @@ export const CustomTripModal: React.FC = () => {
   const [countryOrParish, setCountryOrParish] = useState('Kingston, Jamaica');
   const [preferredContactMethod, setPreferredContactMethod] = useState<'whatsapp' | 'phone' | 'email'>('whatsapp');
   const [preferredAmbassador, setPreferredAmbassador] = useState('');
+  const [ambassadorError, setAmbassadorError] = useState(false);
 
   // Submission State
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -224,7 +227,19 @@ export const CustomTripModal: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerName.trim() || !email.trim()) {
-      alert('Please provide your name and email address so our admins can send your itinerary.');
+      showNotification('Contact Information Required', 'Please provide your name and email address so our admins can send your itinerary.', 'warning');
+      return;
+    }
+
+    if (!preferredAmbassador || !preferredAmbassador.trim()) {
+      setAmbassadorError(true);
+      showNotification(
+        'Ambassador Required',
+        'Selecting a dedicated Travel Ambassador is mandatory for custom trips. Please choose your advisor below.',
+        'warning'
+      );
+      const el = document.getElementById('ambassador-selection-section');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
@@ -1253,51 +1268,185 @@ export const CustomTripModal: React.FC = () => {
                 </div>
               </div>
 
-              {/* Preferred Contact Mode & Ambassador */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                <div>
-                  <label className="block text-xs font-bold text-neutral-700 mb-1.5">
-                    How Should We Contact You?
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { id: 'whatsapp', label: 'WhatsApp' },
-                      { id: 'phone', label: 'Phone Call' },
-                      { id: 'email', label: 'Email' },
-                    ].map((method) => (
-                      <button
-                        key={method.id}
-                        type="button"
-                        onClick={() => setPreferredContactMethod(method.id as any)}
-                        className={`py-2 text-xs font-bold rounded-lg border transition-all text-center ${
-                          preferredContactMethod === method.id
-                            ? 'bg-[#2E0249] text-white border-[#2E0249]'
-                            : 'bg-white text-neutral-700 border-neutral-200 hover:bg-neutral-50'
-                        }`}
-                      >
-                        {method.label}
-                      </button>
-                    ))}
+              {/* Preferred Contact Mode */}
+              <div className="pt-1">
+                <label className="block text-xs font-bold text-neutral-700 mb-1.5">
+                  How Should We Contact You?
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'whatsapp', label: 'WhatsApp' },
+                    { id: 'phone', label: 'Phone Call' },
+                    { id: 'email', label: 'Email' },
+                  ].map((method) => (
+                    <button
+                      key={method.id}
+                      type="button"
+                      onClick={() => setPreferredContactMethod(method.id as any)}
+                      className={`py-2 text-xs font-bold rounded-lg border transition-all text-center cursor-pointer ${
+                        preferredContactMethod === method.id
+                          ? 'bg-[#2E0249] text-white border-[#2E0249]'
+                          : 'bg-white text-neutral-700 border-neutral-200 hover:bg-neutral-50'
+                      }`}
+                    >
+                      {method.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Mandatory Ambassador Selection Section */}
+              <div
+                id="ambassador-selection-section"
+                className={`p-4 rounded-2xl border transition-all ${
+                  ambassadorError
+                    ? 'border-red-500 bg-red-50/70 ring-2 ring-red-400'
+                    : preferredAmbassador
+                    ? 'border-purple-300 bg-purple-50/40 ring-1 ring-purple-200'
+                    : 'border-amber-300 bg-amber-50/40'
+                }`}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <label className="text-xs sm:text-sm font-black text-neutral-900 flex items-center gap-1">
+                      <span>Select Your Dedicated Travel Ambassador</span>
+                      <span className="text-red-500 text-base leading-none">*</span>
+                    </label>
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-300">
+                      Mandatory
+                    </span>
                   </div>
+                  {preferredAmbassador ? (
+                    <span className="text-[11px] font-bold text-purple-900 bg-purple-100 px-2 py-0.5 rounded-md self-start sm:self-auto flex items-center gap-1">
+                      <Check className="w-3 h-3 text-purple-700" />
+                      Assigned: {preferredAmbassador}
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-bold text-amber-900 self-start sm:self-auto flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 text-amber-700" />
+                      Selection Required to Submit
+                    </span>
+                  )}
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-neutral-700 mb-1.5">
-                    Preferred Ambassador / Advisor (Optional)
-                  </label>
+                <p className="text-xs text-neutral-600 mb-3 leading-relaxed">
+                  Every custom trip is personally assigned to a dedicated SMELTRAVELS876 Ambassador who will curate your flights, resort stays, and tailored travel proposal.
+                </p>
+
+                {/* Ambassador Interactive Selection Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-3">
+                  {(settings.ambassadors && settings.ambassadors.length > 0
+                    ? settings.ambassadors.filter((a) => a.isActive)
+                    : [
+                        { id: 'amb-1', name: 'Zachary Buchanan', title: 'Travel Ambassador', phone: '(876) 848-9772', parishOrRegion: 'Kingston & St. Andrew' },
+                        { id: 'amb-2', name: 'Jada Virgo', title: 'Travel Ambassador', phone: '(876) 566-6923', parishOrRegion: 'Montego Bay & Western Jamaica' },
+                        { id: 'amb-3', name: 'Shenoya Davis', title: 'Travel Ambassador', phone: '(876) 276-1310', parishOrRegion: 'St. Catherine & Portmore' },
+                        { id: 'amb-4', name: 'Elvoy Bennett', title: 'CEO', phone: '(876) 834-1537', parishOrRegion: 'Executive Operations & Corporate Travel' },
+                      ]
+                  ).map((amb) => {
+                    const isSelected = preferredAmbassador === amb.name;
+                    const initials = amb.name
+                      .split(' ')
+                      .map((n) => n[0])
+                      .join('')
+                      .slice(0, 2);
+
+                    return (
+                      <button
+                        key={amb.id}
+                        type="button"
+                        onClick={() => {
+                          setPreferredAmbassador(amb.name);
+                          setAmbassadorError(false);
+                        }}
+                        className={`p-3 rounded-xl border text-left transition-all relative flex items-start gap-3 cursor-pointer ${
+                          isSelected
+                            ? 'border-[#2E0249] bg-white ring-2 ring-[#2E0249] shadow-sm'
+                            : 'border-neutral-200 bg-white hover:border-purple-300 hover:bg-neutral-50/80'
+                        }`}
+                      >
+                        {/* Avatar initials badge */}
+                        <div
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs shrink-0 transition-colors ${
+                            isSelected
+                              ? 'bg-[#2E0249] text-[#FFC72C]'
+                              : 'bg-purple-100 text-purple-900'
+                          }`}
+                        >
+                          {initials}
+                        </div>
+
+                        {/* Ambassador info */}
+                        <div className="flex-1 min-w-0 pr-4">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold text-neutral-900 truncate">
+                              {amb.name}
+                            </span>
+                            {isSelected && (
+                              <span className="w-4 h-4 rounded-full bg-[#2E0249] text-[#FFC72C] flex items-center justify-center shrink-0">
+                                <Check className="w-2.5 h-2.5 stroke-[3]" />
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-[#2E0249] font-medium truncate">
+                            {amb.title || 'Travel Ambassador'}
+                          </div>
+                          {amb.parishOrRegion && (
+                            <div className="text-[10px] text-neutral-500 truncate mt-0.5">
+                              📍 {amb.parishOrRegion}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Radio circle */}
+                        <div
+                          className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${
+                            isSelected
+                              ? 'border-[#2E0249] bg-[#2E0249]'
+                              : 'border-neutral-300 bg-white'
+                          }`}
+                        >
+                          {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-[#FFC72C]" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Dropdown Alternative */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-1">
+                  <span className="text-[11px] font-semibold text-neutral-600 whitespace-nowrap">
+                    Or select by list:
+                  </span>
                   <select
+                    required
                     value={preferredAmbassador}
-                    onChange={(e) => setPreferredAmbassador(e.target.value)}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-neutral-300 rounded-xl focus:ring-2 focus:ring-[#2E0249] outline-none bg-white"
+                    onChange={(e) => {
+                      setPreferredAmbassador(e.target.value);
+                      if (e.target.value) setAmbassadorError(false);
+                    }}
+                    className={`flex-1 px-3 py-2 text-xs rounded-xl border outline-none bg-white font-medium ${
+                      ambassadorError
+                        ? 'border-red-400 focus:ring-2 focus:ring-red-400'
+                        : 'border-neutral-300 focus:ring-2 focus:ring-[#2E0249]'
+                    }`}
                   >
-                    <option value="">Executive Travel Desk (Default)</option>
+                    <option value="">-- Select Your Dedicated Ambassador * (Mandatory) --</option>
                     {(settings.ambassadors || []).map((amb) => (
                       <option key={amb.id} value={amb.name}>
-                        {amb.name} ({amb.title || 'Ambassador'})
+                        {amb.name} — {amb.title || 'Ambassador'} ({amb.parishOrRegion || 'Jamaica'})
                       </option>
                     ))}
                   </select>
                 </div>
+
+                {/* Error Banner if user attempts to submit without an ambassador */}
+                {ambassadorError && (
+                  <div className="mt-3 p-3 rounded-xl bg-red-100 border border-red-300 text-red-800 text-xs font-semibold flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                    <span>Please choose a dedicated Travel Ambassador above. Selecting an ambassador is required before submitting your custom trip proposal.</span>
+                  </div>
+                )}
               </div>
 
               {/* Summary Review Card */}
@@ -1308,6 +1457,18 @@ export const CustomTripModal: React.FC = () => {
                 <div>👥 Travelers: <span className="font-semibold text-neutral-900">{adultsCount} Adult(s){childrenCount ? `, ${childrenCount} Child(ren)` : ''}</span></div>
                 <div>💰 Budget: <span className="font-semibold text-neutral-900">{formattedBudgetSummary}</span></div>
                 <div>✨ Style: <span className="font-semibold text-neutral-900">{travelStyle} • {tripVibes.join(', ')}</span></div>
+                <div className="pt-2 border-t border-neutral-200 flex items-center justify-between">
+                  <span className="font-bold text-neutral-900">👤 Dedicated Ambassador:</span>
+                  <span
+                    className={`font-bold px-2 py-0.5 rounded text-[11px] ${
+                      preferredAmbassador
+                        ? 'text-[#2E0249] bg-purple-100 border border-purple-200'
+                        : 'text-red-700 bg-red-100 border border-red-300 font-black'
+                    }`}
+                  >
+                    {preferredAmbassador ? `${preferredAmbassador} ✓` : '⚠️ Mandatory - Please Select Above'}
+                  </span>
+                </div>
               </div>
 
               {/* Submit CTA */}
@@ -1315,7 +1476,7 @@ export const CustomTripModal: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-3.5 px-6 rounded-xl bg-[#2E0249] hover:bg-[#4A0E4E] text-[#FFC72C] font-bold text-base flex items-center justify-center gap-2 shadow-lg shadow-purple-950/20 transition-all disabled:opacity-50"
+                  className="w-full py-3.5 px-6 rounded-xl bg-[#2E0249] hover:bg-[#4A0E4E] text-[#FFC72C] font-bold text-base flex items-center justify-center gap-2 shadow-lg shadow-purple-950/20 transition-all disabled:opacity-50 cursor-pointer"
                   id="submit-custom-trip-btn"
                 >
                   {isSubmitting ? (
@@ -1378,6 +1539,7 @@ export const CustomTripModal: React.FC = () => {
                   </div>
                   <div className="p-4 bg-neutral-50 text-xs space-y-1 text-neutral-700">
                     <div><strong>Traveler:</strong> {customerName} ({email})</div>
+                    <div><strong>Dedicated Ambassador:</strong> <span className="font-semibold text-[#2E0249]">{preferredAmbassador}</span></div>
                     <div><strong>Timing:</strong> {travelDatesType === 'specific' ? `${startDate} to ${endDate}` : `${flexibleSeason} (${durationDays} Days)`}</div>
                     <div><strong>Party Size:</strong> {adultsCount} Adult(s){childrenCount ? `, ${childrenCount} Child(ren)` : ''}</div>
                     <div><strong>Budget:</strong> {formattedBudgetSummary}</div>

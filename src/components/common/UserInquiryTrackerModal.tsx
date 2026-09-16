@@ -23,9 +23,24 @@ import {
   RefreshCw,
   Sparkles,
   Lock,
+  Compass,
+  Palmtree,
 } from 'lucide-react';
 import { useApp, formatPriceJMD } from '../../context/AppContext';
 import { AdminOrderExcelRecord, BookingSubmission, OrderWorkflowStatus } from '../../types';
+
+// Exclude static sample seed records from traveler-facing tracker
+const SAMPLE_SEED_IDS = new Set([
+  'order-1',
+  'order-2',
+  'order-3',
+  'order-4',
+  'order-5',
+  'book-1',
+  'book-2',
+  'book-3',
+  'book-4',
+]);
 
 export const UserInquiryTrackerModal: React.FC = () => {
   const {
@@ -38,6 +53,8 @@ export const UserInquiryTrackerModal: React.FC = () => {
     updateUserInquiry,
     submitInquiryDeposit,
     showNotification,
+    navigateTo,
+    openCustomTripModal,
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -60,28 +77,33 @@ export const UserInquiryTrackerModal: React.FC = () => {
   const [depositProofNotes, setDepositProofNotes] = useState('');
   const [isSubmittingDeposit, setIsSubmittingDeposit] = useState(false);
 
-  // Sync initial query or user profile
+  // Sync initial query: only populate if an explicit inquiry reference was passed
   useEffect(() => {
     if (isInquiryTrackerOpen) {
       if (inquiryTrackerInitialQuery) {
         setSearchQuery(inquiryTrackerInitialQuery);
-      } else if (currentUser?.email) {
-        setSearchQuery(currentUser.email);
+      } else {
+        setSearchQuery('');
+        setSelectedRecordId(null);
       }
     }
-  }, [isInquiryTrackerOpen, inquiryTrackerInitialQuery, currentUser]);
+  }, [isInquiryTrackerOpen, inquiryTrackerInitialQuery]);
 
-  // Consolidate inquiries from adminOrdersExcel and bookings
+  // Consolidate inquiries from adminOrdersExcel and bookings (excluding seed sample records)
   const consolidatedInquiries = useMemo(() => {
     const recordsMap = new Map<string, AdminOrderExcelRecord>();
 
-    // 1. Load from adminOrdersExcel
+    // 1. Load genuine orders from adminOrdersExcel (skip seed sample orders)
     adminOrdersExcel.forEach((rec) => {
-      recordsMap.set(rec.orderRef.toUpperCase(), rec);
+      if (!SAMPLE_SEED_IDS.has(rec.id)) {
+        recordsMap.set(rec.orderRef.toUpperCase(), rec);
+      }
     });
 
-    // 2. Also incorporate any bookings that haven't synced yet
+    // 2. Also incorporate user-submitted bookings (skip seed sample bookings)
     bookings.forEach((b) => {
+      if (SAMPLE_SEED_IDS.has(b.id)) return;
+
       const ref = (b.referenceNumber || b.id).toUpperCase();
       if (!recordsMap.has(ref)) {
         const contactVal: 'WhatsApp' | 'Phone' | 'Email' =
@@ -131,18 +153,10 @@ export const UserInquiryTrackerModal: React.FC = () => {
     return Array.from(recordsMap.values());
   }, [adminOrdersExcel, bookings]);
 
-  // Matched records based on query or user
+  // Matched records based on query
   const matchingRecords = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) {
-      // If logged in, show their records by default
-      if (currentUser?.email) {
-        return consolidatedInquiries.filter(
-          (item) =>
-            item.email.toLowerCase() === currentUser.email.toLowerCase() ||
-            (currentUser.phone && item.phone && item.phone.includes(currentUser.phone.slice(-7)))
-        );
-      }
       return [];
     }
 
@@ -154,7 +168,7 @@ export const UserInquiryTrackerModal: React.FC = () => {
       const matchDest = item.tripOrDestination.toLowerCase().includes(q);
       return matchRef || matchEmail || matchPhone || matchName || matchDest;
     });
-  }, [consolidatedInquiries, searchQuery, currentUser]);
+  }, [consolidatedInquiries, searchQuery]);
 
   // Selected single inquiry record
   const selectedRecord = useMemo(() => {
@@ -352,40 +366,72 @@ export const UserInquiryTrackerModal: React.FC = () => {
         {/* Modal Main Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
           {!selectedRecord ? (
-            /* Empty Search State */
-            <div className="py-12 px-4 text-center max-w-md mx-auto space-y-4">
-              <div className="w-16 h-16 rounded-2xl bg-purple-100 text-[#2E0249] flex items-center justify-center mx-auto shadow-inner">
-                <Search className="w-8 h-8" />
+            /* Empty State: Prompt user to look at our trips or create their own */
+            <div className="py-10 px-4 text-center max-w-xl mx-auto space-y-6">
+              <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-purple-900 to-[#2E0249] text-[#FFC72C] flex items-center justify-center mx-auto shadow-lg border border-[#FFC72C]/30">
+                <Compass className="w-8 h-8" />
               </div>
-              <div>
-                <h3 className="text-lg font-bold text-neutral-900">
-                  {searchQuery ? 'No Inquiries Found' : 'Look Up Your Inquiry & Deposit'}
+
+              <div className="space-y-2">
+                <h3 className="text-xl sm:text-2xl font-black text-neutral-900">
+                  {searchQuery ? `No Inquiry Found for "${searchQuery}"` : "Haven't Made an Inquiry Yet?"}
                 </h3>
-                <p className="text-xs text-neutral-600 mt-1 leading-relaxed">
+                <p className="text-sm text-neutral-600 leading-relaxed max-w-md mx-auto">
                   {searchQuery
-                    ? `We couldn't find any booking records matching "${searchQuery}". Please check your order reference code (e.g., SMEL-CT-2026-...) or the email address used during booking.`
-                    : 'Enter your Booking Reference Number or your Email Address to view your trip quotation, review current deposit balance, and track itinerary progress.'}
+                    ? "We couldn't find any booking or custom trip inquiry matching your search. If you haven't made an inquiry yet, take a look at our upcoming trips or create your own custom vacation!"
+                    : "If you haven't made an inquiry yet, take a look at our upcoming featured trips or let our team design your own custom international vacation!"}
                 </p>
               </div>
 
-              {/* Sample Quick Searches */}
-              <div className="pt-2">
-                <div className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider mb-2">
-                  Sample Booking Records in Database:
+              {/* Primary CTAs: Look at our trips OR create your own */}
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeInquiryTracker();
+                    navigateTo('trips');
+                  }}
+                  className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-[#FFC72C] hover:bg-[#ffcf47] text-[#2E0249] font-black text-sm flex items-center justify-center gap-2.5 shadow-md hover:shadow-lg transition-all cursor-pointer border border-[#FFC72C]"
+                  id="tracker-look-at-trips-btn"
+                >
+                  <Palmtree className="w-4 h-4 text-[#2E0249]" />
+                  <span>Look At Our Trips</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeInquiryTracker();
+                    openCustomTripModal();
+                  }}
+                  className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-[#2E0249] hover:bg-[#4A0E4E] text-[#FFC72C] font-black text-sm flex items-center justify-center gap-2.5 shadow-md hover:shadow-lg transition-all cursor-pointer border border-[#FFC72C]/30"
+                  id="tracker-create-own-trip-btn"
+                >
+                  <Sparkles className="w-4 h-4 text-[#FFC72C]" />
+                  <span>Create Your Own Custom Trip</span>
+                </button>
+              </div>
+
+              {searchQuery && (
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="text-xs text-purple-900 font-bold hover:underline cursor-pointer"
+                  >
+                    Clear search and check another reference
+                  </button>
                 </div>
-                <div className="flex flex-wrap justify-center gap-2">
-                  {consolidatedInquiries.slice(0, 3).map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => {
-                        setSearchQuery(s.orderRef);
-                        setSelectedRecordId(s.id);
-                      }}
-                      className="px-3 py-1.5 rounded-lg bg-neutral-100 hover:bg-purple-50 text-neutral-700 hover:text-purple-900 text-xs font-mono font-semibold border border-neutral-200 transition-colors"
-                    >
-                      {s.orderRef}
-                    </button>
-                  ))}
+              )}
+
+              {/* Helpful lookup prompt */}
+              <div className="p-4 rounded-2xl bg-purple-50/70 border border-purple-100 text-left text-xs text-neutral-600 flex items-start gap-3">
+                <div className="w-6 h-6 rounded-lg bg-purple-200/70 text-[#2E0249] flex items-center justify-center shrink-0 mt-0.5">
+                  <Clock className="w-3.5 h-3.5" />
+                </div>
+                <div className="leading-relaxed">
+                  <strong className="text-[#2E0249]">Already submitted an inquiry or deposit?</strong><br />
+                  Enter your official Booking Reference Number (e.g., <code className="px-1 py-0.5 bg-white rounded border border-purple-200 font-mono text-[11px] text-purple-950">SMEL-CT-2026-...</code>) or the Email address used when submitting your trip into the search box above to track your proposal status and balance.
                 </div>
               </div>
             </div>
