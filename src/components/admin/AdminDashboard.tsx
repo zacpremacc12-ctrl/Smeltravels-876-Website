@@ -63,6 +63,8 @@ export const AdminDashboard: React.FC = () => {
     adminInbox,
     unreadInboxCount,
     adminOrdersExcel,
+    sendBookingToExcel,
+    isOrderInExcel,
     bookings,
     updateBookingStatus,
     deleteBooking,
@@ -760,7 +762,28 @@ export const AdminDashboard: React.FC = () => {
                           <td className="p-4 text-neutral-500">
                             {new Date(b.createdAt).toLocaleDateString()}
                           </td>
-                          <td className="p-4 text-right space-x-2">
+                          <td className="p-4 text-right space-x-2 whitespace-nowrap">
+                            {/* Excel Database Button */}
+                            {isOrderInExcel(b.referenceNumber, b.email) ? (
+                              <button
+                                onClick={() => setActiveTab('excel-orders')}
+                                className="p-1.5 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-300 transition-colors inline-flex items-center gap-1 text-[11px] font-bold cursor-pointer"
+                                title="Order is already in the Excel database. Click to view."
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                <span className="hidden sm:inline">In Excel</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => sendBookingToExcel(b)}
+                                className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-all inline-flex items-center gap-1 text-[11px] font-black shadow-xs cursor-pointer hover:scale-[1.03] active:scale-95"
+                                title="Click to add this new order into the Excel database"
+                              >
+                                <FileSpreadsheet className="w-3.5 h-3.5" />
+                                <span>+ Excel</span>
+                              </button>
+                            )}
+
                             <button
                               onClick={() => setSelectedInquiry(b)}
                               className="p-1.5 rounded-lg bg-purple-50 text-[#2E0249] hover:bg-purple-100 transition-colors"
@@ -862,10 +885,35 @@ export const AdminDashboard: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="pt-3 border-t border-neutral-200 flex justify-end">
+                  <div className="pt-3 border-t border-neutral-200 flex items-center justify-between">
+                    <div>
+                      {isOrderInExcel(selectedInquiry.referenceNumber, selectedInquiry.email) ? (
+                        <button
+                          onClick={() => {
+                            setSelectedInquiry(null);
+                            setActiveTab('excel-orders');
+                          }}
+                          className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          <span>In Excel Database (Open)</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            sendBookingToExcel(selectedInquiry);
+                          }}
+                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1.5 shadow-xs transition-all cursor-pointer hover:scale-[1.02] active:scale-95"
+                          title="Add this inquiry into the Excel database"
+                        >
+                          <FileSpreadsheet className="w-4 h-4" />
+                          <span>+ Add to Excel Database</span>
+                        </button>
+                      )}
+                    </div>
                     <button
                       onClick={() => setSelectedInquiry(null)}
-                      className="px-4 py-2 bg-neutral-200 text-neutral-800 rounded-xl text-xs font-bold"
+                      className="px-4 py-2 bg-neutral-200 hover:bg-neutral-300 text-neutral-800 rounded-xl text-xs font-bold transition-colors cursor-pointer"
                     >
                       Close
                     </button>

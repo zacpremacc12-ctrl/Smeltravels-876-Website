@@ -21,6 +21,8 @@ import {
   Sparkles,
   ArrowRight,
   FileSpreadsheet,
+  PlusCircle,
+  Check,
 } from 'lucide-react';
 
 const formatJMD = (val?: number) => (val !== undefined ? formatPriceJMD(val) : '$0 JMD');
@@ -38,12 +40,22 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
     deleteInboxItem,
     addInboxItem,
     showNotification,
+    sendInboxItemToExcel,
+    isOrderInExcel,
+    syncAllInboxOrdersToExcel,
   } = useApp();
 
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [unreadOnly, setUnreadOnly] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedItemForModal, setSelectedItemForModal] = useState<AdminInboxItem | null>(null);
+
+  // Unadded orders count (eligible items that are not yet in the Excel spreadsheet database)
+  const unaddedOrdersCount = adminInbox.filter(
+    (item) =>
+      ['inquiry', 'custom_trip', 'deposit', 'message'].includes(item.type) &&
+      !isOrderInExcel(item.referenceNumber, item.senderEmail)
+  ).length;
 
   // Filter items
   const filteredItems = adminInbox.filter((item) => {
@@ -220,22 +232,40 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
                 <span className="bg-emerald-200 text-emerald-900 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
                   {adminOrdersExcel.length} Records Stored
                 </span>
+                {unaddedOrdersCount > 0 && (
+                  <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                    {unaddedOrdersCount} new order{unaddedOrdersCount > 1 ? 's' : ''} to add
+                  </span>
+                )}
               </div>
               <p className="text-emerald-800 text-xs mt-0.5">
-                Every incoming booking order, custom trip request, and deposit payment in this inbox is automatically formatted and saved into an editable spreadsheet database on the website.
+                Every incoming booking inquiry, custom trip, and deposit can be sent directly into your editable Excel database. Click the <strong>"+ Add to Excel"</strong> button on any order below.
               </p>
             </div>
           </div>
-          {onNavigateToTab && (
-            <button
-              onClick={() => onNavigateToTab('excel-orders')}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-xs transition-colors shrink-0 cursor-pointer"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              <span>Open Excel Database</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          )}
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            {unaddedOrdersCount > 0 && (
+              <button
+                onClick={() => syncAllInboxOrdersToExcel()}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all hover:scale-[1.02] cursor-pointer"
+                title="Add all unadded orders from inbox to Excel database in 1 click"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>Add All ({unaddedOrdersCount}) to Excel</span>
+              </button>
+            )}
+            {onNavigateToTab && (
+              <button
+                onClick={() => onNavigateToTab('excel-orders')}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Open Excel Database</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 4 Core Activity Metrics */}
@@ -533,18 +563,36 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
                       <span>Details</span>
                     </button>
 
-                    {(item.type === 'inquiry' || item.type === 'deposit' || item.type === 'custom_trip') && onNavigateToTab && (
-                      <button
-                        onClick={() => {
-                          markInboxItemAsRead(item.id);
-                          onNavigateToTab('excel-orders');
-                        }}
-                        className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-xs font-bold flex items-center gap-1 border border-emerald-200 cursor-pointer transition-colors"
-                        title="Edit all order information in Excel database"
-                      >
-                        <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700" />
-                        <span>Edit in Excel</span>
-                      </button>
+                    {/* Excel Database Button: Either "+ Add to Excel" or "In Excel DB" */}
+                    {['inquiry', 'custom_trip', 'deposit', 'message'].includes(item.type) && (
+                      isOrderInExcel(item.referenceNumber, item.senderEmail) ? (
+                        onNavigateToTab && (
+                          <button
+                            onClick={() => {
+                              markInboxItemAsRead(item.id);
+                              onNavigateToTab('excel-orders');
+                            }}
+                            className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-xs font-bold flex items-center gap-1.5 border border-emerald-300 cursor-pointer transition-colors"
+                            title="Order is already recorded in Excel database. Click to open spreadsheet."
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                            <span>In Excel DB</span>
+                            <ExternalLink className="w-3 h-3 text-emerald-600 opacity-60" />
+                          </button>
+                        )
+                      ) : (
+                        <button
+                          onClick={() => {
+                            sendInboxItemToExcel(item);
+                            markInboxItemAsRead(item.id);
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1.5 shadow-xs cursor-pointer transition-all hover:scale-[1.03] active:scale-95"
+                          title="Click this button to immediately add this new order into the Excel database"
+                        >
+                          <FileSpreadsheet className="w-3.5 h-3.5" />
+                          <span>+ Add to Excel</span>
+                        </button>
+                      )
                     )}
 
                     {(item.type === 'inquiry' || item.type === 'deposit' || item.type === 'review') && onNavigateToTab && (
@@ -717,18 +765,34 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
               </button>
 
               <div className="flex items-center gap-2">
-                {onNavigateToTab && (selectedItemForModal.type === 'inquiry' || selectedItemForModal.type === 'deposit' || selectedItemForModal.type === 'custom_trip') && (
-                  <button
-                    onClick={() => {
-                      markInboxItemAsRead(selectedItemForModal.id);
-                      setSelectedItemForModal(null);
-                      onNavigateToTab('excel-orders');
-                    }}
-                    className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
-                  >
-                    <FileSpreadsheet className="w-4 h-4" />
-                    <span>Open in Excel Database</span>
-                  </button>
+                {selectedItemForModal && ['inquiry', 'custom_trip', 'deposit', 'message'].includes(selectedItemForModal.type) && (
+                  isOrderInExcel(selectedItemForModal.referenceNumber, selectedItemForModal.senderEmail) ? (
+                    onNavigateToTab && (
+                      <button
+                        onClick={() => {
+                          markInboxItemAsRead(selectedItemForModal.id);
+                          setSelectedItemForModal(null);
+                          onNavigateToTab('excel-orders');
+                        }}
+                        className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span>In Excel Database (Open)</span>
+                      </button>
+                    )
+                  ) : (
+                    <button
+                      onClick={() => {
+                        sendInboxItemToExcel(selectedItemForModal);
+                        markInboxItemAsRead(selectedItemForModal.id);
+                      }}
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1.5 shadow-xs transition-all cursor-pointer hover:scale-[1.02] active:scale-95"
+                      title="Add this order into the Excel database"
+                    >
+                      <FileSpreadsheet className="w-4 h-4" />
+                      <span>+ Add to Excel Database</span>
+                    </button>
+                  )
                 )}
 
                 <button

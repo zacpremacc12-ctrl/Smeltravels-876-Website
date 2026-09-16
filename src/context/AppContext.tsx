@@ -20,6 +20,9 @@ import {
   Ambassador,
   CustomTripRequestInput,
   AdminOrderExcelRecord,
+  OrderTypeCategory,
+  OrderPaymentStatus,
+  OrderWorkflowStatus,
 } from '../types';
 import {
   INITIAL_SETTINGS,
@@ -124,6 +127,10 @@ interface AppContextType {
   updateAdminOrderExcel: (id: string, updates: Partial<AdminOrderExcelRecord>) => void;
   deleteAdminOrderExcel: (id: string) => void;
   batchUpdateAdminOrdersExcel: (orders: AdminOrderExcelRecord[]) => void;
+  sendInboxItemToExcel: (item: AdminInboxItem) => { success: boolean; id: string; isNew: boolean };
+  sendBookingToExcel: (booking: BookingSubmission) => { success: boolean; id: string; isNew: boolean };
+  isOrderInExcel: (refOrIdentifier?: string, email?: string) => boolean;
+  syncAllInboxOrdersToExcel: () => { totalAdded: number; totalExisting: number };
 
   // Bookmarks / Saved Trips
   savedTripIds: string[];
@@ -972,6 +979,247 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAdminOrdersExcel(orders);
     syncToLiveServer({ adminOrdersExcel: orders });
   };
+
+  const isOrderInExcel = useCallback((refOrIdentifier?: string, email?: string): boolean => {
+    if (!refOrIdentifier && !email) return false;
+    const cleanRef = (refOrIdentifier || '').trim().toLowerCase();
+    const cleanEmail = (email || '').trim().toLowerCase();
+    return adminOrdersExcel.some(o => {
+      if (cleanRef && o.orderRef && o.orderRef.toLowerCase() === cleanRef) return true;
+      if (cleanRef && o.id && o.id.toLowerCase() === cleanRef) return true;
+      if (cleanEmail && o.email && o.email.toLowerCase() === cleanEmail) {
+        if (!cleanRef) return true;
+        if (o.tripOrDestination.toLowerCase().includes(cleanRef) || o.orderRef.toLowerCase().includes(cleanRef)) return true;
+      }
+      return false;
+    });
+  }, [adminOrdersExcel]);
+
+  const sendInboxItemToExcel = useCallback((item: AdminInboxItem): { success: boolean; id: string; isNew: boolean } => {
+    const ref = item.referenceNumber || `ORD-${Date.now().toString().slice(-6)}`;
+    const now = new Date().toISOString();
+
+    // Check if already in Excel
+    const existing = adminOrdersExcel.find(o =>
+      (item.referenceNumber && o.orderRef.toLowerCase() === item.referenceNumber.toLowerCase()) ||
+      (item.senderEmail && o.email.toLowerCase() === item.senderEmail.toLowerCase() && item.tripName && o.tripOrDestination.toLowerCase().includes(item.tripName.toLowerCase()))
+    );
+
+    if (existing) {
+      showNotification(
+        'Already in Excel Database',
+        `Order #${existing.orderRef} (${existing.customerName}) is already recorded in the Excel database.`,
+        'info'
+      );
+      return { success: true, id: existing.id, isNew: false };
+    }
+
+    let orderType: OrderTypeCategory = 'Booking Inquiry';
+    if (item.type === 'custom_trip') orderType = 'Custom Trip';
+    else if (item.type === 'deposit') orderType = 'Deposit Record';
+    else if (item.type === 'message') orderType = 'Contact Order';
+
+    const matchingBooking = bookings.find(b =>
+      (item.referenceNumber && b.referenceNumber.toLowerCase() === item.referenceNumber.toLowerCase()) ||
+      (item.senderEmail && b.email.toLowerCase() === item.senderEmail.toLowerCase())
+    );
+
+    let adultsCount = matchingBooking?.adultsCount || 1;
+    let childrenCount = matchingBooking?.childrenCount || 0;
+    let travelDates = matchingBooking?.preferredTravelDate || 'Upcoming 2026/2027';
+
+    if (!matchingBooking && item.details) {
+      const adultsMatch = item.details.match(/(\d+)\s*Adult/i) || item.summary.match(/(\d+)\s*traveler/i);
+      if (adultsMatch) adultsCount = parseInt(adultsMatch[1], 10);
+      const childrenMatch = item.details.match(/(\d+)\s*Child/i);
+      if (childrenMatch) childrenCount = parseInt(childrenMatch[1], 10);
+      const dateMatch = item.details.match(/Travel Dates?:\s*([^\n]+)/i) || item.details.match(/Dates?:\s*([^\n]+)/i);
+      if (dateMatch) travelDates = dateMatch[1].trim();
+    }
+
+    const tripOrDestination = item.tripName || (item.title ? item.title.replace(/^(New Booking Inquiry|Custom Trip Request|New Contact Message|Deposit Recorded):\s*/i, '') : 'Caribbean Travel');
+    const depositPaid = item.type === 'deposit' ? (item.amount || 0) : (matchingBooking?.depositPaid || 0);
+    const totalPrice = matchingBooking?.totalPrice || (item.amount ? item.amount : 0);
+    const paymentStatus: OrderPaymentStatus = depositPaid > 0 ? (depositPaid >= totalPrice && totalPrice > 0 ? 'Paid in Full' : 'Deposit Paid') : 'Unpaid';
+    const orderStatus: OrderWorkflowStatus = item.type === 'deposit' ? 'Deposit Received' : 'New';
+
+    const newRecord: AdminOrderExcelRecord = {
+      id: `order-excel-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      orderRef: ref,
+      receivedAt: item.timestamp || now,
+      orderType,
+      customerName: item.senderName || 'Traveler',
+      email: item.senderEmail || '',
+      phone: item.senderPhone || '',
+      parishOrCountry: matchingBooking?.countryOrParish || 'Jamaica',
+      tripOrDestination,
+      travelDates,
+      adultsCount,
+      childrenCount,
+      totalPrice,
+      depositPaid,
+      currency: item.currency || 'JMD',
+      paymentStatus,
+      orderStatus,
+      preferredContact: (matchingBooking?.preferredContactMethod ? (matchingBooking.preferredContactMethod.charAt(0).toUpperCase() + matchingBooking.preferredContactMethod.slice(1)) : 'WhatsApp') as any,
+      assignedAdmin: matchingBooking?.ambassadorName || (adminEmail?.includes('smeltravels876') ? 'Elvoy Bennett' : 'Zachary Buchanan'),
+      ambassadorCode: matchingBooking?.ambassadorCode,
+      specialRequests: item.details || item.summary,
+      inclusions: matchingBooking ? 'Flights, Hotel, Airport Transfers' : 'Standard Agency Travel Package',
+      adminNotes: `Transferred to Excel database from Admin Inbox (${item.type}) on ${new Date().toLocaleDateString()}. Ref: ${ref}`,
+      lastUpdated: now,
+    };
+
+    const updated = [newRecord, ...adminOrdersExcel];
+    setAdminOrdersExcel(updated);
+    syncToLiveServer({ adminOrdersExcel: updated });
+
+    showNotification(
+      'Added to Excel Database! 📊',
+      `Order #${ref} for ${item.senderName} (${tripOrDestination}) has been sent into the Excel database spreadsheet.`,
+      'success'
+    );
+
+    return { success: true, id: newRecord.id, isNew: true };
+  }, [adminOrdersExcel, bookings, adminEmail, showNotification]);
+
+  const sendBookingToExcel = useCallback((booking: BookingSubmission): { success: boolean; id: string; isNew: boolean } => {
+    const ref = booking.referenceNumber;
+    const now = new Date().toISOString();
+
+    const existing = adminOrdersExcel.find(o => o.orderRef.toLowerCase() === ref.toLowerCase());
+    if (existing) {
+      showNotification('Already in Excel Database', `Inquiry #${ref} (${booking.customerName}) is already in the Excel Database.`, 'info');
+      return { success: true, id: existing.id, isNew: false };
+    }
+
+    const isCustom = booking.tripId?.includes('custom') || booking.tripName?.toLowerCase().includes('custom');
+    const orderType: OrderTypeCategory = isCustom ? 'Custom Trip' : 'Booking Inquiry';
+    const depositPaid = booking.depositPaid || 0;
+    const totalPrice = booking.totalPrice || 0;
+    const paymentStatus: OrderPaymentStatus = depositPaid > 0 ? (depositPaid >= totalPrice && totalPrice > 0 ? 'Paid in Full' : 'Deposit Paid') : 'Unpaid';
+    const orderStatus: OrderWorkflowStatus = (booking.status as any) || 'New';
+
+    const newRecord: AdminOrderExcelRecord = {
+      id: `order-excel-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      orderRef: ref,
+      receivedAt: booking.createdAt || now,
+      orderType,
+      customerName: booking.customerName,
+      email: booking.email,
+      phone: booking.phone || '',
+      parishOrCountry: booking.countryOrParish || 'Jamaica',
+      tripOrDestination: booking.tripName,
+      travelDates: booking.preferredTravelDate || 'Upcoming 2026/2027',
+      adultsCount: booking.adultsCount || 1,
+      childrenCount: booking.childrenCount || 0,
+      totalPrice,
+      depositPaid,
+      currency: booking.currency || 'JMD',
+      paymentStatus,
+      orderStatus,
+      preferredContact: (booking.preferredContactMethod ? (booking.preferredContactMethod.charAt(0).toUpperCase() + booking.preferredContactMethod.slice(1)) : 'WhatsApp') as any,
+      assignedAdmin: booking.ambassadorName || 'Zachary Buchanan',
+      ambassadorCode: booking.ambassadorCode,
+      specialRequests: booking.specialRequests,
+      inclusions: 'Flights, Hotel, Airport Transfers',
+      adminNotes: `Added to Excel database from Inquiries roster on ${new Date().toLocaleDateString()}.`,
+      lastUpdated: now,
+    };
+
+    const updated = [newRecord, ...adminOrdersExcel];
+    setAdminOrdersExcel(updated);
+    syncToLiveServer({ adminOrdersExcel: updated });
+
+    showNotification(
+      'Added to Excel Database! 📊',
+      `Booking #${ref} for ${booking.customerName} (${booking.tripName}) added to Excel database spreadsheet.`,
+      'success'
+    );
+
+    return { success: true, id: newRecord.id, isNew: true };
+  }, [adminOrdersExcel, showNotification]);
+
+  const syncAllInboxOrdersToExcel = useCallback((): { totalAdded: number; totalExisting: number } => {
+    let addedCount = 0;
+    let existingCount = 0;
+    const now = new Date().toISOString();
+    const newItemsToAdd: AdminOrderExcelRecord[] = [];
+
+    const eligibleItems = adminInbox.filter(i => ['inquiry', 'custom_trip', 'deposit', 'message'].includes(i.type));
+
+    for (const item of eligibleItems) {
+      const ref = item.referenceNumber || `ORD-${Date.now().toString().slice(-6)}`;
+      const alreadyExists = adminOrdersExcel.some(o =>
+        (item.referenceNumber && o.orderRef.toLowerCase() === item.referenceNumber.toLowerCase()) ||
+        (item.senderEmail && o.email.toLowerCase() === item.senderEmail.toLowerCase() && item.tripName && o.tripOrDestination.toLowerCase().includes(item.tripName.toLowerCase()))
+      ) || newItemsToAdd.some(o => o.orderRef.toLowerCase() === ref.toLowerCase());
+
+      if (alreadyExists) {
+        existingCount++;
+      } else {
+        let orderType: OrderTypeCategory = 'Booking Inquiry';
+        if (item.type === 'custom_trip') orderType = 'Custom Trip';
+        else if (item.type === 'deposit') orderType = 'Deposit Record';
+        else if (item.type === 'message') orderType = 'Contact Order';
+
+        const matchingBooking = bookings.find(b => item.referenceNumber && b.referenceNumber.toLowerCase() === item.referenceNumber.toLowerCase());
+        const tripOrDestination = item.tripName || (item.title ? item.title.replace(/^(New Booking Inquiry|Custom Trip Request|New Contact Message|Deposit Recorded):\s*/i, '') : 'Caribbean Travel');
+        const depositPaid = item.type === 'deposit' ? (item.amount || 0) : (matchingBooking?.depositPaid || 0);
+        const totalPrice = matchingBooking?.totalPrice || (item.amount ? item.amount : 0);
+
+        const record: AdminOrderExcelRecord = {
+          id: `order-excel-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+          orderRef: ref,
+          receivedAt: item.timestamp || now,
+          orderType,
+          customerName: item.senderName || 'Traveler',
+          email: item.senderEmail || '',
+          phone: item.senderPhone || '',
+          parishOrCountry: matchingBooking?.countryOrParish || 'Jamaica',
+          tripOrDestination,
+          travelDates: matchingBooking?.preferredTravelDate || 'Upcoming 2026/2027',
+          adultsCount: matchingBooking?.adultsCount || 1,
+          childrenCount: matchingBooking?.childrenCount || 0,
+          totalPrice,
+          depositPaid,
+          currency: item.currency || 'JMD',
+          paymentStatus: depositPaid > 0 ? 'Deposit Paid' : 'Unpaid',
+          orderStatus: item.type === 'deposit' ? 'Deposit Received' : 'New',
+          preferredContact: 'WhatsApp',
+          assignedAdmin: matchingBooking?.ambassadorName || 'Zachary Buchanan',
+          specialRequests: item.details || item.summary,
+          inclusions: 'Standard Agency Travel Package',
+          adminNotes: `Batch transferred to Excel database on ${new Date().toLocaleDateString()}`,
+          lastUpdated: now,
+        };
+
+        newItemsToAdd.push(record);
+        addedCount++;
+      }
+    }
+
+    if (addedCount > 0) {
+      setAdminOrdersExcel(prev => {
+        const updated = [...newItemsToAdd, ...prev];
+        syncToLiveServer({ adminOrdersExcel: updated });
+        return updated;
+      });
+      showNotification(
+        'Excel Database Updated! 📊',
+        `Successfully added ${addedCount} order(s) into the Excel database.`,
+        'success'
+      );
+    } else {
+      showNotification(
+        'All Orders Already in Excel',
+        `All ${eligibleItems.length} current orders are already present in the Excel spreadsheet database.`,
+        'info'
+      );
+    }
+
+    return { totalAdded: addedCount, totalExisting: existingCount };
+  }, [adminInbox, adminOrdersExcel, bookings, showNotification]);
 
   // Bookmarks / Saved Trips methods
   const toggleSaveTrip = (tripId: string) => {
@@ -2141,6 +2389,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateAdminOrderExcel,
         deleteAdminOrderExcel,
         batchUpdateAdminOrdersExcel,
+        sendInboxItemToExcel,
+        sendBookingToExcel,
+        isOrderInExcel,
+        syncAllInboxOrdersToExcel,
         savedTripIds,
         savedTrips,
         toggleSaveTrip,
