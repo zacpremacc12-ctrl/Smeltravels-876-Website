@@ -27,6 +27,7 @@ import {
   HelpCircle,
   MessageSquareText,
   MessageCircle,
+  Clock,
 } from 'lucide-react';
 import { TripPackage, TravelInterestType, TravelerDepositRecord } from '../../types';
 import { useApp, formatPriceJMD } from '../../context/AppContext';
@@ -51,6 +52,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
     verifyAmbassadorCode,
     addInboxItem,
     submitContactForm,
+    openInquiryTracker,
   } = useApp();
 
   const [step, setStep] = useState<'details' | 'checkout' | 'confirmation' | 'inquiry_success'>('details');
@@ -684,6 +686,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
               <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto">
                 <button
                   type="button"
+                  onClick={() => {
+                    onClose();
+                    openInquiryTracker(submittedRef);
+                  }}
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-purple-900 hover:bg-purple-950 text-[#FFC72C] text-sm font-bold shadow-md border border-[#FFC72C]/40 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                  id="btn-track-inquiry-modal"
+                >
+                  <Clock className="w-4 h-4" />
+                  <span>Track Inquiry & Deposit</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={onClose}
                   className="w-full sm:w-auto px-6 py-3 rounded-xl border border-neutral-300 text-neutral-700 text-sm font-semibold hover:bg-neutral-100 transition-colors cursor-pointer"
                 >
@@ -699,7 +714,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                   className="w-full sm:w-auto px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold shadow-md transition-colors flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Phone className="w-4 h-4" />
-                  <span>Chat on WhatsApp Now</span>
+                  <span>Chat on WhatsApp</span>
                 </a>
               </div>
             </div>
@@ -853,6 +868,18 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
 
               {/* Next Steps Buttons */}
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    onClose();
+                    openInquiryTracker(submittedRef);
+                  }}
+                  className="w-full sm:w-auto bg-purple-900 hover:bg-purple-950 text-[#FFC72C] font-bold text-sm px-6 py-3 rounded-xl shadow border border-[#FFC72C]/40 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  id="btn-track-deposit-modal"
+                >
+                  <Clock className="w-4 h-4" />
+                  <span>Track Inquiry & Balance</span>
+                </button>
+
                 <a
                   href={getWhatsAppBookingLink()}
                   target="_blank"

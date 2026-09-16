@@ -41,6 +41,7 @@ export const CustomTripModal: React.FC = () => {
     submitCustomTripRequest,
     currentUser,
     settings,
+    openInquiryTracker,
   } = useApp();
 
   // Wizard Steps: 1: Destination & Country, 2: Dates & Group, 3: Style & Inclusions, 4: Traveler Details, 5: Success
@@ -76,7 +77,17 @@ export const CustomTripModal: React.FC = () => {
   const [childrenCount, setChildrenCount] = useState<number>(0);
 
   // Step 3: Vibe, Style, Budget & Inclusions
-  const [tripVibe, setTripVibe] = useState('Beaches & Tropical Relaxation');
+  const AVAILABLE_VIBES = [
+    'Beaches & Tropical Relaxation 🏖️',
+    'Culture, Museums & History 🏛️',
+    'Nightlife, Rooftops & Parties 🍸',
+    'Shopping & Duty-Free Spree 🛍️',
+    'Romantic Honeymoon / Anniversary 🥂',
+    'Family Fun & Theme Parks 🎢',
+    'Nature, Volcanoes & Wildlife 🌿',
+    'Foodie & Culinary Adventure 🍷',
+  ];
+  const [tripVibes, setTripVibes] = useState<string[]>(['Beaches & Tropical Relaxation 🏖️']);
   const [travelStyle, setTravelStyle] = useState('4-Star Comfort & Boutique');
   
   // Custom Budget State (USD, JMD, or any currency)
@@ -166,11 +177,47 @@ export const CustomTripModal: React.FC = () => {
 
   if (!isCustomTripModalOpen) return null;
 
-  // Toggle inclusion tag
+  // Toggle inclusion tag (Multi-select)
   const toggleInclusion = (item: string) => {
     setMustHaveInclusions((prev) =>
       prev.includes(item) ? prev.filter((i) => i !== item) : [...prev, item]
     );
+  };
+
+  const ALL_INCLUSION_ITEMS = [
+    'Roundtrip Flights',
+    'Hotel / Resort Stay',
+    'Airport Private Transfers',
+    'Curated Tours & Sightseeing',
+    'Daily Breakfast / Meals',
+    'Travel Visa / Document Help',
+  ];
+
+  const selectAllInclusions = () => {
+    setMustHaveInclusions(ALL_INCLUSION_ITEMS);
+  };
+
+  const clearAllInclusions = () => {
+    setMustHaveInclusions([]);
+  };
+
+  // Toggle trip vibe (Multi-select)
+  const toggleTripVibe = (vibe: string) => {
+    setTripVibes((prev) => {
+      if (prev.includes(vibe)) {
+        if (prev.length === 1) return prev; // keep at least 1 selected
+        return prev.filter((v) => v !== vibe);
+      }
+      return [...prev, vibe];
+    });
+  };
+
+  const selectAllTripVibes = () => {
+    setTripVibes(AVAILABLE_VIBES);
+  };
+
+  const resetTripVibes = () => {
+    setTripVibes(['Beaches & Tropical Relaxation 🏖️']);
   };
 
   // Handle Submission
@@ -198,7 +245,7 @@ export const CustomTripModal: React.FC = () => {
         durationDays,
         adultsCount,
         childrenCount,
-        tripVibe,
+        tripVibe: tripVibes.join(', '),
         travelStyle,
         budgetPerPerson: formattedBudgetSummary,
         budgetCurrency: budgetCurrency === 'OTHER' ? (customCurrencyCode.trim().toUpperCase() || 'OTHER') : budgetCurrency,
@@ -774,35 +821,55 @@ export const CustomTripModal: React.FC = () => {
                 </p>
               </div>
 
-              {/* Trip Vibe Chips */}
+              {/* Trip Vibe Chips (Multi-Select) */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-neutral-600 mb-2">
-                  Trip Vibe & Occasion:
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {[
-                    'Beaches & Tropical Relaxation 🏖️',
-                    'Culture, Museums & History 🏛️',
-                    'Nightlife, Rooftops & Parties 🍸',
-                    'Shopping & Duty-Free Spree 🛍️',
-                    'Romantic Honeymoon / Anniversary 🥂',
-                    'Family Fun & Theme Parks 🎢',
-                    'Nature, Volcanoes & Wildlife 🌿',
-                    'Foodie & Culinary Adventure 🍷',
-                  ].map((vibe) => (
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-neutral-700 flex items-center gap-1.5">
+                    <span>Trip Vibe & Occasion</span>
+                    <span className="text-[10px] font-bold bg-[#FFC72C]/20 text-[#2E0249] px-2 py-0.5 rounded-full border border-[#FFC72C]/50">
+                      Multi-Select • {tripVibes.length} Selected
+                    </span>
+                  </label>
+                  <div className="flex items-center gap-2">
                     <button
-                      key={vibe}
                       type="button"
-                      onClick={() => setTripVibe(vibe)}
-                      className={`p-2.5 rounded-xl border text-xs font-semibold text-left transition-all ${
-                        tripVibe === vibe
-                          ? 'bg-[#2E0249] text-white border-[#2E0249] shadow-sm'
-                          : 'bg-white hover:bg-neutral-50 text-neutral-700 border-neutral-200'
-                      }`}
+                      onClick={selectAllTripVibes}
+                      className="text-[11px] font-bold text-purple-800 hover:text-purple-950 underline cursor-pointer"
                     >
-                      {vibe}
+                      Select All
                     </button>
-                  ))}
+                    <span className="text-neutral-300 text-xs">•</span>
+                    <button
+                      type="button"
+                      onClick={resetTripVibes}
+                      className="text-[11px] font-semibold text-neutral-500 hover:text-neutral-800 underline cursor-pointer"
+                    >
+                      Reset (1)
+                    </button>
+                  </div>
+                </div>
+                <p className="text-[11px] text-neutral-500 mb-2.5">
+                  Click to select multiple vibes for your trip (e.g. blend Relaxation + Nightlife + Foodie adventure).
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {AVAILABLE_VIBES.map((vibe) => {
+                    const isSelected = tripVibes.includes(vibe);
+                    return (
+                      <button
+                        key={vibe}
+                        type="button"
+                        onClick={() => toggleTripVibe(vibe)}
+                        className={`p-2.5 rounded-xl border text-xs font-semibold text-left transition-all flex items-center justify-between gap-1.5 cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#2E0249] text-white border-[#2E0249] shadow-sm ring-2 ring-purple-400/40'
+                            : 'bg-white hover:bg-neutral-50 text-neutral-700 border-neutral-200'
+                        }`}
+                      >
+                        <span className="truncate">{vibe}</span>
+                        {isSelected && <Check className="w-3.5 h-3.5 shrink-0 text-[#FFC72C]" />}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -999,11 +1066,36 @@ export const CustomTripModal: React.FC = () => {
                 </div>
               </div>
 
-              {/* Must-Have Inclusions Checkboxes */}
+              {/* Must-Have Inclusions Checkboxes (Multi-Select) */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-neutral-600 mb-2">
-                  What would you like SMELTRAVELS876 to arrange for you?
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-neutral-700 flex items-center gap-1.5">
+                    <span>What would you like SMELTRAVELS876 to arrange?</span>
+                    <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200">
+                      Multi-Select • {mustHaveInclusions.length} Selected
+                    </span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={selectAllInclusions}
+                      className="text-[11px] font-bold text-emerald-800 hover:text-emerald-950 underline cursor-pointer"
+                    >
+                      Select All (6)
+                    </button>
+                    <span className="text-neutral-300 text-xs">•</span>
+                    <button
+                      type="button"
+                      onClick={clearAllInclusions}
+                      className="text-[11px] font-semibold text-neutral-500 hover:text-neutral-800 underline cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+                <p className="text-[11px] text-neutral-500 mb-2.5">
+                  Click any options below to include flights, luxury stays, transfers, excursions, meals, or visa guidance.
+                </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {[
                     { id: 'Roundtrip Flights', label: 'Roundtrip Flights (from Jamaica or overseas)', icon: Plane },
@@ -1019,9 +1111,9 @@ export const CustomTripModal: React.FC = () => {
                         key={id}
                         type="button"
                         onClick={() => toggleInclusion(id)}
-                        className={`p-3 rounded-xl border text-left flex items-center justify-between transition-all ${
+                        className={`p-3 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
                           checked
-                            ? 'bg-emerald-50 border-emerald-500 text-emerald-950 font-semibold'
+                            ? 'bg-emerald-50 border-emerald-500 text-emerald-950 font-semibold shadow-xs ring-1 ring-emerald-400/40'
                             : 'bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-50'
                         }`}
                       >
@@ -1030,7 +1122,7 @@ export const CustomTripModal: React.FC = () => {
                           <span>{label}</span>
                         </div>
                         <div
-                          className={`w-5 h-5 rounded-md flex items-center justify-center border ${
+                          className={`w-5 h-5 rounded-md flex items-center justify-center border transition-colors ${
                             checked
                               ? 'bg-emerald-600 border-emerald-600 text-white'
                               : 'border-neutral-300 bg-white'
@@ -1215,7 +1307,7 @@ export const CustomTripModal: React.FC = () => {
                 <div>📅 Timing: <span className="font-semibold text-neutral-900">{travelDatesType === 'specific' ? `${startDate} to ${endDate}` : `${flexibleSeason} (${durationDays} Days)`}</span></div>
                 <div>👥 Travelers: <span className="font-semibold text-neutral-900">{adultsCount} Adult(s){childrenCount ? `, ${childrenCount} Child(ren)` : ''}</span></div>
                 <div>💰 Budget: <span className="font-semibold text-neutral-900">{formattedBudgetSummary}</span></div>
-                <div>✨ Style: <span className="font-semibold text-neutral-900">{travelStyle} • {tripVibe}</span></div>
+                <div>✨ Style: <span className="font-semibold text-neutral-900">{travelStyle} • {tripVibes.join(', ')}</span></div>
               </div>
 
               {/* Submit CTA */}
@@ -1307,8 +1399,20 @@ export const CustomTripModal: React.FC = () => {
               <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <button
                   type="button"
+                  onClick={() => {
+                    closeCustomTripModal();
+                    openInquiryTracker(submittedRef);
+                  }}
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-purple-900 hover:bg-purple-950 text-[#FFC72C] font-bold text-sm flex items-center justify-center gap-2 shadow border border-[#FFC72C]/40 transition-all cursor-pointer"
+                  id="track-inquiry-custom-trip-btn"
+                >
+                  <Clock className="w-4 h-4" />
+                  <span>Track Inquiry & Deposit</span>
+                </button>
+                <button
+                  type="button"
                   onClick={closeCustomTripModal}
-                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-[#2E0249] hover:bg-[#4A0E4E] text-[#FFC72C] font-bold text-sm shadow transition-all"
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-[#2E0249] hover:bg-[#4A0E4E] text-white font-bold text-sm shadow transition-all cursor-pointer"
                   id="done-custom-trip-btn"
                 >
                   Return to Website

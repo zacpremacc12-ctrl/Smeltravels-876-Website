@@ -23,7 +23,7 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ onOpenLegal, onOpenAdmin }) => {
-  const { settings, subscribeNewsletter, navigateTo, showNotification } = useApp();
+  const { settings, subscribeNewsletter, navigateTo, showNotification, openInquiryTracker } = useApp();
   const [newsletterName, setNewsletterName] = useState('');
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [hasConsented, setHasConsented] = useState(true);
@@ -157,6 +157,14 @@ export const Footer: React.FC<FooterProps> = ({ onOpenLegal, onOpenAdmin }) => {
                   className="hover:text-[#FFC72C] transition-colors"
                 >
                   Contact & Inquiries
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => openInquiryTracker()}
+                  className="text-[#FFC72C] hover:text-white font-bold transition-colors flex items-center gap-1.5"
+                >
+                  <span>Track Inquiry & Deposit</span>
                 </button>
               </li>
             </ul>

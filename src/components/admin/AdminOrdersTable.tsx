@@ -95,7 +95,7 @@ export const AdminOrdersTable: React.FC = () => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   // Inline edit state: track cell being edited { id, field }
-  const [editingCell, setEditingCell] = useState<{ id: string; field: keyof AdminOrderExcelRecord } | null>(null);
+  const [editingCell, setEditingCell] = useState<{ id: string; field: keyof AdminOrderExcelRecord | 'balanceDue' } | null>(null);
   const [editingValue, setEditingValue] = useState<any>('');
   const [justSavedId, setJustSavedId] = useState<string | null>(null);
 
@@ -111,6 +111,7 @@ export const AdminOrdersTable: React.FC = () => {
     travelDates: 'Oct 15 - 20, 2026',
     adultsCount: 2,
     childrenCount: 0,
+    budget: '$2,500 USD / person',
     totalPrice: 280000,
     depositPaid: 45000,
     currency: 'JMD',
@@ -185,19 +186,76 @@ export const AdminOrdersTable: React.FC = () => {
     }
   };
 
+  // Allowed editable fields strictly per requirement:
+  // "only allow admins to change total deposit balance due, payment and status"
+  const ALLOWED_ADMIN_EDIT_FIELDS = [
+    'totalPrice',
+    'depositPaid',
+    'balanceDue',
+    'paymentStatus',
+    'orderStatus',
+    'assignedAdmin',
+    'adminNotes',
+  ];
+
   // Start editing cell
-  const startEditing = (id: string, field: keyof AdminOrderExcelRecord, currentVal: any) => {
+  const startEditing = (id: string, field: keyof AdminOrderExcelRecord | 'balanceDue', currentVal: any) => {
+    if (!ALLOWED_ADMIN_EDIT_FIELDS.includes(field as string)) {
+      showNotification('Customer Record Locked', 'Customer submitted trip details are fixed records. Admins can edit Total, Deposit, Balance Due, Payment, and Status.', 'info');
+      return;
+    }
     setEditingCell({ id, field });
     setEditingValue(currentVal ?? '');
   };
 
   // Save editing cell
-  const saveCell = (id: string, field: keyof AdminOrderExcelRecord) => {
-    let finalVal = editingValue;
-    if (field === 'totalPrice' || field === 'depositPaid' || field === 'adultsCount' || field === 'childrenCount') {
-      finalVal = Number(editingValue) || 0;
+  const saveCell = (id: string, field: keyof AdminOrderExcelRecord | 'balanceDue') => {
+    if (field === 'balanceDue') {
+      const order = adminOrdersExcel.find(o => o.id === id);
+      if (order) {
+        const newBalance = Math.max(0, Number(editingValue) || 0);
+        const currentTotal = order.totalPrice || 0;
+        if (currentTotal > 0) {
+          const newDeposit = Math.max(0, currentTotal - newBalance);
+          const isPaidInFull = newDeposit >= currentTotal;
+          updateAdminOrderExcel(id, {
+            depositPaid: newDeposit,
+            paymentStatus: isPaidInFull ? 'Paid in Full' : (newDeposit > 0 ? 'Deposit Paid' : 'Unpaid'),
+          });
+          showNotification('Balance Updated', `Balance due updated to ${formatPriceJMD(newBalance)} (Deposit: ${formatPriceJMD(newDeposit)})`);
+        } else {
+          updateAdminOrderExcel(id, {
+            totalPrice: newBalance,
+            depositPaid: 0,
+            paymentStatus: 'Unpaid',
+          });
+          showNotification('Balance Updated', `Set total price to ${formatPriceJMD(newBalance)} with $0 deposit`);
+        }
+      }
+    } else if (field === 'totalPrice') {
+      const newTotal = Math.max(0, Number(editingValue) || 0);
+      const order = adminOrdersExcel.find(o => o.id === id);
+      const currentDeposit = order?.depositPaid || 0;
+      const isPaidInFull = currentDeposit >= newTotal && newTotal > 0;
+      updateAdminOrderExcel(id, {
+        totalPrice: newTotal,
+        paymentStatus: isPaidInFull ? 'Paid in Full' : (currentDeposit > 0 ? 'Deposit Paid' : 'Unpaid'),
+      });
+      showNotification('Total Updated', `Total trip price set to ${formatPriceJMD(newTotal)}`);
+    } else if (field === 'depositPaid') {
+      const newDeposit = Math.max(0, Number(editingValue) || 0);
+      const order = adminOrdersExcel.find(o => o.id === id);
+      const total = order?.totalPrice || 0;
+      const isPaidInFull = total > 0 && newDeposit >= total;
+      updateAdminOrderExcel(id, {
+        depositPaid: newDeposit,
+        paymentStatus: isPaidInFull ? 'Paid in Full' : (newDeposit > 0 ? 'Deposit Paid' : 'Unpaid'),
+      });
+      showNotification('Deposit Updated', `Deposit paid set to ${formatPriceJMD(newDeposit)}`);
+    } else {
+      updateAdminOrderExcel(id, { [field]: editingValue });
+      showNotification('Updated', `Record ${field} updated.`);
     }
-    updateAdminOrderExcel(id, { [field]: finalVal });
     setEditingCell(null);
     setJustSavedId(id);
     setTimeout(() => setJustSavedId(null), 1500);
@@ -208,7 +266,7 @@ export const AdminOrdersTable: React.FC = () => {
     setEditingValue('');
   };
 
-  // Export to CSV
+  // Export to CSV (including Selected Budget)
   const handleExportCSV = () => {
     const headers = [
       'Order Ref',
@@ -222,6 +280,7 @@ export const AdminOrdersTable: React.FC = () => {
       'Travel Dates',
       'Adults',
       'Children',
+      'Budget (Selected)',
       'Total Price (JMD)',
       'Deposit Paid (JMD)',
       'Balance Due (JMD)',
@@ -247,6 +306,7 @@ export const AdminOrdersTable: React.FC = () => {
       `"${o.travelDates || ''}"`,
       o.adultsCount,
       o.childrenCount,
+      `"${(o.budget || 'Flexible').replace(/"/g, '""')}"`,
       o.totalPrice,
       o.depositPaid,
       Math.max(0, o.totalPrice - o.depositPaid),
@@ -532,7 +592,7 @@ export const AdminOrdersTable: React.FC = () => {
           <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
           <span>
             Showing <strong>{filteredOrders.length}</strong> of <strong>{adminOrdersExcel.length}</strong> database entries.
-            <span className="hidden sm:inline text-neutral-400 ml-1">Tip: Click on any cell to edit directly in place. Press Enter or click outside to save instantly.</span>
+            <span className="hidden sm:inline text-neutral-500 ml-1 font-medium">Customer submissions are preserved as locked records. Admins can edit Total, Deposit, Balance Due, Payment, and Status.</span>
           </span>
         </div>
       </div>
@@ -570,6 +630,12 @@ export const AdminOrdersTable: React.FC = () => {
                 <th className="p-3 min-w-[200px] font-bold border-r border-purple-900">Trip / Destination</th>
                 <th className="p-3 min-w-[140px] font-bold border-r border-purple-900">Travel Dates</th>
                 <th className="p-3 min-w-[70px] text-center font-bold border-r border-purple-900">Guests</th>
+                <th className="p-3 min-w-[140px] font-bold border-r border-purple-900 cursor-pointer hover:bg-purple-950" onClick={() => handleSort('budget')}>
+                  <div className="flex items-center justify-between">
+                    <span>Budget (Selected)</span>
+                    <ArrowUpDown className="w-3 h-3 text-neutral-400" />
+                  </div>
+                </th>
                 <th className="p-3 min-w-[120px] text-right font-bold border-r border-purple-900 cursor-pointer hover:bg-purple-950" onClick={() => handleSort('totalPrice')}>
                   <div className="flex items-center justify-end gap-1">
                     <span>Total (JMD)</span>
@@ -595,7 +661,7 @@ export const AdminOrdersTable: React.FC = () => {
             <tbody className="divide-y divide-neutral-200">
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={19} className="p-12 text-center text-neutral-400 bg-neutral-50/50">
+                  <td colSpan={20} className="p-12 text-center text-neutral-400 bg-neutral-50/50">
                     <FileSpreadsheet className="w-10 h-10 mx-auto mb-2 text-neutral-300" />
                     <p className="font-bold text-neutral-600">No orders match the selected filters</p>
                     <p className="text-xs mt-1">Try clearing your search or reset filters above.</p>
@@ -644,214 +710,83 @@ export const AdminOrdersTable: React.FC = () => {
                         })}
                       </td>
 
-                      {/* Order Type */}
+                      {/* Order Type (Customer Submission - Locked) */}
                       <td className="p-2.5 border-r border-neutral-200 whitespace-nowrap">
-                        {editingCell?.id === order.id && editingCell?.field === 'orderType' ? (
-                          <select
-                            autoFocus
-                            value={editingValue}
-                            onChange={(e) => setEditingValue(e.target.value)}
-                            onBlur={() => saveCell(order.id, 'orderType')}
-                            className="bg-white border-2 border-emerald-500 rounded p-1 text-xs w-full focus:outline-none"
-                          >
-                            {ORDER_TYPES.map((t) => (
-                              <option key={t} value={t}>{t}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <div
-                            onClick={() => startEditing(order.id, 'orderType', order.orderType)}
-                            className="cursor-pointer hover:bg-neutral-100 px-1 py-0.5 rounded text-neutral-800"
-                            title="Click to edit type"
-                          >
-                            <span className="font-semibold text-neutral-800">{order.orderType}</span>
-                          </div>
-                        )}
+                        <span className="font-semibold text-neutral-800 bg-neutral-100 px-2 py-0.5 rounded text-[11px]">
+                          {order.orderType}
+                        </span>
                       </td>
 
-                      {/* Customer Name */}
+                      {/* Customer Name (Customer Submission - Locked) */}
                       <td className="p-2.5 border-r border-neutral-200 whitespace-nowrap font-bold text-neutral-900">
-                        {editingCell?.id === order.id && editingCell?.field === 'customerName' ? (
-                          <input
-                            autoFocus
-                            type="text"
-                            value={editingValue}
-                            onChange={(e) => setEditingValue(e.target.value)}
-                            onBlur={() => saveCell(order.id, 'customerName')}
-                            onKeyDown={(e) => e.key === 'Enter' && saveCell(order.id, 'customerName')}
-                            className="bg-white border-2 border-emerald-500 rounded p-1 text-xs w-full focus:outline-none"
-                          />
-                        ) : (
-                          <div
-                            onClick={() => startEditing(order.id, 'customerName', order.customerName)}
-                            className="cursor-pointer hover:bg-neutral-100 px-1 py-0.5 rounded"
-                            title="Click to edit name"
-                          >
-                            {order.customerName}
-                          </div>
-                        )}
+                        {order.customerName}
                       </td>
 
-                      {/* Phone */}
+                      {/* Phone (Customer Submission - Locked with Quick Contact) */}
                       <td className="p-2.5 border-r border-neutral-200 whitespace-nowrap font-mono text-[11px] text-neutral-700">
-                        {editingCell?.id === order.id && editingCell?.field === 'phone' ? (
-                          <input
-                            autoFocus
-                            type="text"
-                            value={editingValue}
-                            onChange={(e) => setEditingValue(e.target.value)}
-                            onBlur={() => saveCell(order.id, 'phone')}
-                            onKeyDown={(e) => e.key === 'Enter' && saveCell(order.id, 'phone')}
-                            className="bg-white border-2 border-emerald-500 rounded p-1 text-xs w-full focus:outline-none font-mono"
-                          />
-                        ) : (
-                          <div
-                            onClick={() => startEditing(order.id, 'phone', order.phone)}
-                            className="cursor-pointer hover:bg-neutral-100 px-1 py-0.5 rounded flex items-center gap-1"
-                            title="Click to edit phone"
-                          >
-                            <span>{order.phone || '—'}</span>
-                            {order.phone && (
-                              <a
-                                href={`https://wa.me/${order.phone.replace(/[^0-9]/g, '')}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                className="text-emerald-600 hover:text-emerald-800 p-0.5"
-                                title="Open WhatsApp Chat"
-                              >
-                                <MessageCircle className="w-3 h-3" />
-                              </a>
-                            )}
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Email */}
-                      <td className="p-2.5 border-r border-neutral-200 whitespace-nowrap text-neutral-700">
-                        {editingCell?.id === order.id && editingCell?.field === 'email' ? (
-                          <input
-                            autoFocus
-                            type="email"
-                            value={editingValue}
-                            onChange={(e) => setEditingValue(e.target.value)}
-                            onBlur={() => saveCell(order.id, 'email')}
-                            onKeyDown={(e) => e.key === 'Enter' && saveCell(order.id, 'email')}
-                            className="bg-white border-2 border-emerald-500 rounded p-1 text-xs w-full focus:outline-none"
-                          />
-                        ) : (
-                          <div
-                            onClick={() => startEditing(order.id, 'email', order.email)}
-                            className="cursor-pointer hover:bg-neutral-100 px-1 py-0.5 rounded flex items-center gap-1"
-                            title="Click to edit email"
-                          >
-                            <span>{order.email}</span>
+                        <div className="flex items-center gap-1">
+                          <span>{order.phone || '—'}</span>
+                          {order.phone && (
                             <a
-                              href={`mailto:${order.email}`}
+                              href={`https://wa.me/${order.phone.replace(/[^0-9]/g, '')}`}
+                              target="_blank"
+                              rel="noreferrer"
                               onClick={(e) => e.stopPropagation()}
-                              className="text-neutral-400 hover:text-purple-700 p-0.5"
-                              title="Send Email"
+                              className="text-emerald-600 hover:text-emerald-800 p-0.5"
+                              title="Open WhatsApp Chat"
                             >
-                              <Mail className="w-3 h-3" />
+                              <MessageCircle className="w-3 h-3" />
                             </a>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </td>
 
-                      {/* Parish / Origin */}
+                      {/* Email (Customer Submission - Locked with Quick Mail) */}
                       <td className="p-2.5 border-r border-neutral-200 whitespace-nowrap text-neutral-700">
-                        {editingCell?.id === order.id && editingCell?.field === 'parishOrCountry' ? (
-                          <input
-                            autoFocus
-                            type="text"
-                            value={editingValue}
-                            onChange={(e) => setEditingValue(e.target.value)}
-                            onBlur={() => saveCell(order.id, 'parishOrCountry')}
-                            onKeyDown={(e) => e.key === 'Enter' && saveCell(order.id, 'parishOrCountry')}
-                            className="bg-white border-2 border-emerald-500 rounded p-1 text-xs w-full focus:outline-none"
-                          />
-                        ) : (
-                          <div
-                            onClick={() => startEditing(order.id, 'parishOrCountry', order.parishOrCountry)}
-                            className="cursor-pointer hover:bg-neutral-100 px-1 py-0.5 rounded"
-                            title="Click to edit parish"
+                        <div className="flex items-center gap-1">
+                          <span>{order.email}</span>
+                          <a
+                            href={`mailto:${order.email}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-neutral-400 hover:text-purple-700 p-0.5"
+                            title="Send Email"
                           >
-                            {order.parishOrCountry || 'Jamaica'}
-                          </div>
-                        )}
+                            <Mail className="w-3 h-3" />
+                          </a>
+                        </div>
                       </td>
 
-                      {/* Trip / Destination */}
+                      {/* Parish / Origin (Customer Submission - Locked) */}
+                      <td className="p-2.5 border-r border-neutral-200 whitespace-nowrap text-neutral-700">
+                        {order.parishOrCountry || 'Jamaica'}
+                      </td>
+
+                      {/* Trip / Destination (Customer Submission - Locked) */}
                       <td className="p-2.5 border-r border-neutral-200 whitespace-nowrap font-bold text-neutral-900">
-                        {editingCell?.id === order.id && editingCell?.field === 'tripOrDestination' ? (
-                          <input
-                            autoFocus
-                            type="text"
-                            value={editingValue}
-                            onChange={(e) => setEditingValue(e.target.value)}
-                            onBlur={() => saveCell(order.id, 'tripOrDestination')}
-                            onKeyDown={(e) => e.key === 'Enter' && saveCell(order.id, 'tripOrDestination')}
-                            className="bg-white border-2 border-emerald-500 rounded p-1 text-xs w-full focus:outline-none"
-                          />
-                        ) : (
-                          <div
-                            onClick={() => startEditing(order.id, 'tripOrDestination', order.tripOrDestination)}
-                            className="cursor-pointer hover:bg-neutral-100 px-1 py-0.5 rounded truncate max-w-[240px]"
-                            title={order.tripOrDestination}
-                          >
-                            {order.tripOrDestination}
-                          </div>
-                        )}
+                        <div className="truncate max-w-[240px]" title={order.tripOrDestination}>
+                          {order.tripOrDestination}
+                        </div>
                       </td>
 
-                      {/* Travel Dates */}
+                      {/* Travel Dates (Customer Submission - Locked) */}
                       <td className="p-2.5 border-r border-neutral-200 whitespace-nowrap text-neutral-700 text-[11px]">
-                        {editingCell?.id === order.id && editingCell?.field === 'travelDates' ? (
-                          <input
-                            autoFocus
-                            type="text"
-                            value={editingValue}
-                            onChange={(e) => setEditingValue(e.target.value)}
-                            onBlur={() => saveCell(order.id, 'travelDates')}
-                            onKeyDown={(e) => e.key === 'Enter' && saveCell(order.id, 'travelDates')}
-                            className="bg-white border-2 border-emerald-500 rounded p-1 text-xs w-full focus:outline-none"
-                          />
-                        ) : (
-                          <div
-                            onClick={() => startEditing(order.id, 'travelDates', order.travelDates)}
-                            className="cursor-pointer hover:bg-neutral-100 px-1 py-0.5 rounded"
-                            title="Click to edit travel dates"
-                          >
-                            {order.travelDates || 'Flexible'}
-                          </div>
-                        )}
+                        {order.travelDates || 'Flexible'}
                       </td>
 
-                      {/* Guests Count */}
-                      <td className="p-2.5 border-r border-neutral-200 text-center whitespace-nowrap text-neutral-700">
-                        {editingCell?.id === order.id && editingCell?.field === 'adultsCount' ? (
-                          <input
-                            autoFocus
-                            type="number"
-                            min="1"
-                            value={editingValue}
-                            onChange={(e) => setEditingValue(e.target.value)}
-                            onBlur={() => saveCell(order.id, 'adultsCount')}
-                            onKeyDown={(e) => e.key === 'Enter' && saveCell(order.id, 'adultsCount')}
-                            className="bg-white border-2 border-emerald-500 rounded p-1 text-xs w-16 text-center focus:outline-none"
-                          />
-                        ) : (
-                          <div
-                            onClick={() => startEditing(order.id, 'adultsCount', order.adultsCount)}
-                            className="cursor-pointer hover:bg-neutral-100 px-1 py-0.5 rounded font-mono"
-                            title="Click to edit adults count"
-                          >
-                            {order.adultsCount}{order.childrenCount ? ` + ${order.childrenCount}k` : ''}
-                          </div>
-                        )}
+                      {/* Guests Count (Customer Submission - Locked) */}
+                      <td className="p-2.5 border-r border-neutral-200 text-center whitespace-nowrap text-neutral-700 font-mono">
+                        {order.adultsCount}{order.childrenCount ? ` + ${order.childrenCount}k` : ''}
                       </td>
 
-                      {/* Total Price (JMD) */}
+                      {/* Budget (Selected) (Customer Submission - In Excel Database) */}
+                      <td className="p-2.5 border-r border-neutral-200 whitespace-nowrap text-xs">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-50 text-purple-900 border border-purple-200/80 font-mono text-[11px] font-bold">
+                          <DollarSign className="w-3 h-3 text-[#FFC72C]" />
+                          <span>{order.budget || 'Flexible'}</span>
+                        </span>
+                      </td>
+
+                      {/* Total Price (JMD) (Admin Editable) */}
                       <td className="p-2.5 border-r border-neutral-200 text-right whitespace-nowrap font-mono font-bold text-neutral-900">
                         {editingCell?.id === order.id && editingCell?.field === 'totalPrice' ? (
                           <input
@@ -867,14 +802,14 @@ export const AdminOrdersTable: React.FC = () => {
                           <div
                             onClick={() => startEditing(order.id, 'totalPrice', order.totalPrice)}
                             className="cursor-pointer hover:bg-neutral-100 px-1 py-0.5 rounded"
-                            title="Click to edit total price"
+                            title="Click to edit total price (Admin only)"
                           >
                             {formatPriceJMD(order.totalPrice || 0)}
                           </div>
                         )}
                       </td>
 
-                      {/* Deposit Paid (JMD) */}
+                      {/* Deposit Paid (JMD) (Admin Editable) */}
                       <td className="p-2.5 border-r border-neutral-200 text-right whitespace-nowrap font-mono font-bold text-emerald-700">
                         {editingCell?.id === order.id && editingCell?.field === 'depositPaid' ? (
                           <input
@@ -890,16 +825,34 @@ export const AdminOrdersTable: React.FC = () => {
                           <div
                             onClick={() => startEditing(order.id, 'depositPaid', order.depositPaid)}
                             className="cursor-pointer hover:bg-neutral-100 px-1 py-0.5 rounded"
-                            title="Click to edit deposit paid"
+                            title="Click to edit deposit paid (Admin only)"
                           >
                             {formatPriceJMD(order.depositPaid || 0)}
                           </div>
                         )}
                       </td>
 
-                      {/* Balance Due */}
-                      <td className="p-2.5 border-r border-neutral-200 text-right whitespace-nowrap font-mono font-bold text-neutral-600">
-                        {formatPriceJMD(balanceDue)}
+                      {/* Balance Due (Admin Editable - auto calculates Deposit) */}
+                      <td className="p-2.5 border-r border-neutral-200 text-right whitespace-nowrap font-mono font-bold text-neutral-700">
+                        {editingCell?.id === order.id && editingCell?.field === 'balanceDue' ? (
+                          <input
+                            autoFocus
+                            type="number"
+                            value={editingValue}
+                            onChange={(e) => setEditingValue(e.target.value)}
+                            onBlur={() => saveCell(order.id, 'balanceDue')}
+                            onKeyDown={(e) => e.key === 'Enter' && saveCell(order.id, 'balanceDue')}
+                            className="bg-white border-2 border-emerald-500 rounded p-1 text-xs w-28 text-right focus:outline-none font-mono"
+                          />
+                        ) : (
+                          <div
+                            onClick={() => startEditing(order.id, 'balanceDue', balanceDue)}
+                            className="cursor-pointer hover:bg-neutral-100 px-1 py-0.5 rounded text-neutral-700"
+                            title="Click to edit balance due (Admin only)"
+                          >
+                            {formatPriceJMD(balanceDue)}
+                          </div>
+                        )}
                       </td>
 
                       {/* Payment Status Dropdown */}
@@ -1068,202 +1021,198 @@ export const AdminOrdersTable: React.FC = () => {
               </div>
             </div>
 
-            {/* Editable Fields Grid in Inspector */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div>
-                <label className="block font-bold text-neutral-700 mb-1">Traveler Name</label>
-                <input
-                  type="text"
-                  value={inspectOrder.customerName}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setInspectOrder({ ...inspectOrder, customerName: val });
-                    updateAdminOrderExcel(inspectOrder.id, { customerName: val });
-                  }}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-300 rounded-xl text-xs text-neutral-900 focus:outline-none focus:border-emerald-600"
-                />
+            {/* Section 1: Customer-Submitted Details (Locked / Read-Only) */}
+            <div className="rounded-2xl border border-neutral-200 bg-neutral-50/60 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-700">
+                  <span className="w-2 h-2 rounded-full bg-purple-600" />
+                  <span>Traveler Inquiry Submission (Verified Customer Data • Read-Only)</span>
+                </div>
+                <span className="text-[11px] font-semibold text-neutral-500 bg-neutral-200/80 px-2 py-0.5 rounded-full">
+                  🔒 Locked
+                </span>
               </div>
 
-              <div>
-                <label className="block font-bold text-neutral-700 mb-1">Order Type</label>
-                <select
-                  value={inspectOrder.orderType}
-                  onChange={(e) => {
-                    const val = e.target.value as OrderTypeCategory;
-                    setInspectOrder({ ...inspectOrder, orderType: val });
-                    updateAdminOrderExcel(inspectOrder.id, { orderType: val });
-                  }}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-300 rounded-xl text-xs text-neutral-900 focus:outline-none focus:border-emerald-600"
-                >
-                  {ORDER_TYPES.map(t => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                <div className="bg-white p-2.5 rounded-xl border border-neutral-200/80">
+                  <span className="text-[10px] text-neutral-400 font-semibold block uppercase">Traveler Name</span>
+                  <span className="font-bold text-neutral-900">{inspectOrder.customerName}</span>
+                </div>
+
+                <div className="bg-white p-2.5 rounded-xl border border-neutral-200/80">
+                  <span className="text-[10px] text-neutral-400 font-semibold block uppercase">Order Type</span>
+                  <span className="font-semibold text-neutral-800">{inspectOrder.orderType}</span>
+                </div>
+
+                <div className="bg-white p-2.5 rounded-xl border border-neutral-200/80">
+                  <span className="text-[10px] text-neutral-400 font-semibold block uppercase">Destination</span>
+                  <span className="font-bold text-neutral-900">{inspectOrder.tripOrDestination}</span>
+                </div>
+
+                <div className="bg-white p-2.5 rounded-xl border border-neutral-200/80">
+                  <span className="text-[10px] text-neutral-400 font-semibold block uppercase">Travel Dates</span>
+                  <span className="font-medium text-neutral-800">{inspectOrder.travelDates || 'Flexible'}</span>
+                </div>
+
+                <div className="bg-white p-2.5 rounded-xl border border-neutral-200/80">
+                  <span className="text-[10px] text-neutral-400 font-semibold block uppercase">Guests</span>
+                  <span className="font-mono font-bold text-neutral-900">
+                    {inspectOrder.adultsCount} Adults{inspectOrder.childrenCount ? ` + ${inspectOrder.childrenCount} Children` : ''}
+                  </span>
+                </div>
+
+                <div className="bg-purple-50/80 p-2.5 rounded-xl border border-purple-200">
+                  <span className="text-[10px] text-purple-700 font-bold block uppercase">Selected Budget</span>
+                  <span className="font-bold text-purple-950 font-mono flex items-center gap-1">
+                    <DollarSign className="w-3 h-3 text-[#FFC72C]" />
+                    {inspectOrder.budget || 'Flexible / Standard'}
+                  </span>
+                </div>
               </div>
 
-              <div>
-                <label className="block font-bold text-neutral-700 mb-1">Trip / Destination</label>
-                <input
-                  type="text"
-                  value={inspectOrder.tripOrDestination}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setInspectOrder({ ...inspectOrder, tripOrDestination: val });
-                    updateAdminOrderExcel(inspectOrder.id, { tripOrDestination: val });
-                  }}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-300 rounded-xl text-xs text-neutral-900 focus:outline-none focus:border-emerald-600"
-                />
+              {inspectOrder.inclusions && (
+                <div className="bg-white p-2.5 rounded-xl border border-neutral-200/80 text-xs">
+                  <span className="text-[10px] text-neutral-400 font-semibold block uppercase mb-1">Travel Inclusions Requested</span>
+                  <span className="text-neutral-800 font-medium">{inspectOrder.inclusions}</span>
+                </div>
+              )}
+
+              {inspectOrder.specialRequests && (
+                <div className="bg-white p-2.5 rounded-xl border border-neutral-200/80 text-xs">
+                  <span className="text-[10px] text-neutral-400 font-semibold block uppercase mb-1">Special Requests / Traveler Notes</span>
+                  <span className="text-neutral-700">{inspectOrder.specialRequests}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Section 2: Admin Financial & Workflow Controls (Editable by Admin) */}
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/30 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-900">
+                  <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+                  <span>Admin Financial & Workflow Controls (Editable by Admin)</span>
+                </div>
+                <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                  ✏️ Admin Modifiable
+                </span>
               </div>
 
-              <div>
-                <label className="block font-bold text-neutral-700 mb-1">Travel Dates</label>
-                <input
-                  type="text"
-                  value={inspectOrder.travelDates || ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setInspectOrder({ ...inspectOrder, travelDates: val });
-                    updateAdminOrderExcel(inspectOrder.id, { travelDates: val });
-                  }}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-300 rounded-xl text-xs text-neutral-900 focus:outline-none focus:border-emerald-600"
-                />
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div>
+                  <label className="block font-bold text-neutral-700 mb-1">Total Trip Price (JMD) *</label>
+                  <input
+                    type="number"
+                    value={inspectOrder.totalPrice}
+                    onChange={(e) => {
+                      const val = Number(e.target.value) || 0;
+                      const deposit = inspectOrder.depositPaid || 0;
+                      const newStatus = deposit >= val && val > 0 ? 'Paid in Full' : (deposit > 0 ? 'Deposit Paid' : 'Unpaid');
+                      setInspectOrder({ ...inspectOrder, totalPrice: val, paymentStatus: newStatus });
+                      updateAdminOrderExcel(inspectOrder.id, { totalPrice: val, paymentStatus: newStatus });
+                    }}
+                    className="w-full px-3 py-2 bg-white border border-neutral-300 rounded-xl text-xs font-mono font-bold text-neutral-900 focus:outline-none focus:border-emerald-600 shadow-2xs"
+                  />
+                </div>
 
-              <div>
-                <label className="block font-bold text-neutral-700 mb-1">Total Trip Price (JMD)</label>
-                <input
-                  type="number"
-                  value={inspectOrder.totalPrice}
-                  onChange={(e) => {
-                    const val = Number(e.target.value) || 0;
-                    setInspectOrder({ ...inspectOrder, totalPrice: val });
-                    updateAdminOrderExcel(inspectOrder.id, { totalPrice: val });
-                  }}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-300 rounded-xl text-xs font-mono text-neutral-900 focus:outline-none focus:border-emerald-600"
-                />
-              </div>
+                <div>
+                  <label className="block font-bold text-neutral-700 mb-1">Deposit Paid (JMD) *</label>
+                  <input
+                    type="number"
+                    value={inspectOrder.depositPaid}
+                    onChange={(e) => {
+                      const val = Number(e.target.value) || 0;
+                      const total = inspectOrder.totalPrice || 0;
+                      const newStatus = total > 0 && val >= total ? 'Paid in Full' : (val > 0 ? 'Deposit Paid' : 'Unpaid');
+                      setInspectOrder({ ...inspectOrder, depositPaid: val, paymentStatus: newStatus });
+                      updateAdminOrderExcel(inspectOrder.id, { depositPaid: val, paymentStatus: newStatus });
+                    }}
+                    className="w-full px-3 py-2 bg-white border border-neutral-300 rounded-xl text-xs font-mono font-bold text-emerald-700 focus:outline-none focus:border-emerald-600 shadow-2xs"
+                  />
+                </div>
 
-              <div>
-                <label className="block font-bold text-neutral-700 mb-1">Deposit Paid (JMD)</label>
-                <input
-                  type="number"
-                  value={inspectOrder.depositPaid}
-                  onChange={(e) => {
-                    const val = Number(e.target.value) || 0;
-                    setInspectOrder({ ...inspectOrder, depositPaid: val });
-                    updateAdminOrderExcel(inspectOrder.id, { depositPaid: val });
-                  }}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-300 rounded-xl text-xs font-mono text-neutral-900 focus:outline-none focus:border-emerald-600"
-                />
-              </div>
+                <div>
+                  <label className="block font-bold text-neutral-700 mb-1">Balance Due (JMD) *</label>
+                  <input
+                    type="number"
+                    value={Math.max(0, (inspectOrder.totalPrice || 0) - (inspectOrder.depositPaid || 0))}
+                    onChange={(e) => {
+                      const newBalance = Math.max(0, Number(e.target.value) || 0);
+                      const total = inspectOrder.totalPrice || 0;
+                      const newDeposit = Math.max(0, total - newBalance);
+                      const newStatus = newDeposit >= total && total > 0 ? 'Paid in Full' : (newDeposit > 0 ? 'Deposit Paid' : 'Unpaid');
+                      setInspectOrder({ ...inspectOrder, depositPaid: newDeposit, paymentStatus: newStatus });
+                      updateAdminOrderExcel(inspectOrder.id, { depositPaid: newDeposit, paymentStatus: newStatus });
+                    }}
+                    className="w-full px-3 py-2 bg-white border border-neutral-300 rounded-xl text-xs font-mono font-bold text-purple-900 focus:outline-none focus:border-emerald-600 shadow-2xs"
+                  />
+                  <span className="text-[10px] text-neutral-400 mt-0.5 block">Changing balance auto-updates deposit</span>
+                </div>
 
-              <div>
-                <label className="block font-bold text-neutral-700 mb-1">Payment Status</label>
-                <select
-                  value={inspectOrder.paymentStatus}
-                  onChange={(e) => {
-                    const val = e.target.value as OrderPaymentStatus;
-                    setInspectOrder({ ...inspectOrder, paymentStatus: val });
-                    updateAdminOrderExcel(inspectOrder.id, { paymentStatus: val });
-                  }}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-300 rounded-xl text-xs font-bold text-neutral-900 focus:outline-none focus:border-emerald-600"
-                >
-                  {PAYMENT_STATUSES.map(s => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
+                <div>
+                  <label className="block font-bold text-neutral-700 mb-1">Payment Status *</label>
+                  <select
+                    value={inspectOrder.paymentStatus}
+                    onChange={(e) => {
+                      const val = e.target.value as OrderPaymentStatus;
+                      setInspectOrder({ ...inspectOrder, paymentStatus: val });
+                      updateAdminOrderExcel(inspectOrder.id, { paymentStatus: val });
+                    }}
+                    className="w-full px-3 py-2 bg-white border border-neutral-300 rounded-xl text-xs font-bold text-neutral-900 focus:outline-none focus:border-emerald-600 shadow-2xs"
+                  >
+                    {PAYMENT_STATUSES.map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
 
-              <div>
-                <label className="block font-bold text-neutral-700 mb-1">Workflow Status</label>
-                <select
-                  value={inspectOrder.orderStatus}
-                  onChange={(e) => {
-                    const val = e.target.value as OrderWorkflowStatus;
-                    setInspectOrder({ ...inspectOrder, orderStatus: val });
-                    updateAdminOrderExcel(inspectOrder.id, { orderStatus: val });
-                  }}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-300 rounded-xl text-xs font-bold text-neutral-900 focus:outline-none focus:border-emerald-600"
-                >
-                  {WORKFLOW_STATUSES.map(s => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
+                <div>
+                  <label className="block font-bold text-neutral-700 mb-1">Workflow Status *</label>
+                  <select
+                    value={inspectOrder.orderStatus}
+                    onChange={(e) => {
+                      const val = e.target.value as OrderWorkflowStatus;
+                      setInspectOrder({ ...inspectOrder, orderStatus: val });
+                      updateAdminOrderExcel(inspectOrder.id, { orderStatus: val });
+                    }}
+                    className="w-full px-3 py-2 bg-white border border-neutral-300 rounded-xl text-xs font-bold text-neutral-900 focus:outline-none focus:border-emerald-600 shadow-2xs"
+                  >
+                    {WORKFLOW_STATUSES.map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
 
-              <div>
-                <label className="block font-bold text-neutral-700 mb-1">Assigned Admin</label>
-                <select
-                  value={inspectOrder.assignedAdmin || 'Zachary Buchanan'}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setInspectOrder({ ...inspectOrder, assignedAdmin: val });
-                    updateAdminOrderExcel(inspectOrder.id, { assignedAdmin: val });
-                  }}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-300 rounded-xl text-xs text-neutral-900 focus:outline-none focus:border-emerald-600"
-                >
-                  {ADMIN_ROSTER.map(a => (
-                    <option key={a} value={a}>{a}</option>
-                  ))}
-                </select>
-              </div>
+                <div>
+                  <label className="block font-bold text-neutral-700 mb-1">Assigned Admin</label>
+                  <select
+                    value={inspectOrder.assignedAdmin || 'Zachary Buchanan'}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setInspectOrder({ ...inspectOrder, assignedAdmin: val });
+                      updateAdminOrderExcel(inspectOrder.id, { assignedAdmin: val });
+                    }}
+                    className="w-full px-3 py-2 bg-white border border-neutral-300 rounded-xl text-xs text-neutral-900 focus:outline-none focus:border-emerald-600 shadow-2xs"
+                  >
+                    {ADMIN_ROSTER.map(a => (
+                      <option key={a} value={a}>{a}</option>
+                    ))}
+                  </select>
+                </div>
 
-              <div>
-                <label className="block font-bold text-neutral-700 mb-1">Parish or Origin</label>
-                <input
-                  type="text"
-                  value={inspectOrder.parishOrCountry || ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setInspectOrder({ ...inspectOrder, parishOrCountry: val });
-                    updateAdminOrderExcel(inspectOrder.id, { parishOrCountry: val });
-                  }}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-300 rounded-xl text-xs text-neutral-900 focus:outline-none focus:border-emerald-600"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block font-bold text-neutral-700 mb-1">Inclusions / Package Details</label>
-                <input
-                  type="text"
-                  value={inspectOrder.inclusions || ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setInspectOrder({ ...inspectOrder, inclusions: val });
-                    updateAdminOrderExcel(inspectOrder.id, { inclusions: val });
-                  }}
-                  placeholder="e.g. Flights, 4-Star Hotel, Roundtrip Airport Transfers, 2 Excursions"
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-300 rounded-xl text-xs text-neutral-900 focus:outline-none focus:border-emerald-600"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block font-bold text-neutral-700 mb-1">Special Requests / Traveler Notes</label>
-                <textarea
-                  rows={3}
-                  value={inspectOrder.specialRequests || ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setInspectOrder({ ...inspectOrder, specialRequests: val });
-                    updateAdminOrderExcel(inspectOrder.id, { specialRequests: val });
-                  }}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-300 rounded-xl text-xs text-neutral-900 focus:outline-none focus:border-emerald-600"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block font-bold text-neutral-700 mb-1">Internal Admin Notes</label>
-                <textarea
-                  rows={3}
-                  value={inspectOrder.adminNotes || ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setInspectOrder({ ...inspectOrder, adminNotes: val });
-                    updateAdminOrderExcel(inspectOrder.id, { adminNotes: val });
-                  }}
-                  placeholder="Internal comments, follow-up logs, itinerary details..."
-                  className="w-full px-3 py-2 bg-amber-50/50 border border-amber-300 rounded-xl text-xs text-neutral-900 focus:outline-none focus:border-emerald-600"
-                />
+                <div className="sm:col-span-3">
+                  <label className="block font-bold text-neutral-700 mb-1">Internal Admin Notes</label>
+                  <textarea
+                    rows={2}
+                    value={inspectOrder.adminNotes || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setInspectOrder({ ...inspectOrder, adminNotes: val });
+                      updateAdminOrderExcel(inspectOrder.id, { adminNotes: val });
+                    }}
+                    placeholder="Internal comments, follow-up logs, itinerary details..."
+                    className="w-full px-3 py-2 bg-white border border-neutral-300 rounded-xl text-xs text-neutral-900 focus:outline-none focus:border-emerald-600 shadow-2xs"
+                  />
+                </div>
               </div>
             </div>
 

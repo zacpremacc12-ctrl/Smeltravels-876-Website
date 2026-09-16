@@ -102,6 +102,7 @@ export interface BookingSubmission {
   depositPaid: number;
   totalPrice: number;
   currency: string;
+  budget?: string;
   ambassadorId?: string;
   ambassadorName?: string;
   ambassadorPhone?: string;
@@ -456,6 +457,7 @@ export interface AdminOrderExcelRecord {
   travelDates: string;
   adultsCount: number;
   childrenCount: number;
+  budget?: string;
   totalPrice: number;
   depositPaid: number;
   currency: string;

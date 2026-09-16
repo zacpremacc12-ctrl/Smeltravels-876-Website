@@ -18,6 +18,7 @@ import {
   ArrowRight,
   Star,
   Bookmark,
+  Clock,
 } from 'lucide-react';
 import { useApp, formatPriceJMD } from '../context/AppContext';
 import { BrandLogo } from './common/BrandLogo';
@@ -45,6 +46,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
     closeSavedTripsDrawer,
     isSavedTripsDrawerOpen,
     openCustomTripModal,
+    openInquiryTracker,
   } = useApp();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -91,6 +93,19 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
                 <Phone className="w-3.5 h-3.5 text-[#FFC72C]" />
                 <span>{settings.primaryPhone}</span>
               </a>
+              <span className="hidden sm:inline text-neutral-600">|</span>
+
+              {/* Inquiry & Deposit Tracker Button (Logged in or Guests) */}
+              <button
+                onClick={() => openInquiryTracker()}
+                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-900/80 hover:bg-purple-800 text-[#FFC72C] border border-[#FFC72C]/40 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                title="Track your trip proposal, manage travel details, and check your deposit balance anytime"
+                id="topbar-track-inquiry-btn"
+              >
+                <Clock className="w-3 h-3 text-[#FFC72C]" />
+                <span>Track Inquiry / Deposit</span>
+              </button>
+
               <span className="hidden sm:inline text-neutral-600">|</span>
               {/* Traveler Login / Sign Up Space */}
               {currentUser ? (
@@ -436,6 +451,16 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
             </button>
 
             <button
+              onClick={() => openInquiryTracker()}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-neutral-200 hover:text-[#FFC72C] transition-colors cursor-pointer"
+              id="nav-track-inquiry-btn"
+              title="Track your trip proposal or depositing status"
+            >
+              <Clock className="w-3.5 h-3.5 text-[#FFC72C]" />
+              <span>TRACK INQUIRY</span>
+            </button>
+
+            <button
               onClick={() => handleNav('contact')}
               className={`text-sm font-semibold transition-colors ${
                 activePage === 'contact' ? 'text-[#FFC72C]' : 'text-neutral-200 hover:text-white'
@@ -654,6 +679,24 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
               }`}
             >
               CONTACT
+            </button>
+
+            {/* Mobile Track Inquiry Button */}
+            <button
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                openInquiryTracker();
+              }}
+              className="w-full text-left px-3 py-2.5 rounded-lg text-base font-bold bg-purple-900/60 text-[#FFC72C] hover:bg-purple-900 border border-[#FFC72C]/40 flex items-center justify-between"
+              id="mobile-nav-track-inquiry-btn"
+            >
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-[#FFC72C]" />
+                <span>TRACK INQUIRY & DEPOSIT</span>
+              </div>
+              <span className="text-[10px] bg-[#FFC72C] text-[#2E0249] px-2 py-0.5 rounded font-black">
+                STATUS
+              </span>
             </button>
 
             <div className="pt-3 border-t border-neutral-800 flex flex-col gap-2.5">

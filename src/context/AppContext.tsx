@@ -71,6 +71,31 @@ interface AppContextType {
   updateBookingPayment: (id: string, depositPaid: number, note?: string) => void;
   addBookingNote: (id: string, note: string) => void;
   
+  // User Inquiry Tracker (accessible to guests and logged-in users)
+  isInquiryTrackerOpen: boolean;
+  setIsInquiryTrackerOpen: (open: boolean) => void;
+  openInquiryTracker: (refOrEmail?: string) => void;
+  closeInquiryTracker: () => void;
+  inquiryTrackerInitialQuery: string | null;
+  updateUserInquiry: (
+    refOrId: string,
+    updates: {
+      travelDates?: string;
+      adultsCount?: number;
+      childrenCount?: number;
+      specialRequests?: string;
+      phone?: string;
+      customerMessage?: string;
+    }
+  ) => boolean;
+  submitInquiryDeposit: (
+    refOrId: string,
+    amount: number,
+    paymentMethod: string,
+    transactionRef?: string,
+    proofNotes?: string
+  ) => boolean;
+  
   contactSubmissions: ContactSubmission[];
   submitContactForm: (sub: Omit<ContactSubmission, 'id' | 'referenceNumber' | 'createdAt' | 'status'>) => string;
   
@@ -345,6 +370,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
+
+  // Inquiry Tracker state (accessible to both guests and logged-in travelers)
+  const [isInquiryTrackerOpen, setIsInquiryTrackerOpen] = useState<boolean>(false);
+  const [inquiryTrackerInitialQuery, setInquiryTrackerInitialQuery] = useState<string | null>(null);
+
+  const openInquiryTracker = (refOrEmail?: string) => {
+    if (refOrEmail) {
+      setInquiryTrackerInitialQuery(refOrEmail);
+    }
+    setIsInquiryTrackerOpen(true);
+  };
+
+  const closeInquiryTracker = () => {
+    setIsInquiryTrackerOpen(false);
+    setInquiryTrackerInitialQuery(null);
+  };
 
   // Modals & Navigation state
   const [selectedTripForBooking, setSelectedTripForBooking] = useState<TripPackage | null>(null);
@@ -1043,6 +1084,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const paymentStatus: OrderPaymentStatus = depositPaid > 0 ? (depositPaid >= totalPrice && totalPrice > 0 ? 'Paid in Full' : 'Deposit Paid') : 'Unpaid';
     const orderStatus: OrderWorkflowStatus = item.type === 'deposit' ? 'Deposit Received' : 'New';
 
+    // Extract customer's selected budget
+    let budget = matchingBooking?.budget;
+    if (!budget && item.details) {
+      const budgetMatch = item.details.match(/Budget:\s*([^\n\r]+)/i);
+      if (budgetMatch && budgetMatch[1]) {
+        budget = budgetMatch[1].trim();
+      }
+    }
+    if (!budget && matchingBooking?.specialRequests) {
+      const budgetMatch = matchingBooking.specialRequests.match(/Budget:\s*([^\n\r]+)/i);
+      if (budgetMatch && budgetMatch[1]) {
+        budget = budgetMatch[1].trim();
+      }
+    }
+    if (!budget) {
+      if (totalPrice > 0) {
+        budget = `${formatPriceJMD(totalPrice)} (Package Total)`;
+      } else if (depositPaid > 0) {
+        budget = `${formatPriceJMD(depositPaid)} (Deposit Amount)`;
+      } else {
+        budget = 'Standard Package';
+      }
+    }
+
     const newRecord: AdminOrderExcelRecord = {
       id: `order-excel-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       orderRef: ref,
@@ -1056,6 +1121,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       travelDates,
       adultsCount,
       childrenCount,
+      budget,
       totalPrice,
       depositPaid,
       currency: item.currency || 'JMD',
@@ -1100,6 +1166,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const paymentStatus: OrderPaymentStatus = depositPaid > 0 ? (depositPaid >= totalPrice && totalPrice > 0 ? 'Paid in Full' : 'Deposit Paid') : 'Unpaid';
     const orderStatus: OrderWorkflowStatus = (booking.status as any) || 'New';
 
+    // Extract customer's selected budget
+    let budget = booking.budget;
+    if (!budget && booking.specialRequests) {
+      const budgetMatch = booking.specialRequests.match(/Budget:\s*([^\n\r]+)/i);
+      if (budgetMatch && budgetMatch[1]) {
+        budget = budgetMatch[1].trim();
+      }
+    }
+    if (!budget) {
+      budget = totalPrice > 0 ? `${formatPriceJMD(totalPrice)} (Package Total)` : 'Standard Package';
+    }
+
     const newRecord: AdminOrderExcelRecord = {
       id: `order-excel-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       orderRef: ref,
@@ -1113,6 +1191,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       travelDates: booking.preferredTravelDate || 'Upcoming 2026/2027',
       adultsCount: booking.adultsCount || 1,
       childrenCount: booking.childrenCount || 0,
+      budget,
       totalPrice,
       depositPaid,
       currency: booking.currency || 'JMD',
@@ -1168,6 +1247,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const depositPaid = item.type === 'deposit' ? (item.amount || 0) : (matchingBooking?.depositPaid || 0);
         const totalPrice = matchingBooking?.totalPrice || (item.amount ? item.amount : 0);
 
+        let budget = matchingBooking?.budget;
+        if (!budget && item.details) {
+          const budgetMatch = item.details.match(/Budget:\s*([^\n\r]+)/i);
+          if (budgetMatch && budgetMatch[1]) {
+            budget = budgetMatch[1].trim();
+          }
+        }
+        if (!budget && matchingBooking?.specialRequests) {
+          const budgetMatch = matchingBooking.specialRequests.match(/Budget:\s*([^\n\r]+)/i);
+          if (budgetMatch && budgetMatch[1]) {
+            budget = budgetMatch[1].trim();
+          }
+        }
+        if (!budget) {
+          budget = totalPrice > 0 ? `${formatPriceJMD(totalPrice)} (Package Total)` : (depositPaid > 0 ? `${formatPriceJMD(depositPaid)} (Deposit)` : 'Standard Package');
+        }
+
         const record: AdminOrderExcelRecord = {
           id: `order-excel-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
           orderRef: ref,
@@ -1181,6 +1277,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           travelDates: matchingBooking?.preferredTravelDate || 'Upcoming 2026/2027',
           adultsCount: matchingBooking?.adultsCount || 1,
           childrenCount: matchingBooking?.childrenCount || 0,
+          budget,
           totalPrice,
           depositPaid,
           currency: item.currency || 'JMD',
@@ -1347,6 +1444,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       travelDates: datesSummary,
       adultsCount: Number(data.adultsCount) || 1,
       childrenCount: Number(data.childrenCount) || 0,
+      budget: data.budgetPerPerson || (data.budgetAmount ? `${data.budgetAmount} ${data.budgetCurrency || 'USD'}` : 'Flexible'),
       totalPrice: 0,
       depositPaid: 0,
       currency: 'JMD',
@@ -1439,6 +1537,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       travelDates: data.preferredTravelDate || '2026/2027 Season',
       adultsCount: data.adultsCount || 1,
       childrenCount: data.childrenCount || 0,
+      budget: data.budget || (data.totalPrice ? `${formatPriceJMD(data.totalPrice)} (Package Total)` : 'Standard Package'),
       totalPrice: data.totalPrice || 0,
       depositPaid: data.depositPaid || 0,
       currency: data.currency || 'JMD',
@@ -1576,6 +1675,217 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setBookings(prev =>
       prev.map(b => (b.id === id ? { ...b, internalNotes: [...b.internalNotes, note] } : b))
     );
+  };
+
+  // Traveler Inquiry Management (Available to both guests and logged-in users)
+  const updateUserInquiry = (
+    refOrId: string,
+    updates: {
+      travelDates?: string;
+      adultsCount?: number;
+      childrenCount?: number;
+      specialRequests?: string;
+      phone?: string;
+      customerMessage?: string;
+    }
+  ): boolean => {
+    const now = new Date().toISOString();
+    let found = false;
+    let customerName = 'Traveler';
+    let reference = refOrId;
+
+    setBookings((prev) => {
+      const idx = prev.findIndex(
+        (b) => b.referenceNumber?.toLowerCase() === refOrId.toLowerCase() || b.id === refOrId
+      );
+      if (idx === -1) return prev;
+      found = true;
+      const b = prev[idx];
+      customerName = b.customerName;
+      reference = b.referenceNumber;
+
+      const changeSummary: string[] = [];
+      if (updates.travelDates && updates.travelDates !== b.preferredTravelDate) {
+        changeSummary.push(`Dates -> "${updates.travelDates}"`);
+      }
+      if (updates.adultsCount !== undefined && updates.adultsCount !== b.adultsCount) {
+        changeSummary.push(`Adults -> ${updates.adultsCount}`);
+      }
+      if (updates.childrenCount !== undefined && updates.childrenCount !== b.childrenCount) {
+        changeSummary.push(`Children -> ${updates.childrenCount}`);
+      }
+      if (updates.phone && updates.phone !== b.phone) {
+        changeSummary.push(`Phone -> ${updates.phone}`);
+      }
+      if (updates.specialRequests && updates.specialRequests !== b.specialRequests) {
+        changeSummary.push(`Requests updated: "${updates.specialRequests}"`);
+      }
+      if (updates.customerMessage) {
+        changeSummary.push(`Client Message: "${updates.customerMessage}"`);
+      }
+
+      const noteText = `[${new Date().toLocaleDateString()}] Client Modified Inquiry: ${changeSummary.join('; ')}`;
+      const updatedItem: BookingSubmission = {
+        ...b,
+        preferredTravelDate: updates.travelDates || b.preferredTravelDate,
+        adultsCount: updates.adultsCount !== undefined ? updates.adultsCount : b.adultsCount,
+        childrenCount: updates.childrenCount !== undefined ? updates.childrenCount : b.childrenCount,
+        phone: updates.phone || b.phone,
+        specialRequests: updates.specialRequests || b.specialRequests,
+        internalNotes: [...(b.internalNotes || []), noteText],
+        updatedAt: now,
+      };
+
+      const updated = [...prev];
+      updated[idx] = updatedItem;
+      syncToLiveServer({ bookings: updated });
+      return updated;
+    });
+
+    // Also update in adminOrdersExcel if exists
+    setAdminOrdersExcel((prev) => {
+      let modified = false;
+      const updated = prev.map((o) => {
+        if (o.orderRef?.toLowerCase() === refOrId.toLowerCase() || o.id === refOrId) {
+          modified = true;
+          return {
+            ...o,
+            travelDates: updates.travelDates || o.travelDates,
+            adultsCount: updates.adultsCount !== undefined ? updates.adultsCount : o.adultsCount,
+            childrenCount: updates.childrenCount !== undefined ? updates.childrenCount : o.childrenCount,
+            phone: updates.phone || o.phone,
+            specialRequests: updates.specialRequests || o.specialRequests,
+            adminNotes: `${o.adminNotes ? `${o.adminNotes}\n` : ''}[${new Date().toLocaleDateString()}] Client modified inquiry details via tracker.`,
+            lastUpdated: now,
+          };
+        }
+        return o;
+      });
+      if (modified) {
+        syncToLiveServer({ adminOrdersExcel: updated });
+      }
+      return updated;
+    });
+
+    // Notify Admin Inbox with an alert so staff know client made changes
+    addInboxItem({
+      type: 'inquiry',
+      title: `Client Modified Inquiry: ${reference} (${customerName})`,
+      senderName: customerName,
+      senderEmail: 'client-portal@smeltravels876.com',
+      senderPhone: updates.phone || '',
+      summary: `Traveler updated their inquiry details online. Dates: ${updates.travelDates || 'Unchanged'}, Guests: ${updates.adultsCount || 'N/A'}.`,
+      details: `Traveler self-service change for ${reference}:\nDates: ${updates.travelDates || 'Unchanged'}\nAdults: ${updates.adultsCount ?? 'Unchanged'}, Children: ${updates.childrenCount ?? 'Unchanged'}\nPhone: ${updates.phone || 'Unchanged'}\nRequests: ${updates.specialRequests || 'None'}\nMessage from Client: ${updates.customerMessage || 'None'}`,
+      referenceNumber: reference,
+    });
+
+    showNotification('Inquiry Updated', `Your changes for ${reference} were saved successfully!`, 'success');
+    return found;
+  };
+
+  const submitInquiryDeposit = (
+    refOrId: string,
+    amount: number,
+    paymentMethod: string,
+    transactionRef?: string,
+    proofNotes?: string
+  ): boolean => {
+    const now = new Date().toISOString();
+    let found = false;
+    let customerName = 'Traveler';
+    let customerEmail = '';
+    let tripName = 'Travel Experience';
+    let reference = refOrId;
+
+    setBookings((prev) => {
+      const idx = prev.findIndex(
+        (b) => b.referenceNumber?.toLowerCase() === refOrId.toLowerCase() || b.id === refOrId
+      );
+      if (idx === -1) return prev;
+      found = true;
+      const b = prev[idx];
+      customerName = b.customerName;
+      customerEmail = b.email;
+      tripName = b.tripName;
+      reference = b.referenceNumber;
+
+      const newDepositPaid = (b.depositPaid || 0) + amount;
+      const noteText = `[${new Date().toLocaleDateString()}] Online Deposit of $${amount.toLocaleString()} JMD recorded via ${paymentMethod}. Ref: ${transactionRef || 'Direct Transfer'}. Note: ${proofNotes || 'None'}`;
+      const updatedItem: BookingSubmission = {
+        ...b,
+        depositPaid: newDepositPaid,
+        status: 'Deposit Received',
+        internalNotes: [...(b.internalNotes || []), noteText],
+        updatedAt: now,
+      };
+
+      const updated = [...prev];
+      updated[idx] = updatedItem;
+      syncToLiveServer({ bookings: updated });
+      return updated;
+    });
+
+    // Also update in adminOrdersExcel
+    setAdminOrdersExcel((prev) => {
+      let modified = false;
+      const updated = prev.map((o) => {
+        if (o.orderRef?.toLowerCase() === refOrId.toLowerCase() || o.id === refOrId) {
+          modified = true;
+          const newDeposit = (o.depositPaid || 0) + amount;
+          const isPaidInFull = o.totalPrice > 0 && newDeposit >= o.totalPrice;
+          return {
+            ...o,
+            depositPaid: newDeposit,
+            paymentStatus: isPaidInFull ? 'Paid in Full' : 'Deposit Paid',
+            orderStatus: 'Deposit Received',
+            adminNotes: `${o.adminNotes ? `${o.adminNotes}\n` : ''}[${new Date().toLocaleDateString()}] Deposit of $${amount.toLocaleString()} JMD received via ${paymentMethod}.`,
+            lastUpdated: now,
+          };
+        }
+        return o;
+      });
+      if (modified) {
+        syncToLiveServer({ adminOrdersExcel: updated });
+      }
+      return updated;
+    });
+
+    // Record user deposit if traveler profile matches
+    if (currentUser && customerEmail && currentUser.email?.toLowerCase() === customerEmail.toLowerCase()) {
+      recordUserDeposit({
+        id: `dep-${Date.now()}`,
+        tripId: 'inquiry-trip',
+        tripName,
+        amount,
+        currency: 'JMD',
+        date: now,
+        bookingRef: reference,
+        paymentMethod,
+        transactionId: transactionRef || `TXN-${Date.now()}`,
+        status: 'Pending Review',
+      });
+    }
+
+    // Send high-priority Deposit notification to Admin Inbox!
+    addInboxItem({
+      type: 'deposit',
+      title: `Deposit Received: $${amount.toLocaleString()} JMD for ${tripName}`,
+      senderName: customerName,
+      senderEmail: customerEmail,
+      summary: `Traveler deposited $${amount.toLocaleString()} JMD for ${reference} via ${paymentMethod}.`,
+      details: `DEPOSIT SUBMISSION:\nReference: ${reference}\nTrip: ${tripName}\nAmount: $${amount.toLocaleString()} JMD\nMethod: ${paymentMethod}\nTransaction Ref: ${transactionRef || 'Direct Transfer'}\nNotes: ${proofNotes || 'None'}\nTimestamp: ${now}`,
+      amount,
+      currency: 'JMD',
+      tripName,
+      referenceNumber: reference,
+    });
+
+    showNotification(
+      'Deposit Confirmed!',
+      `Thank you, ${customerName}! Deposit of $${amount.toLocaleString()} JMD received for ${reference}. Spot secured!`,
+      'success'
+    );
+    return true;
   };
 
   // Contacts
@@ -2373,6 +2683,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedTripForInquiry,
         selectedTripDetail,
         setSelectedTripDetail,
+        isInquiryTrackerOpen,
+        setIsInquiryTrackerOpen,
+        openInquiryTracker,
+        closeInquiryTracker,
+        inquiryTrackerInitialQuery,
+        updateUserInquiry,
+        submitInquiryDeposit,
         activePage,
         navigateTo,
         pageParam,

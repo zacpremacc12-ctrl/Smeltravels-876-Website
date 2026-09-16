@@ -24,6 +24,7 @@ import { AuthModal } from './components/common/AuthModal';
 import { ReviewSubmissionModal } from './components/common/ReviewSubmissionModal';
 import { SavedTripsDrawer } from './components/common/SavedTripsDrawer';
 import { CustomTripModal } from './components/common/CustomTripModal';
+import { UserInquiryTrackerModal } from './components/common/UserInquiryTrackerModal';
 
 const MainContent: React.FC = () => {
   const {
@@ -130,6 +131,9 @@ const MainContent: React.FC = () => {
 
       {/* Interactive Custom Trip Creator Modal */}
       <CustomTripModal />
+
+      {/* User Inquiry & Deposit Progress Tracker (Guest & User accessible) */}
+      <UserInquiryTrackerModal />
 
       {/* WhatsApp Floating Button */}
       <WhatsAppFloatingButton />
