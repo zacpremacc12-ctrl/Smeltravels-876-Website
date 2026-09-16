@@ -19,7 +19,8 @@ import {
   Eye,
   Bell,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 const formatJMD = (val?: number) => (val !== undefined ? formatPriceJMD(val) : '$0 JMD');
@@ -31,6 +32,7 @@ interface AdminInboxViewProps {
 export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab }) => {
   const {
     adminInbox,
+    adminOrdersExcel,
     markInboxItemAsRead,
     markAllInboxAsRead,
     deleteInboxItem,
@@ -202,6 +204,38 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
             Synchronized
           </span>
+        </div>
+
+        {/* Excel Spreadsheet Database Synchronization Banner */}
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200/90 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <FileSpreadsheet className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-emerald-950 text-sm">
+                  Excel Orders Database Sync Active
+                </span>
+                <span className="bg-emerald-200 text-emerald-900 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  {adminOrdersExcel.length} Records Stored
+                </span>
+              </div>
+              <p className="text-emerald-800 text-xs mt-0.5">
+                Every incoming booking order, custom trip request, and deposit payment in this inbox is automatically formatted and saved into an editable spreadsheet database on the website.
+              </p>
+            </div>
+          </div>
+          {onNavigateToTab && (
+            <button
+              onClick={() => onNavigateToTab('excel-orders')}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-xs transition-colors shrink-0 cursor-pointer"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Open Excel Database</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         {/* 4 Core Activity Metrics */}
@@ -499,6 +533,20 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
                       <span>Details</span>
                     </button>
 
+                    {(item.type === 'inquiry' || item.type === 'deposit' || item.type === 'custom_trip') && onNavigateToTab && (
+                      <button
+                        onClick={() => {
+                          markInboxItemAsRead(item.id);
+                          onNavigateToTab('excel-orders');
+                        }}
+                        className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-xs font-bold flex items-center gap-1 border border-emerald-200 cursor-pointer transition-colors"
+                        title="Edit all order information in Excel database"
+                      >
+                        <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Edit in Excel</span>
+                      </button>
+                    )}
+
                     {(item.type === 'inquiry' || item.type === 'deposit' || item.type === 'review') && onNavigateToTab && (
                       <button
                         onClick={() => handleInspectAction(item)}
@@ -668,15 +716,31 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
                 <span>Delete</span>
               </button>
 
-              <button
-                onClick={() => {
-                  markInboxItemAsRead(selectedItemForModal.id);
-                  setSelectedItemForModal(null);
-                }}
-                className="px-4 py-2 rounded-xl bg-[#2E0249] text-[#FFC72C] text-xs font-bold"
-              >
-                Close
-              </button>
+              <div className="flex items-center gap-2">
+                {onNavigateToTab && (selectedItemForModal.type === 'inquiry' || selectedItemForModal.type === 'deposit' || selectedItemForModal.type === 'custom_trip') && (
+                  <button
+                    onClick={() => {
+                      markInboxItemAsRead(selectedItemForModal.id);
+                      setSelectedItemForModal(null);
+                      onNavigateToTab('excel-orders');
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    <span>Open in Excel Database</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => {
+                    markInboxItemAsRead(selectedItemForModal.id);
+                    setSelectedItemForModal(null);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-[#2E0249] text-[#FFC72C] text-xs font-bold cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>

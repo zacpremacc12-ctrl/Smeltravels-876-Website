@@ -19,6 +19,7 @@ import {
   AdminInboxItem,
   Ambassador,
   CustomTripRequestInput,
+  AdminOrderExcelRecord,
 } from '../types';
 import {
   INITIAL_SETTINGS,
@@ -32,6 +33,7 @@ import {
   INITIAL_CUSTOMERS,
   INITIAL_BOOKINGS,
   INITIAL_ADMIN_INBOX,
+  INITIAL_ADMIN_ORDERS_EXCEL,
 } from '../data/initialData';
 import { WORLD_DESTINATIONS } from '../data/customTripDestinations';
 import {
@@ -115,6 +117,13 @@ interface AppContextType {
   markAllInboxAsRead: () => void;
   deleteInboxItem: (id: string) => void;
   unreadInboxCount: number;
+
+  // Admin Order Excel Database (spreadsheet database for website admins to view & edit)
+  adminOrdersExcel: AdminOrderExcelRecord[];
+  addAdminOrderExcel: (order: Omit<AdminOrderExcelRecord, 'id' | 'receivedAt' | 'lastUpdated'>) => string;
+  updateAdminOrderExcel: (id: string, updates: Partial<AdminOrderExcelRecord>) => void;
+  deleteAdminOrderExcel: (id: string) => void;
+  batchUpdateAdminOrdersExcel: (orders: AdminOrderExcelRecord[]) => void;
 
   // Bookmarks / Saved Trips
   savedTripIds: string[];
@@ -288,6 +297,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return getStoredItem('admin_inbox', INITIAL_ADMIN_INBOX);
   });
 
+  // Admin Order Excel Database state
+  const [adminOrdersExcel, setAdminOrdersExcel] = useState<AdminOrderExcelRecord[]>(() => {
+    return getStoredItem('admin_orders_excel', INITIAL_ADMIN_ORDERS_EXCEL);
+  });
+
   // Bookmarked / Saved trips state
   const [savedTripIds, setSavedTripIds] = useState<string[]>(() => {
     return getStoredItem('saved_trips', ['panama-2026']);
@@ -346,6 +360,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => { setStoredItem('media', mediaList); }, [mediaList]);
   useEffect(() => { setStoredItem('subscribers', subscribers); }, [subscribers]);
   useEffect(() => { setStoredItem('admin_inbox', adminInbox); }, [adminInbox]);
+  useEffect(() => { setStoredItem('admin_orders_excel', adminOrdersExcel); }, [adminOrdersExcel]);
   useEffect(() => { setStoredItem('saved_trips', savedTripIds); }, [savedTripIds]);
   useEffect(() => { setStoredItem('admin_logged', isAdminLoggedIn); }, [isAdminLoggedIn]);
   useEffect(() => { setStoredItem('admin_email', adminEmail); }, [adminEmail]);
@@ -505,6 +520,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch (e) {}
         setStoredItem('admin_inbox', adminInboxArray);
         return adminInboxArray;
+      });
+    }
+
+    const ordersExcelArray = parseAsArray<AdminOrderExcelRecord>(d.adminOrdersExcel);
+    if (ordersExcelArray && ordersExcelArray.length > 0) {
+      setAdminOrdersExcel((prev) => {
+        try {
+          if (JSON.stringify(prev) === JSON.stringify(ordersExcelArray)) return prev;
+        } catch (e) {}
+        setStoredItem('admin_orders_excel', ordersExcelArray);
+        return ordersExcelArray;
       });
     }
 
@@ -868,6 +894,85 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const unreadInboxCount = adminInbox.filter(i => !i.isRead).length;
 
+  // Admin Order Excel Database methods (spreadsheet database for website admins)
+  const addAdminOrderExcel = (orderData: Omit<AdminOrderExcelRecord, 'id' | 'receivedAt' | 'lastUpdated'>): string => {
+    const now = new Date().toISOString();
+    const id = `order-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const newRecord: AdminOrderExcelRecord = {
+      ...orderData,
+      id,
+      receivedAt: now,
+      lastUpdated: now,
+    };
+    setAdminOrdersExcel(prev => {
+      const updated = [newRecord, ...prev];
+      syncToLiveServer({ adminOrdersExcel: updated });
+      return updated;
+    });
+    showNotification('Order Added to Database', `Order ${newRecord.orderRef} was inserted into the Excel database.`);
+    return id;
+  };
+
+  const updateAdminOrderExcel = (id: string, updates: Partial<AdminOrderExcelRecord>) => {
+    const now = new Date().toISOString();
+    setAdminOrdersExcel(prev => {
+      const updated = prev.map(order => {
+        if (order.id === id) {
+          return {
+            ...order,
+            ...updates,
+            lastUpdated: now,
+          };
+        }
+        return order;
+      });
+      syncToLiveServer({ adminOrdersExcel: updated });
+      return updated;
+    });
+
+    // Also sync updates to bookings if there is a matching reference number
+    const targetOrder = adminOrdersExcel.find(o => o.id === id);
+    const orderRef = updates.orderRef || targetOrder?.orderRef;
+    if (orderRef) {
+      setBookings(prev => {
+        const hasMatch = prev.some(b => b.referenceNumber === orderRef);
+        if (!hasMatch) return prev;
+        const updated = prev.map(b => {
+          if (b.referenceNumber === orderRef) {
+            return {
+              ...b,
+              ...(updates.customerName ? { customerName: updates.customerName } : {}),
+              ...(updates.email ? { email: updates.email } : {}),
+              ...(updates.phone ? { phone: updates.phone } : {}),
+              ...(updates.totalPrice !== undefined ? { totalPrice: updates.totalPrice } : {}),
+              ...(updates.depositPaid !== undefined ? { depositPaid: updates.depositPaid } : {}),
+              ...(updates.orderStatus ? { status: updates.orderStatus as any } : {}),
+              ...(updates.adminNotes ? { internalNotes: [...(b.internalNotes || []), `[Admin Edit ${new Date().toLocaleDateString()}]: ${updates.adminNotes}`] } : {}),
+              updatedAt: now,
+            };
+          }
+          return b;
+        });
+        syncToLiveServer({ bookings: updated });
+        return updated;
+      });
+    }
+  };
+
+  const deleteAdminOrderExcel = (id: string) => {
+    setAdminOrdersExcel(prev => {
+      const updated = prev.filter(order => order.id !== id);
+      syncToLiveServer({ adminOrdersExcel: updated });
+      return updated;
+    });
+    showNotification('Order Removed', 'Row deleted from Excel database.', 'info');
+  };
+
+  const batchUpdateAdminOrdersExcel = (orders: AdminOrderExcelRecord[]) => {
+    setAdminOrdersExcel(orders);
+    syncToLiveServer({ adminOrdersExcel: orders });
+  };
+
   // Bookmarks / Saved Trips methods
   const toggleSaveTrip = (tripId: string) => {
     setSavedTripIds(prev => {
@@ -980,6 +1085,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return updated;
     });
 
+    // 2b. Automatically collect and store in Excel database for website admins
+    const customExcelRecord: AdminOrderExcelRecord = {
+      id: `order-custom-${Date.now()}`,
+      orderRef: ref,
+      receivedAt: now,
+      orderType: 'Custom Trip',
+      customerName: data.customerName,
+      email: data.email,
+      phone: data.phone || '',
+      parishOrCountry: data.countryOrParish || 'Jamaica',
+      tripOrDestination: `${data.destination} (${data.country})`,
+      travelDates: datesSummary,
+      adultsCount: Number(data.adultsCount) || 1,
+      childrenCount: Number(data.childrenCount) || 0,
+      totalPrice: 0,
+      depositPaid: 0,
+      currency: 'JMD',
+      paymentStatus: 'Unpaid',
+      orderStatus: 'New',
+      preferredContact: (data.preferredContactMethod ? (data.preferredContactMethod.charAt(0).toUpperCase() + data.preferredContactMethod.slice(1)) : 'WhatsApp') as any,
+      assignedAdmin: data.preferredAmbassador || 'Elvoy Bennett',
+      specialRequests: data.specialRequests,
+      inclusions: (data.mustHaveInclusions || []).join(', '),
+      adminNotes: `Custom trip to ${data.destination} received on ${now}. Dispatched to Elvoy Bennett & Zachary Buchanan.`,
+      lastUpdated: now,
+    };
+    setAdminOrdersExcel(prev => {
+      const updated = [customExcelRecord, ...prev];
+      syncToLiveServer({ adminOrdersExcel: updated });
+      return updated;
+    });
+
     // 3. Dispatch to server endpoint for live admin email dispatch and persistence
     try {
       await fetch('/api/custom-trip-request', {
@@ -1037,6 +1174,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setBookings(prev => {
       const updated = [newBooking, ...prev];
       syncToLiveServer({ bookings: updated });
+      return updated;
+    });
+
+    // Automatically collect and store in Excel database for website admins
+    const excelOrder: AdminOrderExcelRecord = {
+      id: `order-book-${Date.now()}`,
+      orderRef: ref,
+      receivedAt: now.toISOString(),
+      orderType: 'Booking Inquiry',
+      customerName: data.customerName,
+      email: data.email,
+      phone: data.phone || '',
+      parishOrCountry: data.countryOrParish || 'Jamaica',
+      tripOrDestination: data.tripName,
+      travelDates: data.preferredTravelDate || '2026/2027 Season',
+      adultsCount: data.adultsCount || 1,
+      childrenCount: data.childrenCount || 0,
+      totalPrice: data.totalPrice || 0,
+      depositPaid: data.depositPaid || 0,
+      currency: data.currency || 'JMD',
+      paymentStatus: (data.depositPaid && data.depositPaid > 0) ? 'Deposit Paid' : 'Unpaid',
+      orderStatus: (data.status as any) || 'New',
+      preferredContact: (data.preferredContactMethod ? (data.preferredContactMethod.charAt(0).toUpperCase() + data.preferredContactMethod.slice(1)) : 'WhatsApp') as any,
+      assignedAdmin: data.ambassadorName ? data.ambassadorName : 'Zachary Buchanan',
+      ambassadorCode: data.ambassadorCode,
+      specialRequests: data.specialRequests,
+      inclusions: 'Flights, Hotel, Airport Transfers, 2 Excursions',
+      adminNotes: `Online booking inquiry received on ${now.toLocaleString()}.`,
+      lastUpdated: now.toISOString(),
+    };
+    setAdminOrdersExcel(prev => {
+      const updated = [excelOrder, ...prev];
+      syncToLiveServer({ adminOrdersExcel: updated });
       return updated;
     });
 
@@ -1694,6 +1864,55 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       syncToLiveServer({ customers: updated });
       return updated;
     });
+
+    // Also update or insert in Excel Database
+    setAdminOrdersExcel(prev => {
+      const matchIdx = prev.findIndex(o => o.orderRef === deposit.bookingRef);
+      let updated: AdminOrderExcelRecord[];
+      if (matchIdx >= 0) {
+        updated = prev.map((item, idx) => {
+          if (idx === matchIdx) {
+            return {
+              ...item,
+              depositPaid: (item.depositPaid || 0) + deposit.amount,
+              paymentStatus: 'Deposit Paid',
+              orderStatus: item.orderStatus === 'New' ? 'Deposit Received' : item.orderStatus,
+              adminNotes: `${item.adminNotes ? item.adminNotes + ' | ' : ''}Deposit of $${deposit.amount.toLocaleString()} JMD received via ${deposit.paymentMethod} on ${now.toLocaleDateString()}.`,
+              lastUpdated: now.toISOString(),
+            };
+          }
+          return item;
+        });
+      } else {
+        const newRecord: AdminOrderExcelRecord = {
+          id: `order-dep-${Date.now()}`,
+          orderRef: deposit.bookingRef,
+          receivedAt: now.toISOString(),
+          orderType: 'Deposit Record',
+          customerName: currentUser?.name || 'Verified Traveler',
+          email: currentUser?.email || userEmail || '',
+          phone: currentUser?.phone || '',
+          parishOrCountry: currentUser?.homeParishOrCountry || 'Jamaica',
+          tripOrDestination: deposit.tripName,
+          travelDates: 'Upcoming 2026/2027',
+          adultsCount: 1,
+          childrenCount: 0,
+          totalPrice: deposit.amount,
+          depositPaid: deposit.amount,
+          currency: 'JMD',
+          paymentStatus: 'Deposit Paid',
+          orderStatus: 'Deposit Received',
+          preferredContact: 'WhatsApp',
+          assignedAdmin: 'Zachary Buchanan',
+          specialRequests: `Deposit confirmation receipt #${deposit.id}`,
+          adminNotes: `Direct deposit logged: $${deposit.amount.toLocaleString()} JMD via ${deposit.paymentMethod}.`,
+          lastUpdated: now.toISOString(),
+        };
+        updated = [newRecord, ...prev];
+      }
+      syncToLiveServer({ adminOrdersExcel: updated });
+      return updated;
+    });
   };
 
   const deleteBooking = (id: string) => {
@@ -1917,6 +2136,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         markAllInboxAsRead,
         deleteInboxItem,
         unreadInboxCount,
+        adminOrdersExcel,
+        addAdminOrderExcel,
+        updateAdminOrderExcel,
+        deleteAdminOrderExcel,
+        batchUpdateAdminOrdersExcel,
         savedTripIds,
         savedTrips,
         toggleSaveTrip,

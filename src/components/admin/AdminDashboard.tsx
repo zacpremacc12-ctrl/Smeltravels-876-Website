@@ -44,6 +44,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowRight,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useApp, formatPriceJMD } from '../../context/AppContext';
 import { BookingInquiry, TripPackage, TripStatus, BlogPost, FAQItem, PromotionalOffer, TestimonialItem, Destination, Ambassador, SiteSettings } from '../../types';
@@ -52,6 +53,7 @@ import { ImageUploader } from './ImageUploader';
 import { MultiGalleryUploader } from './MultiGalleryUploader';
 import { AdminInboxView } from './AdminInboxView';
 import { CustomTripDestinationsManager } from './CustomTripDestinationsManager';
+import { AdminOrdersTable } from './AdminOrdersTable';
 import { WORLD_DESTINATIONS } from '../../data/customTripDestinations';
 import { pushSiteContentToRTDB, pushFullSiteContentToRTDB } from '../../lib/firebase';
 import { getSafeTripImageUrl, handleTripImageError } from '../../lib/imageUtils';
@@ -60,6 +62,7 @@ export const AdminDashboard: React.FC = () => {
   const {
     adminInbox,
     unreadInboxCount,
+    adminOrdersExcel,
     bookings,
     updateBookingStatus,
     deleteBooking,
@@ -93,7 +96,7 @@ export const AdminDashboard: React.FC = () => {
     refreshSiteData,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'inbox' | 'inquiries' | 'trips' | 'destinations' | 'custom-destinations' | 'guides' | 'faqs' | 'offers' | 'testimonials' | 'settings'>('inbox');
+  const [activeTab, setActiveTab] = useState<'inbox' | 'excel-orders' | 'inquiries' | 'trips' | 'destinations' | 'custom-destinations' | 'guides' | 'faqs' | 'offers' | 'testimonials' | 'settings'>('inbox');
   const [inquirySearch, setInquirySearch] = useState('');
   const [inquiryFilterStatus, setInquiryFilterStatus] = useState<string>('All');
   const [selectedInquiry, setSelectedInquiry] = useState<BookingInquiry | null>(null);
@@ -549,6 +552,12 @@ export const AdminDashboard: React.FC = () => {
                   badge: unreadInboxCount > 0 ? `${unreadInboxCount} new` : undefined,
                   icon: Inbox,
                 },
+                {
+                  id: 'excel-orders',
+                  label: `Excel Database (${adminOrdersExcel.length})`,
+                  badge: 'Spreadsheet',
+                  icon: FileSpreadsheet,
+                },
                 { id: 'inquiries', label: `Inquiries (${bookings.length})`, icon: UserCheck },
                 { id: 'trips', label: `Trips (${trips.length})`, icon: Plane },
                 { id: 'destinations', label: `Destinations (${destinations.length})`, icon: Compass },
@@ -626,7 +635,10 @@ export const AdminDashboard: React.FC = () => {
       {/* Main Admin Content Body */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
         {/* TAB 0: ADMIN INBOX */}
-        {activeTab === 'inbox' && <AdminInboxView />}
+        {activeTab === 'inbox' && <AdminInboxView onNavigateToTab={(t) => setActiveTab(t as any)} />}
+
+        {/* TAB 0.5: EXCEL SPREADSHEET DATABASE */}
+        {activeTab === 'excel-orders' && <AdminOrdersTable />}
 
         {/* TAB 1: INQUIRIES */}
         {activeTab === 'inquiries' && (

@@ -438,3 +438,34 @@ export interface AdminInboxItem {
   recipientEmails?: string[];
   emailStatus?: 'Sent' | 'Delivered' | 'Pending';
 }
+
+export type OrderTypeCategory = 'Booking Inquiry' | 'Custom Trip' | 'Deposit Record' | 'Contact Order' | 'Direct Order';
+export type OrderPaymentStatus = 'Unpaid' | 'Deposit Requested' | 'Deposit Paid' | 'Paid in Full' | 'Refunded';
+export type OrderWorkflowStatus = 'New' | 'Contacted' | 'Pending' | 'Deposit Received' | 'Proposal Sent' | 'Confirmed' | 'Completed' | 'Cancelled';
+
+export interface AdminOrderExcelRecord {
+  id: string;
+  orderRef: string;
+  receivedAt: string;
+  orderType: OrderTypeCategory;
+  customerName: string;
+  email: string;
+  phone: string;
+  parishOrCountry: string;
+  tripOrDestination: string;
+  travelDates: string;
+  adultsCount: number;
+  childrenCount: number;
+  totalPrice: number;
+  depositPaid: number;
+  currency: string;
+  paymentStatus: OrderPaymentStatus;
+  orderStatus: OrderWorkflowStatus;
+  preferredContact: 'WhatsApp' | 'Phone' | 'Email';
+  assignedAdmin: string;
+  ambassadorCode?: string;
+  specialRequests?: string;
+  inclusions?: string;
+  adminNotes: string;
+  lastUpdated?: string;
+}
