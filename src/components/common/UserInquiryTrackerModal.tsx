@@ -501,6 +501,30 @@ export const UserInquiryTrackerModal: React.FC = () => {
                     <span className="font-bold text-white">{selectedRecord.assignedAdmin || 'Zachary Buchanan'}</span>
                   </div>
                 </div>
+
+                {/* Origin Departure & Flight Route Bar */}
+                {(selectedRecord.originCountry || selectedRecord.departureAirport) && (
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-3 mt-3 border-t border-purple-800/40 text-xs">
+                    <div className="flex items-center gap-2 text-white">
+                      <span className="text-[10px] text-purple-300 uppercase tracking-wider font-bold">Departure Origin:</span>
+                      <span className="font-bold text-[#FFC72C]">
+                        🛫 {selectedRecord.originCity ? `${selectedRecord.originCity}, ` : ''}{selectedRecord.originCountry || 'International'}
+                        {selectedRecord.departureAirport ? ` (${selectedRecord.departureAirport})` : ''}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-purple-300 uppercase tracking-wider font-bold">Flight Status:</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        selectedRecord.flightPricingStatus === 'Estimated'
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
+                          : 'bg-amber-500/20 text-amber-300 border border-amber-400/30'
+                      }`}>
+                        {selectedRecord.flightPricingStatus || 'Custom Quote Required'}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Progress Stepper Section */}

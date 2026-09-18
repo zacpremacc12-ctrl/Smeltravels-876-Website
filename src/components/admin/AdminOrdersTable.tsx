@@ -34,6 +34,7 @@ import {
   ChevronDown,
   Layers,
   Sparkles,
+  Plane,
 } from 'lucide-react';
 
 const ORDER_TYPES: OrderTypeCategory[] = [
@@ -276,11 +277,15 @@ export const AdminOrdersTable: React.FC = () => {
       'Email',
       'Phone',
       'Parish/Country',
+      'Origin Departure Location',
+      'Flight Pricing Status',
       'Trip / Destination',
       'Travel Dates',
       'Adults',
       'Children',
-      'Budget (Selected)',
+      'Numerical Budget',
+      'Budget Description',
+      'Estimated Min Budget USD',
       'Total Price (JMD)',
       'Deposit Paid (JMD)',
       'Balance Due (JMD)',
@@ -302,11 +307,15 @@ export const AdminOrdersTable: React.FC = () => {
       `"${o.email}"`,
       `"${o.phone}"`,
       `"${o.parishOrCountry || ''}"`,
+      `"${(o.originLocation || o.parishOrCountry || 'Jamaica').replace(/"/g, '""')}"`,
+      `"${(o.flightPricingStatus || 'Estimated').replace(/"/g, '""')}"`,
       `"${o.tripOrDestination.replace(/"/g, '""')}"`,
       `"${o.travelDates || ''}"`,
       o.adultsCount,
       o.childrenCount,
+      o.numericalBudget !== undefined && o.numericalBudget !== null ? o.numericalBudget : (parseFloat(String(o.budget || '').replace(/[^0-9.]/g, '')) || 0),
       `"${(o.budget || 'Flexible').replace(/"/g, '""')}"`,
+      o.estimatedMinimumBudgetUSD || 0,
       o.totalPrice,
       o.depositPaid,
       Math.max(0, o.totalPrice - o.depositPaid),
@@ -626,13 +635,13 @@ export const AdminOrdersTable: React.FC = () => {
                 </th>
                 <th className="p-3 min-w-[130px] font-bold border-r border-purple-900">Phone</th>
                 <th className="p-3 min-w-[180px] font-bold border-r border-purple-900">Email</th>
-                <th className="p-3 min-w-[150px] font-bold border-r border-purple-900">Parish / Origin</th>
+                <th className="p-3 min-w-[170px] font-bold border-r border-purple-900">Origin & Flights</th>
                 <th className="p-3 min-w-[200px] font-bold border-r border-purple-900">Trip / Destination</th>
                 <th className="p-3 min-w-[140px] font-bold border-r border-purple-900">Travel Dates</th>
                 <th className="p-3 min-w-[70px] text-center font-bold border-r border-purple-900">Guests</th>
                 <th className="p-3 min-w-[140px] font-bold border-r border-purple-900 cursor-pointer hover:bg-purple-950" onClick={() => handleSort('budget')}>
                   <div className="flex items-center justify-between">
-                    <span>Budget (Selected)</span>
+                    <span>Numerical Budget</span>
                     <ArrowUpDown className="w-3 h-3 text-neutral-400" />
                   </div>
                 </th>
@@ -756,9 +765,27 @@ export const AdminOrdersTable: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Parish / Origin (Customer Submission - Locked) */}
-                      <td className="p-2.5 border-r border-neutral-200 whitespace-nowrap text-neutral-700">
-                        {order.parishOrCountry || 'Jamaica'}
+                      {/* Origin / Departure Location & Flight Status (Customer Submission - Locked) */}
+                      <td className="p-2.5 border-r border-neutral-200 whitespace-nowrap text-neutral-800">
+                        <div className="flex items-center gap-1.5">
+                          <Plane className="w-3.5 h-3.5 text-purple-700 shrink-0" />
+                          <div>
+                            <div className="font-bold text-xs leading-tight">
+                              {order.originLocation || order.parishOrCountry || 'Jamaica'}
+                            </div>
+                            {order.flightPricingStatus && (
+                              <span className={`text-[9px] font-black px-1.5 py-0.2 rounded-full inline-block mt-0.5 border ${
+                                order.flightPricingStatus === 'Estimated'
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                  : order.flightPricingStatus === 'Manual Flight Pricing Required'
+                                  ? 'bg-amber-50 text-amber-900 border-amber-300'
+                                  : 'bg-neutral-100 text-neutral-600 border-neutral-200'
+                              }`}>
+                                {order.flightPricingStatus === 'Manual Flight Pricing Required' ? 'Custom Flight Quote' : `Flight: ${order.flightPricingStatus}`}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </td>
 
                       {/* Trip / Destination (Customer Submission - Locked) */}
@@ -778,11 +805,15 @@ export const AdminOrdersTable: React.FC = () => {
                         {order.adultsCount}{order.childrenCount ? ` + ${order.childrenCount}k` : ''}
                       </td>
 
-                      {/* Budget (Selected) (Customer Submission - In Excel Database) */}
+                      {/* Budget (Numerical) (Customer Submission - In Excel Database) */}
                       <td className="p-2.5 border-r border-neutral-200 whitespace-nowrap text-xs">
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-50 text-purple-900 border border-purple-200/80 font-mono text-[11px] font-bold">
                           <DollarSign className="w-3 h-3 text-[#FFC72C]" />
-                          <span>{order.budget || 'Flexible'}</span>
+                          <span>
+                            {order.numericalBudget !== undefined && order.numericalBudget !== null && order.numericalBudget > 0
+                              ? order.numericalBudget.toLocaleString()
+                              : (parseFloat(String(order.budget || '').replace(/[^0-9.]/g, '')) ? (parseFloat(String(order.budget || '').replace(/[^0-9.]/g, ''))).toLocaleString() : (order.budget || 'Flexible'))}
+                          </span>
                         </span>
                       </td>
 
@@ -1062,10 +1093,36 @@ export const AdminOrdersTable: React.FC = () => {
                 </div>
 
                 <div className="bg-purple-50/80 p-2.5 rounded-xl border border-purple-200">
-                  <span className="text-[10px] text-purple-700 font-bold block uppercase">Selected Budget</span>
+                  <span className="text-[10px] text-purple-700 font-bold block uppercase">Customer Origin (Departure)</span>
+                  <span className="font-bold text-purple-950 flex items-center gap-1">
+                    <Plane className="w-3 h-3 text-[#2E0249]" />
+                    <span>{inspectOrder.originLocation || inspectOrder.parishOrCountry || 'Jamaica'}</span>
+                  </span>
+                </div>
+
+                <div className={`p-2.5 rounded-xl border ${
+                  inspectOrder.flightPricingStatus === 'Estimated'
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
+                    : inspectOrder.flightPricingStatus === 'Manual Flight Pricing Required'
+                    ? 'bg-amber-50 border-amber-300 text-amber-950'
+                    : 'bg-white border-neutral-200 text-neutral-800'
+                }`}>
+                  <span className="text-[10px] opacity-70 font-bold block uppercase">Flight Pricing Status</span>
+                  <span className="font-extrabold text-xs">
+                    {inspectOrder.flightPricingStatus || 'Estimated'}
+                  </span>
+                  {inspectOrder.flightRouteMatched && (
+                    <div className="text-[10px] opacity-80 mt-0.5">Route: {inspectOrder.flightRouteMatched}</div>
+                  )}
+                </div>
+
+                <div className="bg-purple-50/80 p-2.5 rounded-xl border border-purple-200">
+                  <span className="text-[10px] text-purple-700 font-bold block uppercase">Numerical Budget</span>
                   <span className="font-bold text-purple-950 font-mono flex items-center gap-1">
                     <DollarSign className="w-3 h-3 text-[#FFC72C]" />
-                    {inspectOrder.budget || 'Flexible / Standard'}
+                    {inspectOrder.numericalBudget !== undefined && inspectOrder.numericalBudget !== null && inspectOrder.numericalBudget > 0
+                      ? `${inspectOrder.numericalBudget.toLocaleString()} (${inspectOrder.currency || 'USD'})`
+                      : (inspectOrder.budget || 'Flexible / Standard')}
                   </span>
                 </div>
               </div>

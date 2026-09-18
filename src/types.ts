@@ -103,6 +103,9 @@ export interface BookingSubmission {
   totalPrice: number;
   currency: string;
   budget?: string;
+  numericalBudget?: number;
+  originLocation?: string;
+  flightPricingStatus?: 'Estimated' | 'Manual Flight Pricing Required';
   ambassadorId?: string;
   ambassadorName?: string;
   ambassadorPhone?: string;
@@ -387,6 +390,13 @@ export type AdminInboxCategory = 'inquiry' | 'deposit' | 'review' | 'message' | 
 export interface CustomTripRequest {
   id: string;
   referenceNumber: string;
+  // Origin / Departure Location
+  originCountry?: string;
+  originCity?: string;
+  originAirportCode?: string;
+  originAirportName?: string;
+  originLocationDisplay?: string;
+  isAirportUnknown?: boolean;
   destination: string;
   country: string;
   countryFlag?: string;
@@ -398,11 +408,14 @@ export interface CustomTripRequest {
   durationDays?: number;
   adultsCount: number;
   childrenCount: number;
+  roomOccupancy?: 'single' | 'double' | 'triple' | 'quad' | 'group';
   tripVibe: string;
   travelStyle: string;
+  cabinClass?: 'Economy' | 'Premium Economy' | 'Business' | 'First';
   budgetPerPerson?: string;
   budgetCurrency?: string;
   budgetAmount?: string;
+  numericalBudget?: number;
   budgetType?: 'per_person' | 'total_trip';
   mustHaveInclusions: string[];
   specialRequests?: string;
@@ -412,6 +425,22 @@ export interface CustomTripRequest {
   countryOrParish: string;
   preferredContactMethod: 'whatsapp' | 'phone' | 'email';
   preferredAmbassador?: string;
+  // Flight & Pricing Engine Fields
+  flightPricingStatus?: 'Estimated' | 'Manual Flight Pricing Required';
+  flightAllowanceEstimatedUSD?: number;
+  flightRouteMatched?: string;
+  estimatedMinimumBudgetTotal?: number;
+  estimatedMinimumBudgetUSD?: number;
+  costBreakdown?: {
+    flightCostTotal: number;
+    accommodationTotal: number;
+    mealAllowanceTotal: number;
+    transfersTotal: number;
+    excursionsTotal: number;
+    travelDocumentsTotal: number;
+    otherServicesTotal: number;
+    taxesAndFeesTotal: number;
+  };
   createdAt: string;
   status: 'Pending Admin Review' | 'Trip Proposal Sent' | 'Confirmed' | 'Archived';
 }
@@ -458,6 +487,7 @@ export interface AdminOrderExcelRecord {
   adultsCount: number;
   childrenCount: number;
   budget?: string;
+  numericalBudget?: number;
   totalPrice: number;
   depositPaid: number;
   currency: string;
@@ -469,5 +499,81 @@ export interface AdminOrderExcelRecord {
   specialRequests?: string;
   inclusions?: string;
   adminNotes: string;
+  originLocation?: string;
+  flightPricingStatus?: 'Estimated' | 'Manual Flight Pricing Required';
+  estimatedMinimumBudgetUSD?: number;
+  flightRouteMatched?: string;
   lastUpdated?: string;
+}
+
+// Origin & Flight Pricing Engine Interfaces
+export interface AirportRecord {
+  id: string;
+  country: string;
+  city: string;
+  code: string; // e.g. KIN, MBJ, JFK, MIA, ATL, FLL, MCO, YYZ, LHR
+  name: string; // e.g. Norman Manley International Airport
+  isMajorHub?: boolean;
+}
+
+export type CabinClassType = 'Economy' | 'Premium Economy' | 'Business' | 'First';
+
+export interface OriginPricingRoute {
+  id: string;
+  originCountry: string;
+  originCity: string;
+  originAirportCode: string; // e.g. KIN
+  destinationCountry: string; // e.g. Colombia
+  destinationCity: string; // e.g. Bogotá, or 'All Cities'
+  destinationAirportCode?: string; // e.g. BOG, or 'ALL'
+  estimatedRoundtripUSD: number; // e.g. 580
+  checkedBagFeeUSD?: number; // e.g. 45
+  carryOnIncluded: boolean;
+  cabinClassMultipliers?: {
+    Economy: number;
+    PremiumEconomy: number;
+    Business: number;
+    First: number;
+  };
+  oneWayMultiplier?: number;
+  seasonalMultiplier?: number;
+  isActive: boolean;
+  notes?: string;
+}
+
+export interface ServiceCostRules {
+  accommodationPerNight: {
+    Budget: number;
+    Standard: number;
+    Premium: number;
+    Luxury: number;
+    VIP: number;
+  };
+  mealsPerPersonPerDay: {
+    Budget: number;
+    Standard: number;
+    Premium: number;
+    Luxury: number;
+    VIP: number;
+  };
+  airportTransfersRoundtrip: number;
+  transfersCostType: 'per_booking' | 'per_vehicle' | 'per_person';
+  excursionsAllowancePerPerson: {
+    Budget: number;
+    Standard: number;
+    Premium: number;
+    Luxury: number;
+    VIP: number;
+  };
+  travelDocumentsFee: number;
+  otherServicesFee: number;
+  taxesAndFeesPercentage: number;
+}
+
+export interface CurrencyRecord {
+  code: string;
+  name: string;
+  symbol: string;
+  rateFromUSD: number;
+  isDefault?: boolean;
 }

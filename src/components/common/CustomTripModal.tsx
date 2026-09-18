@@ -25,6 +25,9 @@ import {
   Info,
   Check,
   AlertCircle,
+  Building,
+  Car,
+  ChevronDown,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import {
@@ -33,6 +36,7 @@ import {
   CountryDestinationInfo,
 } from '../../data/customTripDestinations';
 import { CustomTripRequestInput } from '../../types';
+import { calculateTripBudget } from '../../lib/pricingEngine';
 
 export const CustomTripModal: React.FC = () => {
   const {
@@ -44,6 +48,10 @@ export const CustomTripModal: React.FC = () => {
     settings,
     openInquiryTracker,
     showNotification,
+    departureAirports,
+    originPricingRoutes,
+    serviceCostRules: landServiceCostRules,
+    supportedCurrencies: originCurrencies,
   } = useApp();
 
   // Wizard Steps: 1: Destination & Country, 2: Dates & Group, 3: Style & Inclusions, 4: Traveler Details, 5: Success
@@ -69,7 +77,7 @@ export const CustomTripModal: React.FC = () => {
   const [customDestinationName, setCustomDestinationName] = useState('');
   const [activePhotoIndex, setActivePhotoIndex] = useState<number>(0);
 
-  // Step 2: Dates & Timing
+  // Step 2: Dates, Group & Origin / Departure Location
   const [travelDatesType, setTravelDatesType] = useState<'specific' | 'flexible'>('flexible');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -77,6 +85,62 @@ export const CustomTripModal: React.FC = () => {
   const [durationDays, setDurationDays] = useState<number>(7);
   const [adultsCount, setAdultsCount] = useState<number>(2);
   const [childrenCount, setChildrenCount] = useState<number>(0);
+
+  // Origin / Departure Location (Required: Country, City, Airport)
+  const [originCountry, setOriginCountry] = useState<string>('Jamaica');
+  const [originCity, setOriginCity] = useState<string>('Kingston');
+  const [originAirportCode, setOriginAirportCode] = useState<string>('KIN');
+  const [isAirportUnknown, setIsAirportUnknown] = useState<boolean>(false);
+  const [customOriginCity, setCustomOriginCity] = useState<string>('');
+  const [cabinClass, setCabinClass] = useState<'Economy' | 'Premium Economy' | 'Business' | 'First Class'>('Economy');
+  const [roomOccupancy, setRoomOccupancy] = useState<'single' | 'double' | 'triple' | 'quad' | 'group'>('double');
+
+  // Dynamic Origin Country & Airport lists from Administrator Database
+  const availableOriginCountries = useMemo(() => {
+    const list = Array.from(new Set(departureAirports.map((a) => a.country)));
+    const core = [
+      'Jamaica',
+      'United States',
+      'Canada',
+      'United Kingdom',
+      'Trinidad & Tobago',
+      'Bahamas',
+      'Barbados',
+      'Cayman Islands',
+    ];
+    core.forEach((c) => {
+      if (!list.includes(c)) list.push(c);
+    });
+    return list;
+  }, [departureAirports]);
+
+  const availableOriginAirports = useMemo(() => {
+    return departureAirports.filter(
+      (a) => a.country.toLowerCase() === originCountry.toLowerCase()
+    );
+  }, [departureAirports, originCountry]);
+
+  const availableOriginCities = useMemo(() => {
+    const cities = Array.from(new Set(availableOriginAirports.map((a) => a.city)));
+    return cities.length > 0 ? cities : [originCity || 'Kingston'];
+  }, [availableOriginAirports, originCity]);
+
+  // Handle Origin Country selection change
+  const handleCountryChange = (newCountry: string) => {
+    setOriginCountry(newCountry);
+    const matchingAirports = departureAirports.filter(
+      (a) => a.country.toLowerCase() === newCountry.toLowerCase()
+    );
+    if (matchingAirports.length > 0) {
+      setOriginCity(matchingAirports[0].city);
+      setOriginAirportCode(matchingAirports[0].code);
+      setIsAirportUnknown(false);
+    } else {
+      setOriginCity('');
+      setOriginAirportCode('');
+      setIsAirportUnknown(true);
+    }
+  };
 
   // Step 3: Vibe, Style, Budget & Inclusions
   const AVAILABLE_VIBES = [
@@ -119,6 +183,190 @@ export const CustomTripModal: React.FC = () => {
   // Submission State
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedRef, setSubmittedRef] = useState<string | null>(null);
+
+  // Currency Conversion Rates from USD
+  const FX_RATES_FROM_USD: Record<string, { rate: number; symbol: string; label: string }> = {
+    USD: { rate: 1.0, symbol: '$', label: 'USD' },
+    JMD: { rate: 155.0, symbol: 'JA$', label: 'JMD' },
+    CAD: { rate: 1.35, symbol: 'C$', label: 'CAD' },
+    GBP: { rate: 0.78, symbol: '£', label: 'GBP' },
+    EUR: { rate: 0.92, symbol: '€', label: 'EUR' },
+    OTHER: { rate: 1.0, symbol: '', label: 'Custom' },
+  };
+
+  // Calculate effective trip days (from specific dates or duration slider)
+  const effectiveTripDays = useMemo(() => {
+    if (travelDatesType === 'specific' && startDate && endDate) {
+      const start = new Date(startDate).getTime();
+      const end = new Date(endDate).getTime();
+      if (!isNaN(start) && !isNaN(end) && end >= start) {
+        const diff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        if (diff > 0) return diff;
+      }
+    }
+    return Number(durationDays) || 7;
+  }, [travelDatesType, startDate, endDate, durationDays]);
+
+  // Real-time Pricing Engine Calculation based on Origin, Route, Style, Group and Land Services
+  const pricingEngineResult = useMemo(() => {
+    const effectiveDestCountry = selectedCountryInfo?.country || selectedCountryInfo?.name || 'Dominican Republic';
+    const effectiveDestCity = selectedCountryInfo?.capitalOrCity || selectedCountryInfo?.name || '';
+    const activeCode = budgetCurrency === 'OTHER' ? (customCurrencyCode.trim().toUpperCase() || 'USD') : budgetCurrency;
+
+    return calculateTripBudget({
+      originCountry,
+      originCity: customOriginCity.trim() || originCity,
+      originAirportCode: isAirportUnknown ? '' : originAirportCode,
+      isAirportUnknown,
+      destinationCountry: effectiveDestCountry,
+      destinationCity: effectiveDestCity,
+      durationDays: effectiveTripDays,
+      adultsCount,
+      childrenCount,
+      travelStyle,
+      roomOccupancy,
+      cabinClass: cabinClass === 'First Class' ? 'First' : (cabinClass as any),
+      isRoundTrip: true,
+      selectedServices: mustHaveInclusions,
+      routes: originPricingRoutes,
+      serviceRules: landServiceCostRules,
+      selectedCurrencyCode: activeCode,
+      currencies: originCurrencies,
+    });
+  }, [
+    originCountry,
+    originCity,
+    customOriginCity,
+    originAirportCode,
+    isAirportUnknown,
+    selectedCountryInfo,
+    effectiveTripDays,
+    adultsCount,
+    childrenCount,
+    travelStyle,
+    roomOccupancy,
+    cabinClass,
+    mustHaveInclusions,
+    originPricingRoutes,
+    landServiceCostRules,
+    budgetCurrency,
+    customCurrencyCode,
+    originCurrencies,
+  ]);
+
+  // Budget Policy Validation Rules:
+  // 1. 2 adults -> total group budget cannot be less than $1500 USD
+  // 2. > 5 days -> budget cannot be less than $2000 USD
+  // 3. Pricing Engine route + service estimated cost threshold
+  // (Converts for other currencies)
+  const budgetValidation = useMemo(() => {
+    const isTwoAdults = adultsCount >= 2;
+    const isMoreThanFiveDays = effectiveTripDays > 5;
+
+    let policyFloorUSD = 0;
+    const activeRules: string[] = [];
+
+    if (isTwoAdults) {
+      policyFloorUSD = Math.max(policyFloorUSD, 1500);
+      activeRules.push(`${adultsCount} Adult Travelers (Min $1,500 USD group policy)`);
+    }
+
+    if (isMoreThanFiveDays) {
+      policyFloorUSD = Math.max(policyFloorUSD, 2000);
+      activeRules.push(`${effectiveTripDays} Days Duration (>5 days requires Min $2,000 USD group policy)`);
+    }
+
+    // Minimum total group budget in USD: max of policy floor and pricing engine estimated minimum
+    const engineEstimatedUSD = pricingEngineResult.totalEstimatedCostUSD || 0;
+    const minTotalBudgetUSD = Math.max(policyFloorUSD, engineEstimatedUSD);
+
+    if (engineEstimatedUSD > policyFloorUSD && engineEstimatedUSD > 0) {
+      activeRules.push(`Route & Land Services Estimate ($${engineEstimatedUSD.toLocaleString()} USD minimum)`);
+    }
+
+    const fx = FX_RATES_FROM_USD[budgetCurrency] || FX_RATES_FROM_USD.USD;
+    const currencyLabel = budgetCurrency === 'OTHER' ? (customCurrencyCode.trim().toUpperCase() || 'CUSTOM') : budgetCurrency;
+    const symbol = fx.symbol;
+
+    // Minimum total group budget in active currency
+    const minTotalInCurrency = Math.round(minTotalBudgetUSD * fx.rate);
+
+    // Minimum input amount required (per person or total group)
+    const minInputAmount = budgetType === 'per_person'
+      ? Math.ceil(minTotalInCurrency / (adultsCount || 1))
+      : minTotalInCurrency;
+
+    // User's numerical budget amount
+    const enteredVal = Number(budgetAmount || 0);
+
+    // User's effective total group budget in current currency
+    const userTotalGroupBudget = budgetType === 'per_person'
+      ? enteredVal * (adultsCount || 1)
+      : enteredVal;
+
+    // User's effective total group budget in USD equivalent
+    const userTotalGroupBudgetUSD = fx.rate > 0 ? userTotalGroupBudget / fx.rate : userTotalGroupBudget;
+
+    const isBelowMinimum = minTotalBudgetUSD > 0 && (userTotalGroupBudget < minTotalInCurrency || userTotalGroupBudgetUSD < minTotalBudgetUSD);
+
+    return {
+      isTwoAdults,
+      isMoreThanFiveDays,
+      policyFloorUSD,
+      engineEstimatedUSD,
+      minTotalBudgetUSD,
+      minTotalInCurrency,
+      minInputAmount,
+      userTotalGroupBudget,
+      userTotalGroupBudgetUSD,
+      isBelowMinimum,
+      activeRules,
+      symbol,
+      currencyLabel,
+      fxRate: fx.rate,
+    };
+  }, [adultsCount, effectiveTripDays, budgetCurrency, customCurrencyCode, budgetAmount, budgetType, pricingEngineResult]);
+
+  // Dynamic quick presets that respect minimum budget policies
+  const dynamicPresets = useMemo(() => {
+    const fx = FX_RATES_FROM_USD[budgetCurrency] || FX_RATES_FROM_USD.USD;
+    const min = budgetValidation.minInputAmount || (budgetCurrency === 'JMD' ? 150000 : 1200);
+
+    if (budgetCurrency === 'USD') {
+      const base1 = Math.max(1200, min);
+      const base2 = Math.max(base1 + 500, Math.max(2000, Math.ceil(min * 1.25 / 100) * 100));
+      const base3 = Math.max(base2 + 1000, Math.max(3500, Math.ceil(min * 1.75 / 100) * 100));
+      const base4 = Math.max(base3 + 1500, Math.max(5000, Math.ceil(min * 2.5 / 100) * 100));
+      return [
+        { label: `$${base1.toLocaleString()} (${base1 === min && budgetValidation.minTotalBudgetUSD > 0 ? 'Min' : 'Economy'})`, val: String(base1) },
+        { label: `$${base2.toLocaleString()} (Comfort)`, val: String(base2) },
+        { label: `$${base3.toLocaleString()} (Premium)`, val: String(base3) },
+        { label: `$${base4.toLocaleString()}+ (Luxury)`, val: String(base4) },
+      ];
+    } else if (budgetCurrency === 'JMD') {
+      const base1 = Math.max(180000, Math.ceil(min / 1000) * 1000);
+      const base2 = Math.max(base1 + 80000, 300000);
+      const base3 = Math.max(base2 + 150000, 500000);
+      const base4 = Math.max(base3 + 250000, 800000);
+      return [
+        { label: `JA$${(base1 / 1000).toFixed(0)}k JMD`, val: String(base1) },
+        { label: `JA$${(base2 / 1000).toFixed(0)}k JMD`, val: String(base2) },
+        { label: `JA$${(base3 / 1000).toFixed(0)}k JMD`, val: String(base3) },
+        { label: `JA$${(base4 / 1000).toFixed(0)}k+ JMD`, val: String(base4) },
+      ];
+    } else {
+      const base1 = Math.max(1500, Math.ceil(min / 50) * 50);
+      const base2 = Math.max(base1 + 800, Math.ceil((min * 1.4) / 50) * 50);
+      const base3 = Math.max(base2 + 1200, Math.ceil((min * 2.0) / 50) * 50);
+      const base4 = Math.max(base3 + 2000, Math.ceil((min * 3.0) / 50) * 50);
+      return [
+        { label: `${fx.symbol}${base1.toLocaleString()}`, val: String(base1) },
+        { label: `${fx.symbol}${base2.toLocaleString()}`, val: String(base2) },
+        { label: `${fx.symbol}${base3.toLocaleString()}`, val: String(base3) },
+        { label: `${fx.symbol}${base4.toLocaleString()}+`, val: String(base4) },
+      ];
+    }
+  }, [budgetCurrency, budgetValidation.minInputAmount, budgetValidation.minTotalBudgetUSD]);
 
   // Formatted Budget Summary String
   const formattedBudgetSummary = useMemo(() => {
@@ -223,6 +471,24 @@ export const CustomTripModal: React.FC = () => {
     setTripVibes(['Beaches & Tropical Relaxation 🏖️']);
   };
 
+  // Step advancement with validation
+  const handleNextStep = () => {
+    if (currentStep === 3 && budgetValidation.isBelowMinimum) {
+      showNotification(
+        'Minimum Budget Required',
+        `For your travel party (${adultsCount} adults) and trip duration (${effectiveTripDays} days), the minimum required budget is ${budgetValidation.symbol}${budgetValidation.minTotalInCurrency.toLocaleString()} ${budgetValidation.currencyLabel} ($${budgetValidation.minTotalBudgetUSD.toLocaleString()} USD equivalent). Please adjust your budget before proceeding.`,
+        'warning'
+      );
+      const inputEl = document.getElementById('custom-trip-budget-input');
+      if (inputEl) {
+        inputEl.focus();
+        inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+    setCurrentStep((prev) => Math.min(4, prev + 1));
+  };
+
   // Handle Submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -243,12 +509,38 @@ export const CustomTripModal: React.FC = () => {
       return;
     }
 
+    if (budgetValidation.isBelowMinimum) {
+      showNotification(
+        'Minimum Budget Required',
+        `For your travel party (${adultsCount} adults) and duration (${effectiveTripDays} days), the minimum required budget is ${budgetValidation.symbol}${budgetValidation.minTotalInCurrency.toLocaleString()} ${budgetValidation.currencyLabel} ($${budgetValidation.minTotalBudgetUSD.toLocaleString()} USD equivalent). Please adjust your budget.`,
+        'warning'
+      );
+      setCurrentStep(3);
+      const el = document.getElementById('custom-trip-budget-input');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
     const destinationTitle = customDestinationName.trim() || selectedCountryInfo?.name || 'Custom International Destination';
     const countryName = selectedCountryInfo?.country || customDestinationName.trim() || 'Custom Country';
 
     setIsSubmitting(true);
     try {
+      const effectiveOriginCity = customOriginCity.trim() || originCity;
+      const effectiveAirportName = isAirportUnknown
+        ? 'Nearest Major Hub'
+        : (availableOriginAirports.find((a) => a.code === originAirportCode)?.name || originAirportCode);
+      const originDisplay = `${effectiveOriginCity}, ${originCountry}${isAirportUnknown ? ' (Nearest Airport)' : ` (${originAirportCode})`}`;
+
       const payload: CustomTripRequestInput = {
+        originCountry,
+        originCity: effectiveOriginCity,
+        originAirportCode: isAirportUnknown ? '' : originAirportCode,
+        originAirportName: effectiveAirportName,
+        originLocationDisplay: originDisplay,
+        isAirportUnknown,
+        cabinClass: cabinClass === 'First Class' ? 'First' : (cabinClass as any),
+        roomOccupancy,
         destination: destinationTitle,
         country: countryName,
         countryFlag: selectedCountryInfo?.flag || '✈️',
@@ -265,15 +557,31 @@ export const CustomTripModal: React.FC = () => {
         budgetPerPerson: formattedBudgetSummary,
         budgetCurrency: budgetCurrency === 'OTHER' ? (customCurrencyCode.trim().toUpperCase() || 'OTHER') : budgetCurrency,
         budgetAmount: budgetAmount,
+        numericalBudget: Number(budgetAmount || 0),
         budgetType: budgetType,
         mustHaveInclusions,
         specialRequests,
         customerName,
         email,
         phone,
-        countryOrParish,
+        countryOrParish: countryOrParish || originDisplay,
         preferredContactMethod,
         preferredAmbassador: preferredAmbassador || undefined,
+        flightPricingStatus: pricingEngineResult?.flightPricingStatus || 'Manual Flight Pricing Required',
+        flightAllowanceEstimatedUSD: pricingEngineResult?.costBreakdown?.flightsUSD || 0,
+        flightRouteMatched: pricingEngineResult?.flightRouteMatched || '',
+        costBreakdown: {
+          flightCostTotal: pricingEngineResult?.costBreakdown?.flightsUSD || 0,
+          accommodationTotal: pricingEngineResult?.costBreakdown?.accommodationUSD || 0,
+          mealAllowanceTotal: pricingEngineResult?.costBreakdown?.mealsUSD || 0,
+          transfersTotal: pricingEngineResult?.costBreakdown?.transfersUSD || 0,
+          excursionsTotal: pricingEngineResult?.costBreakdown?.excursionsUSD || 0,
+          travelDocumentsTotal: pricingEngineResult?.costBreakdown?.documentsUSD || 0,
+          taxesAndFeesTotal: pricingEngineResult?.costBreakdown?.taxesAndFeesUSD || 0,
+          otherServicesTotal: pricingEngineResult?.costBreakdown?.bufferUSD || 0,
+        },
+        estimatedMinimumBudgetTotal: pricingEngineResult?.totalEstimatedCostInCurrency || 0,
+        estimatedMinimumBudgetUSD: pricingEngineResult?.totalEstimatedCostUSD || 0,
       };
 
       const result = await submitCustomTripRequest(payload);
@@ -363,7 +671,7 @@ export const CustomTripModal: React.FC = () => {
                 {currentStep > 2 ? <Check className="w-3.5 h-3.5" /> : '2'}
               </span>
               <span className={currentStep === 2 ? 'font-bold text-[#2E0249]' : ''}>
-                2. When & Group
+                2. Origin & Dates
               </span>
             </div>
 
@@ -820,6 +1128,198 @@ export const CustomTripModal: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {/* WHERE ARE YOU TRAVELING FROM? (REQUIRED ORIGIN LOCATION) */}
+              <div className="pt-5 border-t border-neutral-200 space-y-4" id="custom-trip-origin-section">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-neutral-800 flex items-center gap-2">
+                    <Plane className="w-4 h-4 text-[#2E0249]" />
+                    <span>Where Are You Traveling From?</span>
+                    <span className="text-[10px] bg-[#2E0249] text-[#FFC72C] font-black px-2 py-0.5 rounded-full">
+                      Required
+                    </span>
+                  </label>
+                  <span className="text-[11px] text-neutral-500">
+                    We organize trips for clients globally • Route prices calculate automatically
+                  </span>
+                </div>
+
+                <div className="bg-gradient-to-r from-purple-50/70 via-white to-amber-50/60 p-4 rounded-2xl border border-purple-200/80 space-y-4">
+                  {/* Country Selection */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-700 mb-1.5 flex items-center gap-1">
+                        <Globe className="w-3.5 h-3.5 text-[#2E0249]" />
+                        <span>Departure Country:</span>
+                      </label>
+                      <select
+                        value={originCountry}
+                        onChange={(e) => handleCountryChange(e.target.value)}
+                        className="w-full px-3 py-2.5 text-xs sm:text-sm font-semibold border border-neutral-300 rounded-xl bg-white focus:ring-2 focus:ring-[#2E0249] outline-none"
+                        id="custom-trip-origin-country"
+                      >
+                        {availableOriginCountries.map((c) => (
+                          <option key={c} value={c}>
+                            {c === 'Jamaica' ? '🇯🇲 Jamaica' : c === 'United States' ? '🇺🇸 United States' : c === 'Canada' ? '🇨🇦 Canada' : c === 'United Kingdom' ? '🇬🇧 United Kingdom' : c}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* City Selection */}
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-700 mb-1.5 flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-[#2E0249]" />
+                        <span>Departure City:</span>
+                      </label>
+                      <div className="space-y-1.5">
+                        <select
+                          value={customOriginCity ? 'OTHER_CUSTOM' : originCity}
+                          onChange={(e) => {
+                            if (e.target.value === 'OTHER_CUSTOM') {
+                              setCustomOriginCity(originCity || 'Other City');
+                            } else {
+                              setCustomOriginCity('');
+                              setOriginCity(e.target.value);
+                              const matchingAirport = availableOriginAirports.find(
+                                (a) => a.city.toLowerCase() === e.target.value.toLowerCase()
+                              );
+                              if (matchingAirport) {
+                                setOriginAirportCode(matchingAirport.code);
+                                setIsAirportUnknown(false);
+                              }
+                            }
+                          }}
+                          className="w-full px-3 py-2.5 text-xs sm:text-sm font-semibold border border-neutral-300 rounded-xl bg-white focus:ring-2 focus:ring-[#2E0249] outline-none"
+                          id="custom-trip-origin-city-select"
+                        >
+                          {availableOriginCities.map((city) => (
+                            <option key={city} value={city}>
+                              {city}
+                            </option>
+                          ))}
+                          <option value="OTHER_CUSTOM">+ Enter Another City</option>
+                        </select>
+
+                        {customOriginCity && (
+                          <input
+                            type="text"
+                            value={customOriginCity}
+                            onChange={(e) => setCustomOriginCity(e.target.value)}
+                            placeholder="Type your departure city..."
+                            className="w-full px-3 py-2 text-xs border border-purple-300 rounded-xl bg-white focus:ring-2 focus:ring-[#2E0249] outline-none"
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Airport Selection */}
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-700 mb-1.5 flex items-center gap-1">
+                        <Plane className="w-3.5 h-3.5 text-[#2E0249]" />
+                        <span>Departure Airport:</span>
+                      </label>
+                      <select
+                        disabled={isAirportUnknown}
+                        value={originAirportCode}
+                        onChange={(e) => setOriginAirportCode(e.target.value)}
+                        className={`w-full px-3 py-2.5 text-xs sm:text-sm font-semibold border rounded-xl outline-none transition-all ${
+                          isAirportUnknown
+                            ? 'bg-neutral-100 text-neutral-400 border-neutral-200 cursor-not-allowed'
+                            : 'bg-white border-neutral-300 focus:ring-2 focus:ring-[#2E0249] text-neutral-800'
+                        }`}
+                        id="custom-trip-origin-airport"
+                      >
+                        {availableOriginAirports.map((airport) => (
+                          <option key={airport.code} value={airport.code}>
+                            {airport.name} ({airport.code})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Airport Unknown / Nearest Checkbox */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-purple-100">
+                    <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-medium text-neutral-700">
+                      <input
+                        type="checkbox"
+                        checked={isAirportUnknown}
+                        onChange={(e) => {
+                          setIsAirportUnknown(e.target.checked);
+                          if (e.target.checked) {
+                            setOriginAirportCode('');
+                          } else if (availableOriginAirports.length > 0) {
+                            setOriginAirportCode(availableOriginAirports[0].code);
+                          }
+                        }}
+                        className="w-4 h-4 rounded text-[#2E0249] focus:ring-[#2E0249] accent-[#2E0249]"
+                        id="custom-trip-airport-unknown-checkbox"
+                      />
+                      <span>I don't know my exact airport / Use nearest international gateway</span>
+                    </label>
+
+                    {originCountry === 'Jamaica' && (
+                      <div className="text-[11px] text-[#2E0249] font-semibold bg-purple-100/70 px-2.5 py-1 rounded-lg border border-purple-200">
+                        🇯🇲 Defaulting to Jamaica (KIN / MBJ)
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Flight Cabin Class & Room Occupancy Preferences */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-purple-100">
+                    <div>
+                      <span className="block text-xs font-bold text-neutral-700 mb-1.5">
+                        Flight Cabin Preference:
+                      </span>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {(['Economy', 'Premium Economy', 'Business', 'First Class'] as const).map((cabin) => (
+                          <button
+                            key={cabin}
+                            type="button"
+                            onClick={() => setCabinClass(cabin)}
+                            className={`py-1.5 px-2 rounded-lg text-xs font-bold border transition-all text-center ${
+                              cabinClass === cabin
+                                ? 'bg-[#2E0249] text-white border-[#2E0249] shadow-2xs'
+                                : 'bg-white hover:bg-neutral-50 text-neutral-700 border-neutral-200'
+                            }`}
+                          >
+                            {cabin}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="block text-xs font-bold text-neutral-700 mb-1.5">
+                        Room Occupancy Setup:
+                      </span>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {[
+                          { id: 'single', label: 'Single (1/rm)' },
+                          { id: 'double', label: 'Double (2/rm)' },
+                          { id: 'triple', label: 'Triple (3/rm)' },
+                          { id: 'quad', label: 'Quad (4/rm)' },
+                          { id: 'group', label: 'Multi-Room' },
+                        ].map((occ) => (
+                          <button
+                            key={occ.id}
+                            type="button"
+                            onClick={() => setRoomOccupancy(occ.id as any)}
+                            className={`py-1.5 px-1.5 rounded-lg text-xs font-bold border transition-all text-center ${
+                              roomOccupancy === occ.id
+                                ? 'bg-[#2E0249] text-white border-[#2E0249] shadow-2xs'
+                                : 'bg-white hover:bg-neutral-50 text-neutral-700 border-neutral-200'
+                            }`}
+                          >
+                            {occ.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -916,6 +1416,247 @@ export const CustomTripModal: React.FC = () => {
                 </div>
               </div>
 
+              {/* REAL-TIME ESTIMATED MINIMUM TRIP BUDGET (ORIGIN & ROUTE PRICING ENGINE) */}
+              <div
+                className="p-5 bg-gradient-to-br from-[#2E0249]/5 via-white to-[#FFC72C]/10 rounded-2xl border-2 border-purple-200 shadow-sm space-y-4"
+                id="estimated-minimum-budget-card"
+              >
+                {/* Header & Status */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-[#2E0249] text-[#FFC72C] flex items-center justify-center font-bold">
+                        <DollarSign className="w-4 h-4" />
+                      </div>
+                      <h4 className="text-sm sm:text-base font-extrabold text-[#2E0249]">
+                        Estimated Minimum Trip Budget
+                      </h4>
+                    </div>
+                    <p className="text-[11px] text-neutral-600 mt-0.5 font-medium">
+                      Calculated using your departure origin ({customOriginCity || originCity}, {originCountry}), destination, and travel party.
+                    </p>
+                  </div>
+
+                  <div className="self-start sm:self-center">
+                    {pricingEngineResult.flightPricingStatus === 'Estimated' ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-900 border border-emerald-300 shadow-2xs">
+                        <Check className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                        <span>Route Matched • Flight Estimated</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-950 border border-amber-300 shadow-2xs">
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                        <span>Flight Pricing Requires Custom Quote</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Route & Metadata Banner */}
+                <div className="p-3 bg-white rounded-xl border border-purple-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2 font-bold text-neutral-800">
+                    <span className="bg-purple-100 text-[#2E0249] px-2 py-0.5 rounded-md">
+                      🛫 {customOriginCity || originCity}, {originCountry} {isAirportUnknown ? '(Nearest Hub)' : `(${originAirportCode})`}
+                    </span>
+                    <ArrowRight className="w-3.5 h-3.5 text-neutral-400" />
+                    <span className="bg-purple-100 text-[#2E0249] px-2 py-0.5 rounded-md">
+                      🛬 {selectedCountryInfo?.name || 'Destination'}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-neutral-600 font-semibold">
+                    <span className="bg-neutral-100 px-2 py-0.5 rounded">
+                      {effectiveTripDays} Days ({effectiveTripDays - 1} Nights)
+                    </span>
+                    <span className="bg-neutral-100 px-2 py-0.5 rounded">
+                      {adultsCount} Adult(s){childrenCount > 0 ? `, ${childrenCount} Child(ren)` : ''}
+                    </span>
+                    <span className="bg-neutral-100 px-2 py-0.5 rounded">
+                      {cabinClass} Cabin
+                    </span>
+                    <span className="bg-neutral-100 px-2 py-0.5 rounded uppercase">
+                      {roomOccupancy} Occupancy
+                    </span>
+                  </div>
+                </div>
+
+                {/* Unconfigured Route Notice if Applicable */}
+                {pricingEngineResult.flightPricingStatus === 'Manual Flight Pricing Required' && (
+                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 text-xs flex items-start gap-2 animate-fade-in">
+                    <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-extrabold text-amber-900">
+                        Custom Flight Quote Required:
+                      </div>
+                      <div className="text-[11px] text-amber-800 mt-0.5">
+                        Airfare for this route is not currently configured in the instant database. <strong>DO NOT WORRY</strong> — our travel advisors will manually price your flights upon submission. Land package accommodations and transfers are estimated below.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Itemized Cost Breakdown Grid */}
+                {(() => {
+                  const bd = pricingEngineResult?.costBreakdown || {
+                    flightsUSD: 0,
+                    accommodationUSD: 0,
+                    mealsUSD: 0,
+                    transfersUSD: 0,
+                    excursionsUSD: 0,
+                    documentsUSD: 0,
+                    taxesAndFeesUSD: 0,
+                    bufferUSD: 0,
+                    flightsInCurrency: 0,
+                    accommodationInCurrency: 0,
+                    transfersInCurrency: 0,
+                    excursionsInCurrency: 0,
+                    taxesAndFeesInCurrency: 0,
+                    mealsInCurrency: 0,
+                    documentsInCurrency: 0,
+                    otherServicesInCurrency: 0,
+                    bufferInCurrency: 0,
+                  };
+                  const sym = pricingEngineResult?.currencySymbol || '$';
+                  const code = pricingEngineResult?.currencyCode || 'USD';
+                  const estTotalCurrency = pricingEngineResult?.totalEstimatedCostInCurrency || 0;
+                  const estTotalUSD = pricingEngineResult?.totalEstimatedCostUSD || 0;
+                  const isFlightEstimated = pricingEngineResult?.flightPricingStatus === 'Estimated';
+
+                  return (
+                    <>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        {/* Flights */}
+                        <div className="p-2.5 rounded-xl bg-white border border-neutral-200">
+                          <div className="text-[10px] uppercase font-bold tracking-wider text-neutral-500 flex items-center gap-1">
+                            <Plane className="w-3 h-3 text-[#2E0249]" />
+                            <span>Roundtrip Airfare</span>
+                          </div>
+                          <div className="text-xs sm:text-sm font-extrabold text-neutral-900 mt-1">
+                            {isFlightEstimated
+                              ? `${sym}${bd.flightsInCurrency.toLocaleString()} ${code}`
+                              : 'Custom Quote'}
+                          </div>
+                          <div className="text-[10px] text-neutral-500 mt-0.5">
+                            {isFlightEstimated
+                              ? `$${bd.flightsUSD.toLocaleString()} USD group total`
+                              : 'Advisor manual pricing'}
+                          </div>
+                        </div>
+
+                        {/* Accommodation */}
+                        <div className="p-2.5 rounded-xl bg-white border border-neutral-200">
+                          <div className="text-[10px] uppercase font-bold tracking-wider text-neutral-500 flex items-center gap-1">
+                            <Building className="w-3 h-3 text-[#2E0249]" />
+                            <span>Accommodation</span>
+                          </div>
+                          <div className="text-xs sm:text-sm font-extrabold text-neutral-900 mt-1">
+                            {sym}
+                            {bd.accommodationInCurrency.toLocaleString()}{' '}
+                            {code}
+                          </div>
+                          <div className="text-[10px] text-neutral-500 mt-0.5">
+                            {effectiveTripDays} nights • {travelStyle.split(' ')[0]}
+                          </div>
+                        </div>
+
+                        {/* Transfers */}
+                        <div className="p-2.5 rounded-xl bg-white border border-neutral-200">
+                          <div className="text-[10px] uppercase font-bold tracking-wider text-neutral-500 flex items-center gap-1">
+                            <Car className="w-3 h-3 text-[#2E0249]" />
+                            <span>Ground Transfers</span>
+                          </div>
+                          <div className="text-xs sm:text-sm font-extrabold text-neutral-900 mt-1">
+                            {sym}
+                            {bd.transfersInCurrency.toLocaleString()}{' '}
+                            {code}
+                          </div>
+                          <div className="text-[10px] text-neutral-500 mt-0.5">
+                            Airport & hotel routes
+                          </div>
+                        </div>
+
+                        {/* Tours & Taxes */}
+                        <div className="p-2.5 rounded-xl bg-white border border-neutral-200">
+                          <div className="text-[10px] uppercase font-bold tracking-wider text-neutral-500 flex items-center gap-1">
+                            <Compass className="w-3 h-3 text-[#2E0249]" />
+                            <span>Tours & Taxes</span>
+                          </div>
+                          <div className="text-xs sm:text-sm font-extrabold text-neutral-900 mt-1">
+                            {sym}
+                            {(
+                              bd.excursionsInCurrency +
+                              bd.taxesAndFeesInCurrency
+                            ).toLocaleString()}{' '}
+                            {code}
+                          </div>
+                          <div className="text-[10px] text-neutral-500 mt-0.5">
+                            Activities + operations
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Total Minimum Estimation & Quick Apply Button */}
+                      <div className="p-3.5 rounded-xl bg-[#2E0249] text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+                        <div>
+                          <div className="text-[11px] font-bold text-purple-200 uppercase tracking-wider">
+                            Total Estimated Minimum Budget:
+                          </div>
+                          <div className="text-xl sm:text-2xl font-black text-[#FFC72C] leading-tight mt-0.5 flex items-baseline gap-2">
+                            <span>
+                              {sym}
+                              {estTotalCurrency.toLocaleString()}{' '}
+                              {code}
+                            </span>
+                            {code !== 'USD' && (
+                              <span className="text-xs font-semibold text-purple-200">
+                                (approx. ${estTotalUSD.toLocaleString()} USD)
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-purple-200 mt-0.5">
+                            Approx. {sym}
+                            {Math.ceil(
+                              estTotalCurrency / (adultsCount || 1)
+                            ).toLocaleString()}{' '}
+                            {code} per adult
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const amountToSet =
+                              budgetType === 'per_person'
+                                ? Math.ceil(
+                                    estTotalCurrency / (adultsCount || 1)
+                                  )
+                                : estTotalCurrency;
+                            setBudgetAmount(String(amountToSet));
+                            showNotification(
+                              'Budget Applied! ✈️',
+                              `Set to minimum estimated budget: ${sym}${amountToSet.toLocaleString()} ${code}.`,
+                              'success'
+                            );
+                          }}
+                          className="px-4 py-2.5 rounded-xl bg-[#FFC72C] hover:bg-[#ffe17d] text-[#2E0249] font-black text-xs cursor-pointer shadow transition-transform active:scale-95 text-center shrink-0"
+                          id="apply-minimum-budget-btn"
+                        >
+                          Apply Estimated Minimum
+                        </button>
+                      </div>
+                    </>
+                  );
+                })()}
+
+                {/* Mandatory Disclaimer as Requested */}
+                <div className="pt-2 border-t border-purple-100 flex items-start gap-2 text-[11px] text-neutral-500">
+                  <Info className="w-3.5 h-3.5 text-neutral-400 shrink-0 mt-0.5" />
+                  <div>
+                    <strong>Disclaimer:</strong> The budget calculator is an <strong>ESTIMATOR</strong>, not a guaranteed flight quote. Airfare fluctuates based on airline availability, departure dates, and booking timing. Final prices may vary upon agent confirmation.
+                  </div>
+                </div>
+              </div>
+
               {/* Target Budget Specification (USD, JMD, or Any Currency) */}
               <div className="p-4 bg-gradient-to-r from-purple-50/80 via-amber-50/60 to-purple-50/80 rounded-2xl border border-purple-200 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -999,12 +1740,44 @@ export const CustomTripModal: React.FC = () => {
                 )}
 
                 {/* Budget Amount Input & Flexibility */}
-                <div className="space-y-2">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-3">
                     <div className="flex-1">
-                      <label className="block text-xs font-bold text-neutral-700 mb-1">
-                        Estimated Budget Amount ({budgetCurrency === 'OTHER' ? customCurrencyCode || 'Custom Currency' : budgetCurrency}):
+                      {/* Styled Budget Label with Policy Indicators */}
+                      <label
+                        id="custom-trip-budget-label"
+                        className="flex flex-wrap items-center justify-between gap-1.5 text-xs font-bold text-neutral-800 mb-1.5"
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <span>Estimated Budget Amount</span>
+                          <span className="text-[#2E0249] bg-purple-100 px-2 py-0.5 rounded-md text-[11px] font-bold border border-purple-200 shadow-2xs">
+                            {budgetCurrency === 'OTHER' ? customCurrencyCode || 'Custom Currency' : budgetCurrency}
+                          </span>
+                        </span>
+
+                        {budgetValidation.minTotalBudgetUSD > 0 && (
+                          <span
+                            className={`text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-bold transition-all inline-flex items-center gap-1 shrink-0 ${
+                              budgetValidation.isBelowMinimum
+                                ? 'bg-amber-100 text-amber-900 border border-amber-300 ring-1 ring-amber-300'
+                                : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            }`}
+                          >
+                            {budgetValidation.isBelowMinimum ? (
+                              <>
+                                <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                <span>Policy Min: {budgetValidation.symbol}{budgetValidation.minTotalInCurrency.toLocaleString()} {budgetValidation.currencyLabel}</span>
+                              </>
+                            ) : (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                <span>Meets Min (${budgetValidation.minTotalBudgetUSD.toLocaleString()} USD)</span>
+                              </>
+                            )}
+                          </span>
+                        )}
                       </label>
+
                       <div className="relative">
                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-neutral-500">
                           {budgetCurrency === 'USD' ? '$' : budgetCurrency === 'JMD' ? 'JA$' : budgetCurrency === 'CAD' ? 'C$' : budgetCurrency === 'GBP' ? '£' : budgetCurrency === 'EUR' ? '€' : ''}
@@ -1014,7 +1787,11 @@ export const CustomTripModal: React.FC = () => {
                           min={1}
                           value={budgetAmount}
                           onChange={(e) => setBudgetAmount(e.target.value)}
-                          className="w-full pl-12 pr-4 py-2.5 text-sm font-bold border border-neutral-300 rounded-xl bg-white focus:ring-2 focus:ring-[#2E0249] outline-none"
+                          className={`w-full pl-12 pr-4 py-2.5 text-sm font-bold border rounded-xl bg-white outline-none transition-all ${
+                            budgetValidation.isBelowMinimum
+                              ? 'border-amber-400 ring-2 ring-amber-200 text-amber-950 focus:ring-amber-300'
+                              : 'border-neutral-300 focus:ring-2 focus:ring-[#2E0249] text-neutral-900'
+                          }`}
                           placeholder="e.g. 2500"
                           id="custom-trip-budget-input"
                         />
@@ -1022,7 +1799,7 @@ export const CustomTripModal: React.FC = () => {
                     </div>
 
                     <div className="sm:w-56">
-                      <label className="block text-xs font-bold text-neutral-700 mb-1">
+                      <label className="block text-xs font-bold text-neutral-700 mb-1.5">
                         Budget Flexibility:
                       </label>
                       <select
@@ -1037,25 +1814,48 @@ export const CustomTripModal: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Policy Alert Banner if Below Minimum */}
+                  {budgetValidation.isBelowMinimum && (
+                    <div className="p-3 rounded-xl bg-amber-50/95 border border-amber-300 text-amber-950 text-xs space-y-2 shadow-xs animate-fade-in">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-extrabold text-amber-900">Minimum Budget Requirement:</span>
+                            <div className="text-[11px] text-amber-800 mt-0.5 space-y-0.5">
+                              {budgetValidation.isTwoAdults && (
+                                <div>• <strong>2 Adult Travelers:</strong> Policy floor cannot be less than <strong>$1,500 USD</strong> ({budgetValidation.symbol}{Math.round(1500 * budgetValidation.fxRate).toLocaleString()} {budgetValidation.currencyLabel}).</div>
+                              )}
+                              {budgetValidation.isMoreThanFiveDays && (
+                                <div>• <strong>Duration {effectiveTripDays} Days (&gt;5 days):</strong> Policy floor cannot be less than <strong>$2,000 USD</strong> ({budgetValidation.symbol}{Math.round(2000 * budgetValidation.fxRate).toLocaleString()} {budgetValidation.currencyLabel}).</div>
+                              )}
+                              {budgetValidation.engineEstimatedUSD > budgetValidation.policyFloorUSD && (
+                                <div>• <strong>Route & Services Estimate:</strong> Estimated real costs from {customOriginCity || originCity} require a minimum of <strong>${budgetValidation.engineEstimatedUSD.toLocaleString()} USD</strong> ({budgetValidation.symbol}{budgetValidation.minTotalInCurrency.toLocaleString()} {budgetValidation.currencyLabel}).</div>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-amber-700 mt-1">
+                              Current total group budget entered: <strong>{budgetValidation.symbol}{budgetValidation.userTotalGroupBudget.toLocaleString()} {budgetValidation.currencyLabel}</strong> (approx. <strong>${Math.round(budgetValidation.userTotalGroupBudgetUSD).toLocaleString()} USD</strong>).
+                              {budgetType === 'per_person' && (
+                                <span> Min per person: <strong>{budgetValidation.symbol}{budgetValidation.minInputAmount.toLocaleString()}</strong>.</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setBudgetAmount(String(budgetValidation.minInputAmount))}
+                          className="self-start sm:self-center px-3.5 py-1.5 rounded-lg bg-[#2E0249] hover:bg-[#4A0E4E] text-[#FFC72C] font-extrabold text-xs shrink-0 cursor-pointer shadow-sm transition-all"
+                        >
+                          Set to Min ({budgetValidation.symbol}{budgetValidation.minInputAmount.toLocaleString()})
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Quick Presets */}
                   <div className="flex flex-wrap items-center gap-2 pt-1">
                     <span className="text-[11px] font-bold text-neutral-500">Quick Presets:</span>
-                    {(budgetCurrency === 'USD' ? [
-                      { label: '$1,200 (Economy)', val: '1200' },
-                      { label: '$2,000 (Comfort)', val: '2000' },
-                      { label: '$3,500 (Premium)', val: '3500' },
-                      { label: '$5,000+ (Luxury VIP)', val: '5000' },
-                    ] : budgetCurrency === 'JMD' ? [
-                      { label: '$180k JMD', val: '180000' },
-                      { label: '$300k JMD', val: '300000' },
-                      { label: '$500k JMD', val: '500000' },
-                      { label: '$800k+ JMD', val: '800000' },
-                    ] : [
-                      { label: '1,500', val: '1500' },
-                      { label: '3,000', val: '3000' },
-                      { label: '5,000', val: '5000' },
-                      { label: '8,000', val: '8000' },
-                    ]).map((preset) => (
+                    {dynamicPresets.map((preset) => (
                       <button
                         key={preset.val}
                         type="button"
@@ -1620,8 +2420,8 @@ export const CustomTripModal: React.FC = () => {
               {currentStep < 4 ? (
                 <button
                   type="button"
-                  onClick={() => setCurrentStep((prev) => Math.min(4, prev + 1))}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#2E0249] hover:bg-[#4A0E4E] text-[#FFC72C] font-bold text-xs sm:text-sm shadow-md transition-all"
+                  onClick={handleNextStep}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#2E0249] hover:bg-[#4A0E4E] text-[#FFC72C] font-bold text-xs sm:text-sm shadow-md transition-all cursor-pointer"
                   id="custom-trip-next-step-btn"
                 >
                   <span>Next: {currentStep === 1 ? 'When & Group' : currentStep === 2 ? 'Style & Inclusions' : 'Send to Admins'}</span>

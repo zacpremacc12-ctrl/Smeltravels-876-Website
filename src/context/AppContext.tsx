@@ -23,6 +23,10 @@ import {
   OrderTypeCategory,
   OrderPaymentStatus,
   OrderWorkflowStatus,
+  AirportRecord,
+  OriginPricingRoute,
+  ServiceCostRules,
+  CurrencyRecord,
 } from '../types';
 import {
   INITIAL_SETTINGS,
@@ -38,6 +42,12 @@ import {
   INITIAL_ADMIN_INBOX,
   INITIAL_ADMIN_ORDERS_EXCEL,
 } from '../data/initialData';
+import {
+  INITIAL_DEPARTURE_AIRPORTS,
+  INITIAL_ORIGIN_PRICING_ROUTES,
+  INITIAL_SERVICE_COST_RULES,
+  INITIAL_SUPPORTED_CURRENCIES,
+} from '../data/originPricingData';
 import { WORLD_DESTINATIONS } from '../data/customTripDestinations';
 import {
   pushSiteContentToRTDB,
@@ -227,6 +237,27 @@ interface AppContextType {
   navigateTo: (page: string, param?: string) => void;
   pageParam: string | null;
 
+  // Origin & Route Pricing Engine (Admin editable)
+  departureAirports: AirportRecord[];
+  addDepartureAirport: (airport: Omit<AirportRecord, 'id'>) => void;
+  updateDepartureAirport: (id: string, airport: Partial<AirportRecord>) => void;
+  deleteDepartureAirport: (id: string) => void;
+
+  originPricingRoutes: OriginPricingRoute[];
+  addOriginPricingRoute: (route: Omit<OriginPricingRoute, 'id'>) => void;
+  updateOriginPricingRoute: (id: string, route: Partial<OriginPricingRoute>) => void;
+  deleteOriginPricingRoute: (id: string) => void;
+
+  serviceCostRules: ServiceCostRules;
+  updateServiceCostRules: (rules: Partial<ServiceCostRules>) => void;
+  resetServiceCostRules: () => void;
+
+  supportedCurrencies: CurrencyRecord[];
+  addSupportedCurrency: (curr: CurrencyRecord) => void;
+  updateSupportedCurrency: (code: string, curr: Partial<CurrencyRecord>) => void;
+  deleteSupportedCurrency: (code: string) => void;
+  resetOriginPricingData: () => void;
+
   // Additional Admin actions
   deleteBooking: (id: string) => void;
   saveTrip: (trip: TripPackage) => void;
@@ -331,7 +362,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Admin Order Excel Database state
   const [adminOrdersExcel, setAdminOrdersExcel] = useState<AdminOrderExcelRecord[]>(() => {
-    return getStoredItem('admin_orders_excel', INITIAL_ADMIN_ORDERS_EXCEL);
+    const raw = getStoredItem('admin_orders_excel', INITIAL_ADMIN_ORDERS_EXCEL);
+    return raw.map((r: AdminOrderExcelRecord) => {
+      if (r.numericalBudget === undefined || r.numericalBudget === null) {
+        const parsed = parseFloat(String(r.budget || '').replace(/[^0-9.]/g, '')) || 0;
+        return {
+          ...r,
+          budget: parsed > 0 && isNaN(Number(r.budget)) ? String(parsed) : r.budget,
+          numericalBudget: parsed,
+        };
+      }
+      return r;
+    });
   });
 
   // Bookmarked / Saved trips state
@@ -339,6 +381,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return getStoredItem('saved_trips', ['panama-2026']);
   });
   const [isSavedTripsDrawerOpen, setIsSavedTripsDrawerOpen] = useState<boolean>(false);
+
+  // Origin and Route Pricing State (Admin editable)
+  const [departureAirports, setDepartureAirports] = useState<AirportRecord[]>(() => {
+    return getStoredItem('departure_airports', INITIAL_DEPARTURE_AIRPORTS);
+  });
+  const [originPricingRoutes, setOriginPricingRoutes] = useState<OriginPricingRoute[]>(() => {
+    return getStoredItem('origin_pricing_routes', INITIAL_ORIGIN_PRICING_ROUTES);
+  });
+  const [serviceCostRules, setServiceCostRules] = useState<ServiceCostRules>(() => {
+    return getStoredItem('service_cost_rules', INITIAL_SERVICE_COST_RULES);
+  });
+  const [supportedCurrencies, setSupportedCurrencies] = useState<CurrencyRecord[]>(() => {
+    return getStoredItem('supported_currencies', INITIAL_SUPPORTED_CURRENCIES);
+  });
 
   // Custom Trip Creation State (Where travelers design custom trips to any country)
   const [isCustomTripModalOpen, setIsCustomTripModalOpen] = useState<boolean>(false);
@@ -414,6 +470,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => { setStoredItem('admin_email', adminEmail); }, [adminEmail]);
   useEffect(() => { setStoredItem('admin_role', currentAdminRole); }, [currentAdminRole]);
   useEffect(() => { setStoredItem('traveler_user', currentUser); }, [currentUser]);
+  useEffect(() => { setStoredItem('departure_airports', departureAirports); }, [departureAirports]);
+  useEffect(() => { setStoredItem('origin_pricing_routes', originPricingRoutes); }, [originPricingRoutes]);
+  useEffect(() => { setStoredItem('service_cost_rules', serviceCostRules); }, [serviceCostRules]);
+  useEffect(() => { setStoredItem('supported_currencies', supportedCurrencies); }, [supportedCurrencies]);
 
   // Helper to convert arrays or Firebase RTDB keyed objects into clean typed arrays
   function parseAsArray<T>(val: any): T[] | null {
@@ -590,6 +650,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch (e) {}
         setStoredItem('media', mediaArray);
         return mediaArray;
+      });
+    }
+
+    const airportsArray = parseAsArray<AirportRecord>(d.departureAirports);
+    if (airportsArray && airportsArray.length > 0) {
+      setDepartureAirports((prev) => {
+        try {
+          if (JSON.stringify(prev) === JSON.stringify(airportsArray)) return prev;
+        } catch (e) {}
+        setStoredItem('departure_airports', airportsArray);
+        return airportsArray;
+      });
+    }
+
+    const routesArray = parseAsArray<OriginPricingRoute>(d.originPricingRoutes);
+    if (routesArray && routesArray.length > 0) {
+      setOriginPricingRoutes((prev) => {
+        try {
+          if (JSON.stringify(prev) === JSON.stringify(routesArray)) return prev;
+        } catch (e) {}
+        setStoredItem('origin_pricing_routes', routesArray);
+        return routesArray;
+      });
+    }
+
+    if (d.serviceCostRules && typeof d.serviceCostRules === 'object') {
+      setServiceCostRules((prev) => {
+        try {
+          if (JSON.stringify(prev) === JSON.stringify(d.serviceCostRules)) return prev;
+        } catch (e) {}
+        setStoredItem('service_cost_rules', d.serviceCostRules);
+        return d.serviceCostRules;
+      });
+    }
+
+    const currArray = parseAsArray<CurrencyRecord>(d.supportedCurrencies);
+    if (currArray && currArray.length > 0) {
+      setSupportedCurrencies((prev) => {
+        try {
+          if (JSON.stringify(prev) === JSON.stringify(currArray)) return prev;
+        } catch (e) {}
+        setStoredItem('supported_currencies', currArray);
+        return currArray;
       });
     }
 
@@ -1122,6 +1225,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       adultsCount,
       childrenCount,
       budget,
+      numericalBudget: matchingBooking?.numericalBudget || (budget ? parseFloat(budget.replace(/[^0-9.]/g, '')) || 0 : 0),
       totalPrice,
       depositPaid,
       currency: item.currency || 'JMD',
@@ -1192,6 +1296,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       adultsCount: booking.adultsCount || 1,
       childrenCount: booking.childrenCount || 0,
       budget,
+      numericalBudget: booking.numericalBudget || (budget ? parseFloat(budget.replace(/[^0-9.]/g, '')) || 0 : 0),
       totalPrice,
       depositPaid,
       currency: booking.currency || 'JMD',
@@ -1278,6 +1383,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           adultsCount: matchingBooking?.adultsCount || 1,
           childrenCount: matchingBooking?.childrenCount || 0,
           budget,
+          numericalBudget: matchingBooking?.numericalBudget || (budget ? parseFloat(budget.replace(/[^0-9.]/g, '')) || 0 : 0),
           totalPrice,
           depositPaid,
           currency: item.currency || 'JMD',
@@ -1372,17 +1478,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const durationStr = data.durationDays ? `${data.durationDays} Days` : 'Flexible';
     const travelersStr = `${data.adultsCount || 1} Adult(s)${data.childrenCount ? `, ${data.childrenCount} Children` : ''}`;
+    const originStr = data.originLocationDisplay ||
+      (data.originCountry ? `${data.originCity || 'Unknown City'}, ${data.originCountry}${data.originAirportCode ? ` (${data.originAirportCode})` : ''}` : 'Not Specified');
+    const flightStatus = data.flightPricingStatus || 'Estimated';
 
     // 1. Immediately log to local onsite Admin Inbox for ALL ADMINS
     const newInboxItem: AdminInboxItem = {
       id: `inbox-custom-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       type: 'custom_trip',
-      title: `Custom Trip Request: ${data.destination} (${data.customerName})`,
+      title: flightStatus === 'Manual Flight Pricing Required'
+        ? `[Manual Flight Quote Req] Custom Trip: ${data.destination} (From: ${originStr})`
+        : `Custom Trip: ${data.destination} from ${originStr} (${data.customerName})`,
       senderName: data.customerName,
       senderEmail: data.email,
       senderPhone: data.phone || 'N/A',
-      summary: `Custom trip to ${data.destination} (${datesSummary}, ${travelersStr}). Dispatched to Elvoy Bennett & Zachary Buchanan (${recipients.join(' & ')}).`,
-      details: `CUSTOM TRIP DETAILS:\nDestination: ${data.destination} (${data.country})\nTravel Dates: ${datesSummary} (${durationStr})\nTravelers: ${travelersStr}\nStyle: ${data.travelStyle}\nVibe: ${data.tripVibe}\nBudget: ${data.budgetPerPerson || 'Flexible'}\nInclusions: ${(data.mustHaveInclusions || []).join(', ')}\nSpecial Notes: ${data.specialRequests || 'None'}\n\nTRAVELER:\nName: ${data.customerName}\nEmail: ${data.email}\nPhone: ${data.phone || 'N/A'}\nParish/Region: ${data.countryOrParish || 'Jamaica'}\nPreferred Contact: ${data.preferredContactMethod || 'WhatsApp'}\nAmbassador: ${data.preferredAmbassador || 'Executive Operations Desk'}\nDispatched to: ${recipients.join(', ')}`,
+      summary: `Custom trip to ${data.destination} from ${originStr} (${datesSummary}, ${travelersStr}). Flight Status: ${flightStatus}. Dispatched to Elvoy Bennett & Zachary Buchanan (${recipients.join(' & ')}).`,
+      details: `CUSTOM TRIP DETAILS:\nOrigin / Departure: ${originStr}\nDestination: ${data.destination} (${data.country})\nTravel Dates: ${datesSummary} (${durationStr})\nTravelers: ${travelersStr}\nStyle: ${data.travelStyle}\nRoom: ${data.roomOccupancy || 'Double'}\nCabin Class: ${data.cabinClass || 'Economy'}\nFlight Pricing Status: ${flightStatus}\nVibe: ${data.tripVibe}\nBudget: ${data.budgetPerPerson || 'Flexible'}\nInclusions: ${(data.mustHaveInclusions || []).join(', ')}\nSpecial Notes: ${data.specialRequests || 'None'}\n\nTRAVELER:\nName: ${data.customerName}\nEmail: ${data.email}\nPhone: ${data.phone || 'N/A'}\nParish/Region: ${data.countryOrParish || 'Jamaica'}\nPreferred Contact: ${data.preferredContactMethod || 'WhatsApp'}\nAmbassador: ${data.preferredAmbassador || 'Executive Operations Desk'}\nDispatched to: ${recipients.join(', ')}`,
       tripName: `Custom: ${data.destination}`,
       referenceNumber: ref,
       timestamp: now,
@@ -1399,6 +1510,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     // 2. Add to Bookings as a custom trip request record
+    const numericalBudgetValue = Number(data.budgetAmount) || data.numericalBudget || (data.budgetPerPerson ? parseFloat(data.budgetPerPerson.replace(/[^0-9.]/g, '')) || 0 : 0);
     const newBooking: BookingSubmission = {
       id: `booking-custom-${Date.now()}`,
       referenceNumber: ref,
@@ -1412,14 +1524,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       childrenCount: Number(data.childrenCount) || 0,
       preferredTravelDate: datesSummary,
       travelInterestType: 'ready_to_book',
-      specialRequests: `[Custom Trip Request]\nDestination: ${data.destination} (${data.country})\nDates: ${datesSummary} (${durationStr})\nVibe: ${data.tripVibe}\nStyle: ${data.travelStyle}\nBudget: ${data.budgetPerPerson || 'Flexible'}\nInclusions: ${(data.mustHaveInclusions || []).join(', ')}\nNotes: ${data.specialRequests || 'None'}`,
+      specialRequests: `[Custom Trip Request]\nOrigin: ${originStr}\nDestination: ${data.destination} (${data.country})\nDates: ${datesSummary} (${durationStr})\nTravelers: ${travelersStr}\nStyle: ${data.travelStyle}\nRoom: ${data.roomOccupancy || 'Double'}\nCabin: ${data.cabinClass || 'Economy'}\nFlight Status: ${flightStatus}\nBudget: ${numericalBudgetValue > 0 ? `${numericalBudgetValue} ${data.budgetCurrency || 'USD'}` : (data.budgetPerPerson || 'Flexible')}\nInclusions: ${(data.mustHaveInclusions || []).join(', ')}\nNotes: ${data.specialRequests || 'None'}`,
       preferredContactMethod: data.preferredContactMethod || 'whatsapp',
       status: 'Custom Trip Request' as any,
       depositPaid: 0,
-      totalPrice: 0,
-      currency: 'JMD',
+      totalPrice: data.estimatedMinimumBudgetTotal || 0,
+      currency: data.budgetCurrency || 'USD',
+      budget: numericalBudgetValue > 0 ? String(numericalBudgetValue) : (data.budgetAmount || data.budgetPerPerson || 'Flexible'),
+      numericalBudget: numericalBudgetValue,
       ambassadorName: data.preferredAmbassador,
-      internalNotes: [`Custom trip submitted on ${now}. Dispatched to Elvoy Bennett & Zachary Buchanan.`],
+      internalNotes: [`Custom trip submitted on ${now} departing from ${originStr}. Flight Pricing: ${flightStatus}. Dispatched to Elvoy Bennett & Zachary Buchanan.`],
       createdAt: now,
       updatedAt: now,
     };
@@ -1444,17 +1558,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       travelDates: datesSummary,
       adultsCount: Number(data.adultsCount) || 1,
       childrenCount: Number(data.childrenCount) || 0,
-      budget: data.budgetPerPerson || (data.budgetAmount ? `${data.budgetAmount} ${data.budgetCurrency || 'USD'}` : 'Flexible'),
-      totalPrice: 0,
+      budget: numericalBudgetValue > 0 ? String(numericalBudgetValue) : (data.budgetAmount || data.budgetPerPerson || 'Flexible'),
+      numericalBudget: numericalBudgetValue,
+      totalPrice: data.estimatedMinimumBudgetTotal || 0,
       depositPaid: 0,
-      currency: 'JMD',
+      currency: data.budgetCurrency || 'USD',
       paymentStatus: 'Unpaid',
       orderStatus: 'New',
       preferredContact: (data.preferredContactMethod ? (data.preferredContactMethod.charAt(0).toUpperCase() + data.preferredContactMethod.slice(1)) : 'WhatsApp') as any,
       assignedAdmin: data.preferredAmbassador || 'Elvoy Bennett',
       specialRequests: data.specialRequests,
       inclusions: (data.mustHaveInclusions || []).join(', '),
-      adminNotes: `Custom trip to ${data.destination} received on ${now}. Dispatched to Elvoy Bennett & Zachary Buchanan.`,
+      originLocation: originStr,
+      flightPricingStatus: flightStatus,
+      adminNotes: `Origin: ${originStr} | Flight Status: ${flightStatus}${flightStatus === 'Manual Flight Pricing Required' ? ' [MANUAL FLIGHT PRICING REQUIRED]' : ''} | Custom trip to ${data.destination} received on ${now}. Dispatched to Elvoy Bennett & Zachary Buchanan.`,
       lastUpdated: now,
     };
     setAdminOrdersExcel(prev => {
@@ -2573,6 +2690,153 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  // Departure Airports CRUD
+  const addDepartureAirport = (airport: Omit<AirportRecord, 'id'>) => {
+    const newAirport: AirportRecord = { ...airport, id: `air-${Date.now()}` };
+    setDepartureAirports(prev => {
+      const updated = [...prev, newAirport];
+      setStoredItem('departure_airports', updated);
+      syncToLiveServer({ departureAirports: updated });
+      return updated;
+    });
+    showNotification('Airport Added', `${newAirport.city} (${newAirport.code}) added to departure hubs.`, 'success');
+  };
+
+  const updateDepartureAirport = (id: string, updates: Partial<AirportRecord>) => {
+    setDepartureAirports(prev => {
+      const updated = prev.map(a => a.id === id ? { ...a, ...updates } : a);
+      setStoredItem('departure_airports', updated);
+      syncToLiveServer({ departureAirports: updated });
+      return updated;
+    });
+    showNotification('Airport Updated', 'Departure location updated.', 'info');
+  };
+
+  const deleteDepartureAirport = (id: string) => {
+    setDepartureAirports(prev => {
+      const updated = prev.filter(a => a.id !== id);
+      setStoredItem('departure_airports', updated);
+      syncToLiveServer({ departureAirports: updated });
+      return updated;
+    });
+    showNotification('Airport Removed', 'Departure location removed.', 'warning');
+  };
+
+  // Origin Pricing Routes CRUD
+  const addOriginPricingRoute = (route: Omit<OriginPricingRoute, 'id'>) => {
+    const newRoute: OriginPricingRoute = { ...route, id: `route-${Date.now()}` };
+    setOriginPricingRoutes(prev => {
+      const updated = [newRoute, ...prev];
+      setStoredItem('origin_pricing_routes', updated);
+      syncToLiveServer({ originPricingRoutes: updated });
+      return updated;
+    });
+    showNotification('Route Configured', `Flight pricing set for ${newRoute.originAirportCode} → ${newRoute.destinationCountry}.`, 'success');
+  };
+
+  const updateOriginPricingRoute = (id: string, updates: Partial<OriginPricingRoute>) => {
+    setOriginPricingRoutes(prev => {
+      const updated = prev.map(r => r.id === id ? { ...r, ...updates } : r);
+      setStoredItem('origin_pricing_routes', updated);
+      syncToLiveServer({ originPricingRoutes: updated });
+      return updated;
+    });
+    showNotification('Route Updated', 'Route flight pricing updated.', 'info');
+  };
+
+  const deleteOriginPricingRoute = (id: string) => {
+    setOriginPricingRoutes(prev => {
+      const updated = prev.filter(r => r.id !== id);
+      setStoredItem('origin_pricing_routes', updated);
+      syncToLiveServer({ originPricingRoutes: updated });
+      return updated;
+    });
+    showNotification('Route Deleted', 'Route pricing deleted.', 'warning');
+  };
+
+  // Land Service Cost Rules
+  const updateServiceCostRules = (rules: Partial<ServiceCostRules>) => {
+    setServiceCostRules(prev => {
+      const updated: ServiceCostRules = {
+        ...prev,
+        ...rules,
+        accommodationPerNight: { ...prev.accommodationPerNight, ...(rules.accommodationPerNight || {}) },
+        mealsPerPersonPerDay: { ...prev.mealsPerPersonPerDay, ...(rules.mealsPerPersonPerDay || {}) },
+        excursionsAllowancePerPerson: { ...prev.excursionsAllowancePerPerson, ...(rules.excursionsAllowancePerPerson || {}) },
+      };
+      setStoredItem('service_cost_rules', updated);
+      syncToLiveServer({ serviceCostRules: updated });
+      return updated;
+    });
+    showNotification('Service Rules Updated', 'Accommodation, transfers, and activity pricing rules updated.', 'success');
+  };
+
+  const resetServiceCostRules = () => {
+    setServiceCostRules(INITIAL_SERVICE_COST_RULES);
+    setStoredItem('service_cost_rules', INITIAL_SERVICE_COST_RULES);
+    syncToLiveServer({ serviceCostRules: INITIAL_SERVICE_COST_RULES });
+    showNotification('Cost Rules Reset', 'Standard service cost baselines restored.', 'info');
+  };
+
+  // Supported Currencies CRUD
+  const addSupportedCurrency = (curr: CurrencyRecord) => {
+    setSupportedCurrencies(prev => {
+      const existing = prev.find(c => c.code.toUpperCase() === curr.code.toUpperCase());
+      let updated: CurrencyRecord[];
+      if (existing) {
+        updated = prev.map(c => c.code.toUpperCase() === curr.code.toUpperCase() ? { ...c, ...curr } : c);
+      } else {
+        updated = [...prev, curr];
+      }
+      setStoredItem('supported_currencies', updated);
+      syncToLiveServer({ supportedCurrencies: updated });
+      return updated;
+    });
+    showNotification('Currency Added', `${curr.code} (${curr.symbol}) currency rate saved.`, 'success');
+  };
+
+  const updateSupportedCurrency = (code: string, updates: Partial<CurrencyRecord>) => {
+    setSupportedCurrencies(prev => {
+      const updated = prev.map(c => c.code.toUpperCase() === code.toUpperCase() ? { ...c, ...updates } : c);
+      setStoredItem('supported_currencies', updated);
+      syncToLiveServer({ supportedCurrencies: updated });
+      return updated;
+    });
+    showNotification('Exchange Rate Updated', `Updated currency rate for ${code}.`, 'info');
+  };
+
+  const deleteSupportedCurrency = (code: string) => {
+    if (code === 'USD') {
+      showNotification('Protected Currency', 'USD is the base currency and cannot be removed.', 'warning');
+      return;
+    }
+    setSupportedCurrencies(prev => {
+      const updated = prev.filter(c => c.code.toUpperCase() !== code.toUpperCase());
+      setStoredItem('supported_currencies', updated);
+      syncToLiveServer({ supportedCurrencies: updated });
+      return updated;
+    });
+    showNotification('Currency Removed', `${code} removed from supported currencies.`, 'info');
+  };
+
+  const resetOriginPricingData = () => {
+    setDepartureAirports(INITIAL_DEPARTURE_AIRPORTS);
+    setOriginPricingRoutes(INITIAL_ORIGIN_PRICING_ROUTES);
+    setServiceCostRules(INITIAL_SERVICE_COST_RULES);
+    setSupportedCurrencies(INITIAL_SUPPORTED_CURRENCIES);
+    setStoredItem('departure_airports', INITIAL_DEPARTURE_AIRPORTS);
+    setStoredItem('origin_pricing_routes', INITIAL_ORIGIN_PRICING_ROUTES);
+    setStoredItem('service_cost_rules', INITIAL_SERVICE_COST_RULES);
+    setStoredItem('supported_currencies', INITIAL_SUPPORTED_CURRENCIES);
+    syncToLiveServer({
+      departureAirports: INITIAL_DEPARTURE_AIRPORTS,
+      originPricingRoutes: INITIAL_ORIGIN_PRICING_ROUTES,
+      serviceCostRules: INITIAL_SERVICE_COST_RULES,
+      supportedCurrencies: INITIAL_SUPPORTED_CURRENCIES,
+    });
+    showNotification('Pricing Data Reset', 'Initial departure airports and route pricing tables restored.', 'info');
+  };
+
   const resetToInitialData = () => {
     localStorage.clear();
     setSettings(INITIAL_SETTINGS);
@@ -2732,6 +2996,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setAuthNotice,
         verifyAmbassadorCode,
         refreshSiteData,
+        departureAirports,
+        addDepartureAirport,
+        updateDepartureAirport,
+        deleteDepartureAirport,
+        originPricingRoutes,
+        addOriginPricingRoute,
+        updateOriginPricingRoute,
+        deleteOriginPricingRoute,
+        serviceCostRules,
+        updateServiceCostRules,
+        resetServiceCostRules,
+        supportedCurrencies,
+        addSupportedCurrency,
+        updateSupportedCurrency,
+        deleteSupportedCurrency,
+        resetOriginPricingData,
       }}
     >
       {children}

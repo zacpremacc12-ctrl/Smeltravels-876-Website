@@ -54,6 +54,7 @@ import { MultiGalleryUploader } from './MultiGalleryUploader';
 import { AdminInboxView } from './AdminInboxView';
 import { CustomTripDestinationsManager } from './CustomTripDestinationsManager';
 import { AdminOrdersTable } from './AdminOrdersTable';
+import { OriginPricingManager } from './OriginPricingManager';
 import { WORLD_DESTINATIONS } from '../../data/customTripDestinations';
 import { pushSiteContentToRTDB, pushFullSiteContentToRTDB } from '../../lib/firebase';
 import { getSafeTripImageUrl, handleTripImageError } from '../../lib/imageUtils';
@@ -96,9 +97,10 @@ export const AdminDashboard: React.FC = () => {
     currentAdminRole,
     logoutAdmin,
     refreshSiteData,
+    originPricingRoutes,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'inbox' | 'excel-orders' | 'inquiries' | 'trips' | 'destinations' | 'custom-destinations' | 'guides' | 'faqs' | 'offers' | 'testimonials' | 'settings'>('inbox');
+  const [activeTab, setActiveTab] = useState<'inbox' | 'excel-orders' | 'origin-pricing' | 'inquiries' | 'trips' | 'destinations' | 'custom-destinations' | 'guides' | 'faqs' | 'offers' | 'testimonials' | 'settings'>('inbox');
   const [inquirySearch, setInquirySearch] = useState('');
   const [inquiryFilterStatus, setInquiryFilterStatus] = useState<string>('All');
   const [selectedInquiry, setSelectedInquiry] = useState<BookingInquiry | null>(null);
@@ -560,6 +562,12 @@ export const AdminDashboard: React.FC = () => {
                   badge: 'Spreadsheet',
                   icon: FileSpreadsheet,
                 },
+                {
+                  id: 'origin-pricing',
+                  label: `Origin & Route Pricing (${originPricingRoutes.length})`,
+                  badge: 'Engine',
+                  icon: Plane,
+                },
                 { id: 'inquiries', label: `Inquiries (${bookings.length})`, icon: UserCheck },
                 { id: 'trips', label: `Trips (${trips.length})`, icon: Plane },
                 { id: 'destinations', label: `Destinations (${destinations.length})`, icon: Compass },
@@ -641,6 +649,9 @@ export const AdminDashboard: React.FC = () => {
 
         {/* TAB 0.5: EXCEL SPREADSHEET DATABASE */}
         {activeTab === 'excel-orders' && <AdminOrdersTable />}
+
+        {/* TAB 0.8: ORIGIN & ROUTE PRICING ENGINE */}
+        {activeTab === 'origin-pricing' && <OriginPricingManager />}
 
         {/* TAB 1: INQUIRIES */}
         {activeTab === 'inquiries' && (
