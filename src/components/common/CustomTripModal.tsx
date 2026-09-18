@@ -28,6 +28,8 @@ import {
   Building,
   Car,
   ChevronDown,
+  Plus,
+  Minus,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import {
@@ -1012,27 +1014,78 @@ export const CustomTripModal: React.FC = () => {
                     ))}
                   </div>
 
-                  {/* Duration Slider / Pill */}
-                  <div className="pt-2">
-                    <div className="flex items-center justify-between text-xs font-bold text-neutral-700 mb-2">
-                      <span>Ideal Trip Length:</span>
-                      <span className="text-sm font-extrabold text-[#2E0249] bg-purple-50 px-3 py-1 rounded-lg">
-                        {durationDays} Days / {durationDays - 1} Nights
-                      </span>
+                  {/* Ideal Trip Length (+ / - Counter Box for Nights & Days) */}
+                  <div className="bg-neutral-50 p-3.5 sm:p-4 rounded-xl border border-neutral-200" id="ideal-trip-length-container">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-bold text-neutral-900 flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-[#2E0249]" />
+                          <span>Ideal Trip Length</span>
+                        </div>
+                        <div className="text-[11px] text-neutral-500 mt-0.5">
+                          Use the + or − buttons to set duration in days and nights
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2.5 self-start sm:self-auto">
+                        <button
+                          type="button"
+                          onClick={() => setDurationDays((prev) => Math.max(1, prev - 1))}
+                          disabled={durationDays <= 1}
+                          className="w-9 h-9 rounded-xl bg-white border border-neutral-300 flex items-center justify-center text-neutral-700 font-bold hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-xs active:scale-95 cursor-pointer"
+                          aria-label="Decrease trip length by 1 day"
+                          id="decrease-trip-length-btn"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+
+                        <div className="min-w-[130px] px-3.5 py-1.5 bg-white border border-neutral-300 rounded-xl text-center shadow-xs">
+                          <div className="text-sm sm:text-base font-extrabold text-[#2E0249] leading-tight">
+                            {durationDays} {durationDays === 1 ? 'Day' : 'Days'}
+                          </div>
+                          <div className="text-[11px] font-semibold text-neutral-500">
+                            {Math.max(0, durationDays - 1)} {durationDays - 1 === 1 ? 'Night' : 'Nights'}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setDurationDays((prev) => Math.min(60, prev + 1))}
+                          disabled={durationDays >= 60}
+                          className="w-9 h-9 rounded-xl bg-white border border-neutral-300 flex items-center justify-center text-neutral-700 font-bold hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-xs active:scale-95 cursor-pointer"
+                          aria-label="Increase trip length by 1 day"
+                          id="increase-trip-length-btn"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                    <input
-                      type="range"
-                      min="3"
-                      max="21"
-                      value={durationDays}
-                      onChange={(e) => setDurationDays(Number(e.target.value))}
-                      className="w-full accent-[#2E0249] cursor-pointer"
-                      id="duration-days-slider"
-                    />
-                    <div className="flex justify-between text-[11px] text-neutral-400 mt-1">
-                      <span>3 Days (Quick Getaway)</span>
-                      <span>7 Days (Standard Vacation)</span>
-                      <span>14+ Days (Grand Tour)</span>
+
+                    {/* Quick presets for convenience */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-3 mt-3 border-t border-neutral-200/70">
+                      <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider mr-1">
+                        Popular:
+                      </span>
+                      {[
+                        { days: 3, label: '3 Days / 2 Nights (Weekend)' },
+                        { days: 5, label: '5 Days / 4 Nights' },
+                        { days: 7, label: '7 Days / 6 Nights (1 Week)' },
+                        { days: 10, label: '10 Days / 9 Nights' },
+                        { days: 14, label: '14 Days / 13 Nights (2 Weeks)' },
+                      ].map(({ days, label }) => (
+                        <button
+                          key={days}
+                          type="button"
+                          onClick={() => setDurationDays(days)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                            durationDays === days
+                              ? 'bg-[#2E0249] text-white shadow-xs'
+                              : 'bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100 hover:border-neutral-300'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>
