@@ -421,13 +421,13 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
             </button>
 
             <button
-              onClick={() => handleNav('guides')}
+              onClick={() => handleNav('local-trips')}
               className={`text-sm font-semibold transition-colors ${
-                activePage === 'guides' ? 'text-[#FFC72C]' : 'text-neutral-200 hover:text-white'
+                activePage === 'local-trips' ? 'text-[#FFC72C]' : 'text-neutral-200 hover:text-white'
               }`}
-              id="nav-guides-btn"
+              id="nav-local-trips-btn"
             >
-              TRAVEL GUIDES
+              LOCAL TRIPS
             </button>
 
             <button
@@ -641,12 +641,13 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
               ABOUT US
             </button>
             <button
-              onClick={() => handleNav('guides')}
+              onClick={() => handleNav('local-trips')}
               className={`block w-full text-left px-3 py-2.5 rounded-lg text-base font-semibold ${
-                activePage === 'guides' ? 'bg-[#3B185F] text-[#FFC72C]' : 'hover:bg-neutral-800'
+                activePage === 'local-trips' ? 'bg-[#3B185F] text-[#FFC72C]' : 'hover:bg-neutral-800'
               }`}
+              id="mobile-nav-local-trips-btn"
             >
-              TRAVEL GUIDES
+              LOCAL TRIPS
             </button>
             <button
               onClick={() => handleNav('faq')}

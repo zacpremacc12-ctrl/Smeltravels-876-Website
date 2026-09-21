@@ -27,6 +27,8 @@ import {
   OriginPricingRoute,
   ServiceCostRules,
   CurrencyRecord,
+  LocalTrip,
+  LocalTripsPageSettings,
 } from '../types';
 import {
   INITIAL_SETTINGS,
@@ -42,6 +44,10 @@ import {
   INITIAL_ADMIN_INBOX,
   INITIAL_ADMIN_ORDERS_EXCEL,
 } from '../data/initialData';
+import {
+  INITIAL_LOCAL_TRIPS,
+  INITIAL_LOCAL_TRIPS_PAGE_SETTINGS,
+} from '../data/localTripsData';
 import {
   INITIAL_DEPARTURE_AIRPORTS,
   INITIAL_ORIGIN_PRICING_ROUTES,
@@ -258,6 +264,24 @@ interface AppContextType {
   deleteSupportedCurrency: (code: string) => void;
   resetOriginPricingData: () => void;
 
+  // Local Trips (Jamaican Excursions, Tours & Weekend Getaways)
+  localTrips: LocalTrip[];
+  localTripsPageSettings: LocalTripsPageSettings;
+  addLocalTrip: (trip: Omit<LocalTrip, 'id'>) => string;
+  updateLocalTrip: (id: string, trip: Partial<LocalTrip>) => void;
+  deleteLocalTrip: (id: string) => void;
+  reorderLocalTrips: (newTrips: LocalTrip[]) => void;
+  updateLocalTripsPageSettings: (settings: Partial<LocalTripsPageSettings>) => void;
+  saveLocalTripsToLive: (customTrips?: LocalTrip[], customSettings?: LocalTripsPageSettings) => Promise<boolean>;
+  selectedLocalTripDetail: LocalTrip | null;
+  setSelectedLocalTripDetail: (trip: LocalTrip | null) => void;
+  openLocalTripDetail: (idOrSlug: string) => void;
+  closeLocalTripDetail: () => void;
+  selectedLocalTripForInquiry: LocalTrip | null;
+  setSelectedLocalTripForInquiry: (trip: LocalTrip | null) => void;
+  openLocalTripInquiry: (trip: LocalTrip) => void;
+  closeLocalTripInquiry: () => void;
+
   // Additional Admin actions
   deleteBooking: (id: string) => void;
   saveTrip: (trip: TripPackage) => void;
@@ -396,6 +420,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return getStoredItem('supported_currencies', INITIAL_SUPPORTED_CURRENCIES);
   });
 
+  // Local Trips State (Jamaican Tours, Excursions, Weekend Getaways)
+  const [localTrips, setLocalTrips] = useState<LocalTrip[]>(() => {
+    return getStoredItem('local_trips', INITIAL_LOCAL_TRIPS);
+  });
+  const [localTripsPageSettings, setLocalTripsPageSettings] = useState<LocalTripsPageSettings>(() => {
+    return getStoredItem('local_trips_settings', INITIAL_LOCAL_TRIPS_PAGE_SETTINGS);
+  });
+  const [selectedLocalTripDetail, setSelectedLocalTripDetail] = useState<LocalTrip | null>(null);
+  const [selectedLocalTripForInquiry, setSelectedLocalTripForInquiry] = useState<LocalTrip | null>(null);
+
   // Custom Trip Creation State (Where travelers design custom trips to any country)
   const [isCustomTripModalOpen, setIsCustomTripModalOpen] = useState<boolean>(false);
   const [selectedDestinationForCustomTrip, setSelectedDestinationForCustomTrip] = useState<string | null>(null);
@@ -474,6 +508,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => { setStoredItem('origin_pricing_routes', originPricingRoutes); }, [originPricingRoutes]);
   useEffect(() => { setStoredItem('service_cost_rules', serviceCostRules); }, [serviceCostRules]);
   useEffect(() => { setStoredItem('supported_currencies', supportedCurrencies); }, [supportedCurrencies]);
+  useEffect(() => { setStoredItem('local_trips', localTrips); }, [localTrips]);
+  useEffect(() => { setStoredItem('local_trips_settings', localTripsPageSettings); }, [localTripsPageSettings]);
 
   // Helper to convert arrays or Firebase RTDB keyed objects into clean typed arrays
   function parseAsArray<T>(val: any): T[] | null {
@@ -693,6 +729,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch (e) {}
         setStoredItem('supported_currencies', currArray);
         return currArray;
+      });
+    }
+
+    const localTripsArray = parseAsArray<LocalTrip>(d.localTrips);
+    if (localTripsArray && localTripsArray.length > 0) {
+      setLocalTrips((prev) => {
+        try {
+          if (JSON.stringify(prev) === JSON.stringify(localTripsArray)) return prev;
+        } catch (e) {}
+        setStoredItem('local_trips', localTripsArray);
+        return localTripsArray;
+      });
+    }
+
+    if (d.localTripsPageSettings && typeof d.localTripsPageSettings === 'object') {
+      setLocalTripsPageSettings((prev) => {
+        const merged = { ...prev, ...d.localTripsPageSettings };
+        try {
+          if (JSON.stringify(prev) === JSON.stringify(merged)) return prev;
+        } catch (e) {}
+        setStoredItem('local_trips_settings', merged);
+        return merged;
       });
     }
 
@@ -920,6 +978,123 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSettings(INITIAL_SETTINGS);
     syncToLiveServer({ settings: INITIAL_SETTINGS });
     showNotification('Settings Reset', 'Website configurations reverted to initial settings.');
+  };
+
+  // Local Trips Methods (Jamaican Excursions, Tours, Weekend Getaways)
+  const addLocalTrip = (tripData: Omit<LocalTrip, 'id'>): string => {
+    const id = `local-trip-${Date.now()}`;
+    const slug = tripData.slug || tripData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const newTrip: LocalTrip = {
+      ...tripData,
+      id,
+      slug,
+      orderIndex: localTrips.length,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const updated = [newTrip, ...localTrips];
+    setLocalTrips(updated);
+    setStoredItem('local_trips', updated);
+    syncToLiveServer({ localTrips: updated });
+    showNotification('Local Trip Added', `"${newTrip.title}" has been created.`);
+    return id;
+  };
+
+  const updateLocalTrip = (id: string, updates: Partial<LocalTrip>) => {
+    const updated = localTrips.map((t) => {
+      if (t.id === id) {
+        return {
+          ...t,
+          ...updates,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      return t;
+    });
+    setLocalTrips(updated);
+    setStoredItem('local_trips', updated);
+    syncToLiveServer({ localTrips: updated });
+    showNotification('Local Trip Updated', 'Local trip changes have been saved.');
+  };
+
+  const deleteLocalTrip = (id: string) => {
+    const updated = localTrips.filter((t) => t.id !== id);
+    setLocalTrips(updated);
+    setStoredItem('local_trips', updated);
+    syncToLiveServer({ localTrips: updated });
+    showNotification('Local Trip Deleted', 'The local trip has been removed.', 'info');
+  };
+
+  const reorderLocalTrips = (newTrips: LocalTrip[]) => {
+    const indexed = newTrips.map((t, idx) => ({ ...t, orderIndex: idx }));
+    setLocalTrips(indexed);
+    setStoredItem('local_trips', indexed);
+    syncToLiveServer({ localTrips: indexed });
+  };
+
+  const updateLocalTripsPageSettings = (newSettings: Partial<LocalTripsPageSettings>) => {
+    const updated = { ...localTripsPageSettings, ...newSettings };
+    setLocalTripsPageSettings(updated);
+    setStoredItem('local_trips_settings', updated);
+    syncToLiveServer({ localTripsPageSettings: updated });
+    showNotification('Page Settings Updated', 'Local Trips page configurations updated.');
+  };
+
+  const saveLocalTripsToLive = async (
+    customTrips?: LocalTrip[],
+    customSettings?: LocalTripsPageSettings
+  ): Promise<boolean> => {
+    try {
+      const tripsToSave = customTrips || localTrips;
+      const settingsToSave = customSettings || localTripsPageSettings;
+      setLocalTrips(tripsToSave);
+      setLocalTripsPageSettings(settingsToSave);
+      setStoredItem('local_trips', tripsToSave);
+      setStoredItem('local_trips_settings', settingsToSave);
+
+      const ok = await syncToLiveServer({
+        localTrips: tripsToSave,
+        localTripsPageSettings: settingsToSave,
+      });
+
+      if (ok) {
+        showNotification(
+          'Local Trips Saved',
+          'All changes have been successfully saved and will persist on reload.',
+          'success'
+        );
+      } else {
+        showNotification(
+          'Saved Locally',
+          'Changes saved to local browser storage; cloud sync will retry.',
+          'warning'
+        );
+      }
+      return ok;
+    } catch (e) {
+      console.error('[saveLocalTripsToLive Error]:', e);
+      showNotification('Save Error', 'Failed to save local trips. Please try again.', 'warning');
+      return false;
+    }
+  };
+
+  const openLocalTripDetail = (idOrSlug: string) => {
+    const found = localTrips.find((t) => t.id === idOrSlug || t.slug === idOrSlug);
+    if (found) {
+      setSelectedLocalTripDetail(found);
+    }
+  };
+
+  const closeLocalTripDetail = () => {
+    setSelectedLocalTripDetail(null);
+  };
+
+  const openLocalTripInquiry = (trip: LocalTrip) => {
+    setSelectedLocalTripForInquiry(trip);
+  };
+
+  const closeLocalTripInquiry = () => {
+    setSelectedLocalTripForInquiry(null);
   };
 
   // Trips
@@ -3012,6 +3187,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateSupportedCurrency,
         deleteSupportedCurrency,
         resetOriginPricingData,
+        localTrips,
+        localTripsPageSettings,
+        addLocalTrip,
+        updateLocalTrip,
+        deleteLocalTrip,
+        reorderLocalTrips,
+        updateLocalTripsPageSettings,
+        saveLocalTripsToLive,
+        selectedLocalTripDetail,
+        setSelectedLocalTripDetail,
+        openLocalTripDetail,
+        closeLocalTripDetail,
+        selectedLocalTripForInquiry,
+        setSelectedLocalTripForInquiry,
+        openLocalTripInquiry,
+        closeLocalTripInquiry,
       }}
     >
       {children}

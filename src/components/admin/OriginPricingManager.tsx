@@ -11,6 +11,7 @@ import {
   calculateTripBudget,
   PricingEngineInput,
 } from '../../lib/pricingEngine';
+import { CheapestDateFinderManager } from './CheapestDateFinderManager';
 import {
   Plane,
   MapPin,
@@ -57,7 +58,7 @@ export const OriginPricingManager: React.FC = () => {
   } = useApp();
 
   // Active sub-tab inside Origin & Route Pricing
-  const [subTab, setSubTab] = useState<'airports' | 'routes' | 'land-costs' | 'currencies' | 'simulator'>('routes');
+  const [subTab, setSubTab] = useState<'airports' | 'routes' | 'land-costs' | 'currencies' | 'cheapest-dates' | 'simulator'>('routes');
 
   // Search & Filter States
   const [airportSearch, setAirportSearch] = useState('');
@@ -269,6 +270,7 @@ export const OriginPricingManager: React.FC = () => {
             { id: 'airports', label: 'Departure Hubs & Airports', count: departureAirports.length, icon: MapPin },
             { id: 'land-costs', label: 'Land & Service Costs', icon: Building2 },
             { id: 'currencies', label: 'Currency Rates', count: supportedCurrencies.length, icon: DollarSign },
+            { id: 'cheapest-dates', label: 'Cheapest Date Finder', icon: Calendar },
             { id: 'simulator', label: 'Pricing Simulator', icon: Sparkles },
           ].map(tab => {
             const Icon = tab.icon;
@@ -1091,6 +1093,9 @@ export const OriginPricingManager: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* SUB-TAB 6: CHEAPEST DATE FINDER (SETTINGS & TEST MODE) */}
+      {subTab === 'cheapest-dates' && <CheapestDateFinderManager />}
 
       {/* MODAL: ADD / EDIT ROUTE */}
       {(isAddRouteModalOpen || editingRoute) && (

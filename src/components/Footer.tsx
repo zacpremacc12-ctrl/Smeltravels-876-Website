@@ -137,6 +137,15 @@ export const Footer: React.FC<FooterProps> = ({ onOpenLegal, onOpenAdmin }) => {
               </li>
               <li>
                 <button
+                  onClick={() => navigateTo('local-trips')}
+                  className="hover:text-[#FFC72C] transition-colors"
+                  id="footer-local-trips-btn"
+                >
+                  Local Trips & Jamaican Getaways
+                </button>
+              </li>
+              <li>
+                <button
                   onClick={() => navigateTo('guides')}
                   className="hover:text-[#FFC72C] transition-colors"
                 >

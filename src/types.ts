@@ -374,6 +374,7 @@ export interface SiteSettings {
     metaPixelId: string;
   };
   customTripDestinations?: CountryDestinationInfo[];
+  cheapestDateFinderSettings?: CheapestDateFinderSettings;
 }
 
 export type AdminRole = 'Super Admin' | 'Content Manager' | 'Booking Manager';
@@ -577,3 +578,161 @@ export interface CurrencyRecord {
   rateFromUSD: number;
   isDefault?: boolean;
 }
+
+// Cheapest Date Finder Interfaces (Sections 22 - 46)
+export type DateFlexibilityOption =
+  | 'exact'
+  | 'plus_minus_3'
+  | 'plus_minus_7'
+  | 'plus_minus_14'
+  | 'entire_month'
+  | 'custom_range';
+
+export type SeasonType = 'Low Season' | 'Standard' | 'Peak / High' | 'Holiday Peak';
+
+export type FlightPriceSource =
+  | 'Current Flight Price'
+  | 'Indicative Flight Price'
+  | 'SMELTRAVELS876 Estimated Flight Allowance'
+  | 'Flight pricing requires a custom quote';
+
+export interface DateOptionEvaluation {
+  id: string;
+  departureDate: string; // YYYY-MM-DD
+  returnDate: string; // YYYY-MM-DD
+  formattedDateRange: string; // e.g. "Dec 8–12, 2026"
+  daysCount: number;
+  nightsCount: number;
+  season: SeasonType;
+  seasonLabel: string;
+  flightPricePerAdultUSD: number;
+  flightPriceTotalUSD: number;
+  flightPriceSource: FlightPriceSource;
+  flightPricingStatus: 'Estimated' | 'Manual Flight Pricing Required';
+  hotelTotalUSD: number;
+  mealsTotalUSD: number;
+  transfersTotalUSD: number;
+  excursionsTotalUSD: number;
+  travelDocumentsTotalUSD: number;
+  otherServicesTotalUSD: number;
+  taxesAndFeesTotalUSD: number;
+  seasonalAdjustmentUSD: number;
+  totalEstimatedTripCostUSD: number;
+  totalEstimatedTripCostInCurrency: number;
+  currencyCode: string;
+  currencySymbol: string;
+  priceDifferenceUSD?: number; // difference vs customer's selected dates
+  priceDifferenceInCurrency?: number;
+  differenceBreakdown?: {
+    flightDiffUSD: number;
+    hotelDiffUSD: number;
+    seasonalDiffUSD: number;
+    otherDiffUSD: number;
+    totalDiffUSD: number;
+  };
+  closerToBudget?: boolean;
+  withinBudget?: boolean;
+  isLowestFlight?: boolean;
+  isLowestTotalTrip?: boolean;
+  rawPolicyFloorApplied?: boolean;
+}
+
+export interface CalendarDayPrice {
+  date: string; // YYYY-MM-DD
+  dayOfMonth: number;
+  dayOfWeek: string;
+  estimatedStartingCostUSD?: number;
+  flightPriceUSD?: number;
+  hotelPriceUSD?: number;
+  season: SeasonType;
+  isAvailable: boolean;
+  pricingSource: FlightPriceSource;
+  isLowerCostHighlight?: boolean;
+  isCurrentSelected?: boolean;
+}
+
+export interface CheapestDateFinderResult {
+  selectedDatesOption?: DateOptionEvaluation;
+  lowestFlightOption?: DateOptionEvaluation;
+  lowestTotalTripOption?: DateOptionEvaluation;
+  alternativeOptions: DateOptionEvaluation[]; // up to 5 potentially lower-cost alternatives
+  calendarDays: CalendarDayPrice[];
+  searchedMonth?: string;
+  evaluatedCombinationsCount: number;
+  hasSeasonalPriceDifference?: boolean;
+  potentialEstimatedDifferenceUSD?: number;
+}
+
+export interface CheapestDateFinderSettings {
+  isEnabled: boolean;
+  minimumFlexibilityDays: number; // e.g. 3
+  maximumFlexibilityDays: number; // e.g. 14
+  maxAlternativesShown: number; // default 5
+  maxDateCombinations: number; // e.g. 25
+  apiSearchLimitsPerMinute: number; // e.g. 30
+  defaultSearchMonth: string; // e.g. "2026-12"
+  defaultCurrency: string; // "USD"
+  preferredAirports: string[];
+  maxStops: 'any' | 'direct' | 'max1' | 'max2';
+  seasonalPricingBehavior: 'automatic' | 'manual_override' | 'disabled';
+  hotelPricingBehavior: 'dynamic_seasonal' | 'fixed_flat';
+  compareTotalTripCost: boolean;
+  displayPotentialSavings: boolean;
+  skyscannerApiKey?: string;
+  skyscannerApiMarket?: string;
+  skyscannerApiLocale?: string;
+}
+
+// Local Trips Types (Jamaican Tours, Excursions, Weekend Getaways)
+export type LocalTripAvailabilityStatus = 'Available' | 'Limited Spots' | 'Sold Out' | 'Coming Soon';
+
+export interface LocalTripDisplayOptions {
+  showPrice: boolean;
+  showDeposit: boolean;
+  showDates: boolean;
+  showDuration: boolean;
+  showLocation: boolean;
+  showAvailability: boolean;
+  showCategory: boolean;
+  showInclusions: boolean;
+}
+
+export interface LocalTrip {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle?: string;
+  description: string;
+  fullDescription?: string;
+  featuredImage: string;
+  location: string; // e.g. "Falmouth, Trelawny, Jamaica"
+  category: string; // e.g. "Weekend Getaways", "Beach Trips", "Adventure", etc.
+  price: number; // e.g. 202530
+  currency: string; // "JMD" | "USD"
+  priceType: string; // e.g. "Two (2) Adults", "Per Person", "Per Group"
+  deposit?: number; // e.g. 60760
+  duration: string; // e.g. "4 Days / 3 Nights", "Full-Day", "Weekend"
+  availableDates?: string; // e.g. "October 16 - 19, 2026"
+  status: LocalTripAvailabilityStatus;
+  ctaText?: string; // e.g. "Book Now", "View Trip", "Inquire Now"
+  inclusions?: string[];
+  exclusions?: string[];
+  highlights?: string[];
+  isPublished: boolean;
+  isFeatured?: boolean;
+  orderIndex: number;
+  displayOptions?: LocalTripDisplayOptions;
+  contactEmail?: string;
+  contactPhone?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface LocalTripsPageSettings {
+  pageTitle: string;
+  introText: string;
+  heroBadge?: string;
+  heroImage?: string;
+  categories: string[];
+}
+

@@ -1,6 +1,6 @@
 {
   "testKey": "broadcast_verified",
-  "lastUpdated": "2026-09-11T03:54:55.949Z",
+  "lastUpdated": "2026-09-21T03:10:43.838Z",
   "settings": {
     "siteName": "SMELTRAVELS876",
     "tagline": "Travel More. Worry Less.",
@@ -1047,5 +1047,220 @@
       "status": "Delivered to Elvoy Bennett & Zachary Buchanan",
       "messageId": "msg-1789098895949-4873"
     }
-  ]
+  ],
+  "localTrips": [
+    {
+      "id": "heroes-weekend-royalton-2026",
+      "slug": "heroes-weekend-royalton-hideaway-blue-waters",
+      "title": "HEROES WEEKEND - Royalton Hideaway Blue Waters",
+      "subtitle": "Luxury All-Inclusive Adults Only",
+      "description": "Celebrate Heroes Weekend in pure luxury at Royalton Hideaway Blue Waters in Trelawny, Jamaica. An exclusive all-inclusive adults-only getaway featuring swim-out suites, gourmet international dining, pristine white sand beaches, world-class nightlife, and unforgettable island memories.",
+      "fullDescription": "Escape to the ultimate Jamaican holiday weekend! Royalton Hideaway Blue Waters provides an opulent, adults-only sanctuary nestled on the turquoise coastline of Falmouth, Trelawny. From October 16 to 19, 2026, celebrate National Heroes Weekend with premium all-inclusive amenities, infinity pools, swim-out cocktail service, 11 signature dining venues, and vibrant evening entertainment curated by SMELTRAVELS876.",
+      "featuredImage": "/images/heroes_weekend_royalton.jpg",
+      "location": "Blue Waters, Falmouth, Trelawny, Jamaica",
+      "category": "Weekend Getaways",
+      "price": 202530,
+      "currency": "JMD",
+      "priceType": "Two (2) Adults",
+      "deposit": 60760,
+      "duration": "4 Days / 3 Nights",
+      "availableDates": "October 16 - 19, 2026",
+      "status": "Limited Spots",
+      "ctaText": "Book Heroes Weekend",
+      "inclusions": [
+        "Two (2) Adults Package for Heroes Weekend (Oct 16–19, 2026)",
+        "Luxury All-Inclusive Accommodations (Adults Only 18+)",
+        "All Gourmet Meals, 24-hr Room Service & Premium Top-Shelf Spirits",
+        "Access to Oceanview & Swim-Out Pools, Private Cabanas & Beachfront",
+        "Daily Resort Activities, Water Sports & Heroes Weekend Festivities",
+        "Low Deposit: 0,760 JMD to Secure Your Room Today"
+      ],
+      "exclusions": [
+        "Personal motorized water sports",
+        "Spa treatments & wellness packages (available for purchase on property)",
+        "Gratuities (at traveler discretion)"
+      ],
+      "highlights": [
+        "Adults Only 18+ Luxury Resort",
+        "Falmouth, Trelawny Beachfront",
+        "Two (2) Adults All-Inclusive",
+        "October 16–19, 2026",
+        "Swim-Out Suites Available"
+      ],
+      "isPublished": true,
+      "isFeatured": true,
+      "orderIndex": 0,
+      "displayOptions": {
+        "showPrice": true,
+        "showDeposit": true,
+        "showDates": true,
+        "showDuration": true,
+        "showLocation": true,
+        "showAvailability": true,
+        "showCategory": true,
+        "showInclusions": true
+      },
+      "contactEmail": "smeltravels876@gmail.com",
+      "contactPhone": "(876) 566-6923",
+      "createdAt": "2026-09-20T17:12:00.000Z",
+      "updatedAt": "2026-09-20T17:12:00.000Z"
+    },
+    {
+      "id": "ochorios-dunns-river-bluehole",
+      "slug": "ochorios-dunns-river-mystic-adventure",
+      "title": "Ocho Rios Dunn's River & Blue Hole Adventure",
+      "subtitle": "Cascading Waterfalls & Cliff Jumps",
+      "description": "Trek through the world-famous Dunn's River Falls and plunge into the secret turquoise lagoons of the Irie Blue Hole in Ocho Rios. Includes roundtrip air-conditioned transport, expert local guide, and authentic Jamaican jerk lunch.",
+      "fullDescription": "Experience two of Jamaica's most iconic natural wonders in one exhilarating day! Climb the terraced cascades of Dunn's River Falls hand-in-hand with fellow adventurers, then venture deep into the St. Ann hills to swing from ropes into crystal turquoise swimming holes at the Blue Hole.",
+      "featuredImage": "https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=1200&q=80",
+      "location": "Ocho Rios, St. Ann, Jamaica",
+      "category": "Adventure",
+      "price": 18500,
+      "currency": "JMD",
+      "priceType": "Per Person",
+      "deposit": 5000,
+      "duration": "Full-Day (8 Hours)",
+      "availableDates": "Every Weekend & Custom Dates",
+      "status": "Available",
+      "ctaText": "Reserve Excursion",
+      "inclusions": [
+        "Roundtrip air-conditioned transportation from Kingston or Montego Bay",
+        "Admission to Dunn's River Falls & Irie Blue Hole",
+        "Certified adventure guide & water safety gear",
+        "Authentic Jamaican jerk chicken or fish lunch with tropical drink"
+      ],
+      "highlights": [
+        "Iconic 600ft Waterfall Climb",
+        "Secret Blue Hole Lagoons",
+        "Lunch & Transport Included"
+      ],
+      "isPublished": true,
+      "isFeatured": false,
+      "orderIndex": 1,
+      "displayOptions": {
+        "showPrice": true,
+        "showDeposit": true,
+        "showDates": true,
+        "showDuration": true,
+        "showLocation": true,
+        "showAvailability": true,
+        "showCategory": true,
+        "showInclusions": true
+      },
+      "contactEmail": "smeltravels876@gmail.com",
+      "contactPhone": "(876) 276-1310",
+      "createdAt": "2026-09-15T10:00:00.000Z",
+      "updatedAt": "2026-09-15T10:00:00.000Z"
+    },
+    {
+      "id": "negril-seven-mile-ricks-cafe",
+      "slug": "negril-seven-mile-beach-ricks-cafe-sunset",
+      "title": "Negril Seven Mile Beach & Rick's Cafe Sunset Escape",
+      "subtitle": "Golden Sands & Sunset Cliff Diving",
+      "description": "Spend the afternoon basking on Negril's world-renowned Seven Mile white sand beach, followed by breathtaking sunset views, live reggae music, and cliff diving at the legendary Rick's Cafe.",
+      "fullDescription": "Witness the most spectacular sunset in the Caribbean! Start your afternoon lounging on Negril's famous powdery white sand beaches and swimming in calm crystal-clear waters. As dusk approaches, we head to Rick's Cafe atop the West End cliffs to watch brave divers leap into the turquoise sea against fiery golden skies.",
+      "featuredImage": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80",
+      "location": "Negril, Westmoreland, Jamaica",
+      "category": "Beach Trips",
+      "price": 24500,
+      "currency": "JMD",
+      "priceType": "Per Person",
+      "deposit": 6500,
+      "duration": "Full-Day (10 Hours)",
+      "availableDates": "Fridays, Saturdays & Sundays",
+      "status": "Available",
+      "ctaText": "Book Beach Trip",
+      "inclusions": [
+        "Roundtrip VIP luxury coaster transport",
+        "Seven Mile Beach club access with loungers",
+        "Guaranteed seating at Rick's Cafe for sunset viewing",
+        "Complimentary welcome rum punch or fresh coconut water"
+      ],
+      "highlights": [
+        "World-famous Seven Mile Beach",
+        "Rick's Cafe Cliff Jumping & Sunset",
+        "Live Reggae Band & Vibes"
+      ],
+      "isPublished": true,
+      "isFeatured": true,
+      "orderIndex": 2,
+      "displayOptions": {
+        "showPrice": true,
+        "showDeposit": true,
+        "showDates": true,
+        "showDuration": true,
+        "showLocation": true,
+        "showAvailability": true,
+        "showCategory": true,
+        "showInclusions": true
+      },
+      "contactEmail": "smeltravels876@gmail.com",
+      "contactPhone": "(876) 566-6923",
+      "createdAt": "2026-09-10T12:00:00.000Z",
+      "updatedAt": "2026-09-10T12:00:00.000Z"
+    },
+    {
+      "id": "portland-blue-lagoon-bamboo-rafting",
+      "slug": "portland-blue-lagoon-frenchmans-cove-rafting",
+      "title": "Portland Paradise: Blue Lagoon & Bamboo Rafting",
+      "subtitle": "Lush Rainforests & Crystal Springs",
+      "description": "Journey to Jamaica's greenest parish for a tranquil bamboo rafting experience on the Rio Grande, a dip in the mystical Blue Lagoon, and relaxation at Frenchman's Cove river-meets-ocean beach.",
+      "fullDescription": "Immerse yourself in Portland's unspoiled natural splendor. Drift along the emerald Rio Grande guided by a master raftsman on a handcrafted 30-foot bamboo raft, swim in the geothermal depths of the Blue Lagoon, and savor Boston Jerk at the birthplace of authentic Jamaican jerk cuisine.",
+      "featuredImage": "https://images.unsplash.com/photo-1590523741831-ab7e8b8f9c7f?auto=format&fit=crop&w=1200&q=80",
+      "location": "Port Antonio, Portland, Jamaica",
+      "category": "Nature & Hiking",
+      "price": 32000,
+      "currency": "JMD",
+      "priceType": "Two (2) Guests",
+      "deposit": 10000,
+      "duration": "Full-Day (11 Hours)",
+      "availableDates": "Thursdays & Saturdays",
+      "status": "Available",
+      "ctaText": "Explore Portland",
+      "inclusions": [
+        "Private 2-person bamboo raft ride on the Rio Grande",
+        "Blue Lagoon boat tour & Frenchman's Cove entrance",
+        "Authentic Boston Jerk center culinary stop",
+        "Chauffeured scenic transportation from Kingston or Ocho Rios"
+      ],
+      "highlights": [
+        "Rio Grande Bamboo Rafting",
+        "Blue Lagoon Geothermal Springs",
+        "Frenchman's Cove River & Beach"
+      ],
+      "isPublished": true,
+      "isFeatured": false,
+      "orderIndex": 3,
+      "displayOptions": {
+        "showPrice": true,
+        "showDeposit": true,
+        "showDates": true,
+        "showDuration": true,
+        "showLocation": true,
+        "showAvailability": true,
+        "showCategory": true,
+        "showInclusions": true
+      },
+      "contactEmail": "smeltravels876@gmail.com",
+      "contactPhone": "(876) 276-1310",
+      "createdAt": "2026-09-08T09:00:00.000Z",
+      "updatedAt": "2026-09-08T09:00:00.000Z"
+    }
+  ],
+  "localTripsPageSettings": {
+    "pageTitle": "Local Trips",
+    "introText": "Discover Jamaica, one unforgettable experience at a time. Explore local trips, breathtaking destinations, cultural experiences, and exciting adventures curated by SMELTRAVELS876.",
+    "heroBadge": "Authentic Jamaican Experiences",
+    "heroImage": "/images/heroes_weekend_royalton.jpg",
+    "categories": [
+      "Weekend Getaways",
+      "Beach Trips",
+      "Adventure",
+      "Cultural Experiences",
+      "Nature & Hiking",
+      "Group Outings",
+      "Family Trips",
+      "Other"
+    ]
+  }
 }

@@ -55,6 +55,7 @@ import { AdminInboxView } from './AdminInboxView';
 import { CustomTripDestinationsManager } from './CustomTripDestinationsManager';
 import { AdminOrdersTable } from './AdminOrdersTable';
 import { OriginPricingManager } from './OriginPricingManager';
+import { LocalTripsManager } from './LocalTripsManager';
 import { WORLD_DESTINATIONS } from '../../data/customTripDestinations';
 import { pushSiteContentToRTDB, pushFullSiteContentToRTDB } from '../../lib/firebase';
 import { getSafeTripImageUrl, handleTripImageError } from '../../lib/imageUtils';
@@ -98,9 +99,10 @@ export const AdminDashboard: React.FC = () => {
     logoutAdmin,
     refreshSiteData,
     originPricingRoutes,
+    localTrips,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'inbox' | 'excel-orders' | 'origin-pricing' | 'inquiries' | 'trips' | 'destinations' | 'custom-destinations' | 'guides' | 'faqs' | 'offers' | 'testimonials' | 'settings'>('inbox');
+  const [activeTab, setActiveTab] = useState<'inbox' | 'excel-orders' | 'local-trips' | 'origin-pricing' | 'inquiries' | 'trips' | 'destinations' | 'custom-destinations' | 'guides' | 'faqs' | 'offers' | 'testimonials' | 'settings'>('inbox');
   const [inquirySearch, setInquirySearch] = useState('');
   const [inquiryFilterStatus, setInquiryFilterStatus] = useState<string>('All');
   const [selectedInquiry, setSelectedInquiry] = useState<BookingInquiry | null>(null);
@@ -563,6 +565,12 @@ export const AdminDashboard: React.FC = () => {
                   icon: FileSpreadsheet,
                 },
                 {
+                  id: 'local-trips',
+                  label: `Local Trips (${localTrips.length})`,
+                  badge: 'Website',
+                  icon: Compass,
+                },
+                {
                   id: 'origin-pricing',
                   label: `Origin & Route Pricing (${originPricingRoutes.length})`,
                   badge: 'Engine',
@@ -649,6 +657,9 @@ export const AdminDashboard: React.FC = () => {
 
         {/* TAB 0.5: EXCEL SPREADSHEET DATABASE */}
         {activeTab === 'excel-orders' && <AdminOrdersTable />}
+
+        {/* TAB: LOCAL TRIPS & EXCURSIONS MANAGER */}
+        {activeTab === 'local-trips' && <LocalTripsManager />}
 
         {/* TAB 0.8: ORIGIN & ROUTE PRICING ENGINE */}
         {activeTab === 'origin-pricing' && <OriginPricingManager />}

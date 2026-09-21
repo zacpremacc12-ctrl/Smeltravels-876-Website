@@ -12,6 +12,7 @@ import { TripDetailPage } from './components/TripDetailPage';
 import { DestinationsPage } from './components/DestinationsPage';
 import { AboutPage } from './components/AboutPage';
 import { TravelGuidesPage } from './components/TravelGuidesPage';
+import { LocalTripsPage } from './components/LocalTripsPage';
 import { ContactPage } from './components/ContactPage';
 import { LegalPolicyPage } from './components/LegalPolicyPage';
 import { AdminDashboard } from './components/admin/AdminDashboard';
@@ -53,6 +54,9 @@ const MainContent: React.FC = () => {
 
       case 'about':
         return <AboutPage />;
+
+      case 'local-trips':
+        return <LocalTripsPage />;
 
       case 'guides':
         return <TravelGuidesPage initialSlug={pageParam} />;

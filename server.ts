@@ -890,6 +890,133 @@ app.post('/api/trip-inquiry', async (req, res) => {
   }
 });
 
+// --- SKYSCANNER FLIGHT PRICING & INDICATIVE DATE EXPLORER (SECTIONS 36-39) ---
+// Secure server-side Skyscanner integration proxy ensuring API credentials are never exposed
+const skyscannerQuotesCache: Record<string, { priceUSD: number; source: string; timestamp: number }> = {};
+
+app.get('/api/skyscanner/status', (req, res) => {
+  const isConfigured = Boolean(process.env.SKYSCANNER_API_KEY && process.env.SKYSCANNER_API_KEY.trim() !== '');
+  return res.json({
+    configured: isConfigured,
+    provider: 'Skyscanner Travel API',
+    market: 'JM',
+    locale: 'en-US',
+    currency: 'USD',
+    indicativeSearchSupported: true,
+  });
+});
+
+app.post('/api/skyscanner/flight-pricing', async (req, res) => {
+  try {
+    const apiKey = process.env.SKYSCANNER_API_KEY;
+    const {
+      originAirportCode,
+      destinationCountry,
+      destinationCity,
+      departureDates = [],
+      durationDays = 5,
+      cabinClass = 'Economy',
+      adultsCount = 1,
+    } = req.body;
+
+    if (!originAirportCode) {
+      return res.status(400).json({ success: false, error: 'originAirportCode is required' });
+    }
+
+    if (!apiKey || apiKey.trim() === '') {
+      // Prompt Rule: When Skyscanner API is unconfigured, return graceful fallback instruction
+      return res.json({
+        success: true,
+        configured: false,
+        quotes: {},
+        source: 'SMELTRAVELS876 Estimated Flight Allowance',
+        message: 'Skyscanner API not configured. Utilizing SMELTRAVELS876 administrator-configured flight allowances.',
+      });
+    }
+
+    const quotesResult: Record<string, { priceUSD: number; source: string }> = {};
+    const now = Date.now();
+    const CACHE_TTL = 30 * 60 * 1000; // 30 minutes cache
+
+    // If key is present, attempt fast flight lookup with 3.5s timeout
+    for (const depDate of departureDates.slice(0, 10)) {
+      const cacheKey = `${originAirportCode}-${destinationCountry}-${depDate}-${durationDays}-${cabinClass}`;
+      const cached = skyscannerQuotesCache[cacheKey];
+
+      if (cached && now - cached.timestamp < CACHE_TTL) {
+        quotesResult[depDate] = { priceUSD: cached.priceUSD, source: cached.source };
+        continue;
+      }
+
+      // Try Skyscanner Indicative / Browse Quotes or RapidAPI Skyscanner
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+        const skyUrl = `https://partners.api.skyscanner.net/apiservices/v3/flights/indicative/search`;
+        const skyRes = await fetch(skyUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+          },
+          body: JSON.stringify({
+            query: {
+              market: 'JM',
+              locale: 'en-US',
+              currency: 'USD',
+              queryLegs: [
+                {
+                  originPlace: { queryPlace: { iata: originAirportCode } },
+                  destinationPlace: { queryPlace: { name: destinationCity || destinationCountry } },
+                  dateRange: { startDate: { year: parseInt(depDate.split('-')[0]), month: parseInt(depDate.split('-')[1]), day: parseInt(depDate.split('-')[2]) } },
+                },
+              ],
+            },
+          }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        if (skyRes.ok) {
+          const skyData = await skyRes.json();
+          const quotes = skyData?.content?.results?.quotes;
+          if (quotes && Object.keys(quotes).length > 0) {
+            const firstQuote: any = Object.values(quotes)[0];
+            const price = parseFloat(firstQuote?.minPrice?.amount);
+            if (!isNaN(price) && price > 0) {
+              quotesResult[depDate] = { priceUSD: Math.round(price), source: 'Indicative Flight Price' };
+              skyscannerQuotesCache[cacheKey] = {
+                priceUSD: Math.round(price),
+                source: 'Indicative Flight Price',
+                timestamp: now,
+              };
+            }
+          }
+        }
+      } catch {
+        // Continue to next date without throwing
+      }
+    }
+
+    return res.json({
+      success: true,
+      configured: true,
+      quotes: quotesResult,
+      source: Object.keys(quotesResult).length > 0 ? 'Indicative Flight Price' : 'SMELTRAVELS876 Estimated Flight Allowance',
+    });
+  } catch (err: any) {
+    console.error('[Skyscanner Proxy Error]:', err);
+    return res.json({
+      success: true,
+      configured: false,
+      quotes: {},
+      source: 'SMELTRAVELS876 Estimated Flight Allowance',
+      message: err.message,
+    });
+  }
+});
+
 // --- VITE / STATIC SERVING ---
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {

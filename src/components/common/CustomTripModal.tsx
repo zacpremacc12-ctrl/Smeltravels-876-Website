@@ -39,6 +39,7 @@ import {
 } from '../../data/customTripDestinations';
 import { CustomTripRequestInput } from '../../types';
 import { calculateTripBudget } from '../../lib/pricingEngine';
+import { CheapestDateFinder } from './CheapestDateFinder';
 
 export const CustomTripModal: React.FC = () => {
   const {
@@ -83,6 +84,7 @@ export const CustomTripModal: React.FC = () => {
   const [travelDatesType, setTravelDatesType] = useState<'specific' | 'flexible'>('flexible');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [showCheapestDateFinder, setShowCheapestDateFinder] = useState<boolean>(false);
   const [flexibleSeason, setFlexibleSeason] = useState('Summer 2026 (June - August)');
   const [durationDays, setDurationDays] = useState<number>(7);
   const [adultsCount, setAdultsCount] = useState<number>(2);
@@ -1120,6 +1122,73 @@ export const CustomTripModal: React.FC = () => {
                 </div>
               )}
 
+              {/* Cheapest Date Finder Action Bar & Component (Sections 22-35) */}
+              <div className="pt-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-purple-200 bg-purple-50/70">
+                  <div className="flex items-center gap-2.5">
+                    <span className="p-1.5 rounded-lg bg-[#2E0249] text-[#FFC72C] flex items-center justify-center shrink-0">
+                      <Sparkles className="w-4 h-4" />
+                    </span>
+                    <div>
+                      <div className="text-xs font-black text-[#2E0249]">
+                        Want to explore cheaper dates?
+                      </div>
+                      <div className="text-[11px] text-neutral-600">
+                        Compare flight allowances, seasonal resort pricing & full trip budgets across alternative weeks.
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowCheapestDateFinder((prev) => !prev)}
+                    className="px-4 py-2 bg-[#2E0249] hover:bg-[#3E0363] text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0 active:scale-95"
+                    id="btn-trigger-cheapest-date-finder"
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-[#FFC72C]" />
+                    <span>{showCheapestDateFinder ? 'Hide Date Finder' : 'Find Cheaper Travel Dates'}</span>
+                  </button>
+                </div>
+
+                {showCheapestDateFinder && (
+                  <div className="mt-3 animate-fade-in">
+                    <CheapestDateFinder
+                      originCountry={originCountry}
+                      originCity={customOriginCity.trim() || originCity}
+                      originAirportCode={isAirportUnknown ? '' : originAirportCode}
+                      destinationCountry={selectedCountryInfo?.country || selectedCountryInfo?.name || 'Panama'}
+                      destinationCity={selectedCountryInfo?.capitalOrCity || selectedCountryInfo?.name || 'Panama City'}
+                      currentStartDate={travelDatesType === 'specific' ? startDate : undefined}
+                      currentEndDate={travelDatesType === 'specific' ? endDate : undefined}
+                      durationDays={durationDays}
+                      adultsCount={adultsCount}
+                      childrenCount={childrenCount}
+                      travelStyle={travelStyle}
+                      roomOccupancy={roomOccupancy}
+                      cabinClass={cabinClass === 'First Class' ? 'First' : (cabinClass as any)}
+                      selectedServices={mustHaveInclusions}
+                      routes={originPricingRoutes}
+                      serviceRules={landServiceCostRules}
+                      currencies={originCurrencies}
+                      selectedCurrencyCode={budgetCurrency === 'OTHER' ? (customCurrencyCode.trim().toUpperCase() || 'USD') : budgetCurrency}
+                      statedBudgetAmount={budgetAmount ? parseFloat(budgetAmount) : undefined}
+                      statedBudgetCurrency={budgetCurrency === 'OTHER' ? (customCurrencyCode.trim().toUpperCase() || 'USD') : budgetCurrency}
+                      settings={settings.cheapestDateFinderSettings}
+                      onApplyDates={(newStart, newEnd) => {
+                        setTravelDatesType('specific');
+                        setStartDate(newStart);
+                        setEndDate(newEnd);
+                        showNotification(
+                          'Travel Dates Applied',
+                          `Selected dates ${newStart} to ${newEnd} applied! Recalculating minimum estimated budget.`
+                        );
+                      }}
+                      onClose={() => setShowCheapestDateFinder(false)}
+                    />
+                  </div>
+                )}
+              </div>
+
               {/* Group Size (Adults & Children) */}
               <div className="pt-4 border-t border-neutral-200">
                 <label className="block text-xs font-bold uppercase tracking-wider text-neutral-600 mb-3 flex items-center gap-2">
@@ -1531,6 +1600,28 @@ export const CustomTripModal: React.FC = () => {
                       {roomOccupancy} Occupancy
                     </span>
                   </div>
+                </div>
+
+                {/* Quick Action: Find Cheaper Travel Dates (Step 3 helper) */}
+                <div className="flex items-center justify-between p-2.5 bg-purple-50/80 rounded-xl border border-purple-200">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-3.5 h-3.5 text-[#2E0249]" />
+                    <span className="text-xs font-bold text-[#2E0249]">
+                      Looking for potentially lower rates across alternative dates?
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentStep(2);
+                      setShowCheapestDateFinder(true);
+                    }}
+                    className="px-3 py-1.5 bg-[#2E0249] hover:bg-[#3E0363] text-[#FFC72C] text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 shrink-0"
+                    id="btn-step3-find-cheaper-dates"
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>Find Cheaper Travel Dates</span>
+                  </button>
                 </div>
 
                 {/* Unconfigured Route Notice if Applicable */}
