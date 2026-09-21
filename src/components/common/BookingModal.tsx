@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   X,
   Sparkles,
@@ -42,6 +42,7 @@ interface BookingModalProps {
 export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => {
   const {
     trips,
+    localTrips,
     createBooking,
     settings,
     showNotification,
@@ -111,7 +112,55 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [wasFirstDepositTracked, setWasFirstDepositTracked] = useState(false);
 
-  const activeTrip = trips.find(t => t.id === selectedTripId) || trip || trips[0];
+  // Sync selectedTripId if trip prop changes
+  useEffect(() => {
+    if (trip) {
+      setSelectedTripId(trip.id);
+    }
+  }, [trip]);
+
+  // When a user clicks "Book" on any package or local trip, trip is non-null
+  // It auto-selects to this package and does NOT show other options in the window
+  const isLockedPackage = Boolean(trip);
+
+  const activeTrip: TripPackage = useMemo(() => {
+    if (trip) return trip;
+    const foundTrip = trips.find((t) => t.id === selectedTripId);
+    if (foundTrip) return foundTrip;
+    const foundLocal = (localTrips || []).find((lt) => lt.id === selectedTripId);
+    if (foundLocal) {
+      return {
+        id: foundLocal.id,
+        slug: foundLocal.slug,
+        name: foundLocal.title,
+        destination: foundLocal.location,
+        country: 'Jamaica',
+        countryFlag: '🇯🇲',
+        year: 2026,
+        dates: foundLocal.availableDates || 'Upcoming',
+        hotel: foundLocal.location,
+        price: foundLocal.price,
+        currency: foundLocal.currency || 'JMD',
+        deposit: foundLocal.deposit || Math.round(foundLocal.price * 0.3),
+        shortDescription: foundLocal.description,
+        fullDescription: foundLocal.fullDescription || foundLocal.description,
+        packageInclusions: foundLocal.inclusions || [],
+        exclusions: foundLocal.exclusions || [],
+        itinerary: [],
+        travelRequirements: ['Valid Government-issued ID'],
+        visaRequirements: 'No visa required for Jamaica local travel',
+        excursions: foundLocal.highlights || [],
+        baggageInfo: 'Standard personal luggage included',
+        paymentPlanInfo: 'Flexible deposit and balance payment plans available with SMELTRAVELS876',
+        featuredImage: foundLocal.featuredImage,
+        gallery: [foundLocal.featuredImage],
+        status: foundLocal.status === 'Sold Out' ? 'Sold Out' : foundLocal.status === 'Limited Spots' ? 'Limited Availability' : 'Available',
+        orderIndex: foundLocal.orderIndex,
+      };
+    }
+    return trips[0] || ({} as TripPackage);
+  }, [trip, selectedTripId, trips, localTrips]);
+
   const isAdultsOnlyTrip = !!activeTrip?.isAdultsOnly;
   const effectiveChildPrice = isAdultsOnlyTrip
     ? 0
@@ -933,7 +982,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
               {/* Package & Deposit Summary Banner */}
               <div className="bg-neutral-900 text-white p-4 sm:p-5 rounded-2xl relative overflow-hidden shadow-md">
                 <div className="absolute right-0 top-0 bottom-0 w-1/3 opacity-20 bg-cover bg-center pointer-events-none"
-                  style={{ backgroundImage: `url(${activeTrip.images?.[0] || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80'})` }}
+                  style={{ backgroundImage: `url(${activeTrip.featuredImage || activeTrip.gallery?.[0] || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80'})` }}
                 />
                 <div className="relative z-10 space-y-2">
                   <div className="flex items-center justify-between">
@@ -953,7 +1002,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                     {activeTrip.name}
                   </h4>
                   <div className="text-xs text-neutral-300">
-                    {activeTrip.dates} • {activeTrip.hotelName}
+                    {activeTrip.dates} • {activeTrip.hotel || activeTrip.destination}
                   </div>
 
                   <div className="pt-2 mt-2 border-t border-white/15 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
@@ -1389,35 +1438,101 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
             /* STEP 1: Traveler Details Form */
             <form onSubmit={isInquiryMode ? handleSendInquiry : handleProceedToCheckout} className="space-y-6">
               {/* Trip Selector & Rate Banner */}
-              <div className="bg-purple-50 p-4 rounded-2xl border border-purple-200 space-y-3">
-                <label className="block text-xs font-bold uppercase tracking-wider text-purple-950">
-                  Select Group Package
-                </label>
-                <select
-                  value={selectedTripId}
-                  onChange={(e) => setSelectedTripId(e.target.value)}
-                  className="w-full bg-white border border-purple-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-neutral-900 focus:outline-none focus:border-[#2E0249]"
-                >
-                  {trips.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.countryFlag} {t.name} ({t.dates}) — {formatPriceJMD(t.price)}
-                    </option>
-                  ))}
-                </select>
+              {isLockedPackage ? (
+                /* Auto-selected locked package: does NOT show other options in the window */
+                <div className="bg-[#2E0249] text-white p-4 sm:p-5 rounded-2xl border border-purple-800 shadow-md relative overflow-hidden">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">{activeTrip.countryFlag || '🇯🇲'}</span>
+                      <span className="text-xs font-black uppercase tracking-wider text-[#FFC72C]">
+                        {activeTrip.country === 'Jamaica' || activeTrip.id.startsWith('local-trip')
+                          ? '🇯🇲 Selected Local Jamaican Trip'
+                          : 'Selected Travel Package'}
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-white/10 text-neutral-200 border border-white/20 flex items-center gap-1 shrink-0">
+                      <Lock className="w-3 h-3 text-[#FFC72C]" />
+                      <span>Package Locked</span>
+                    </span>
+                  </div>
 
-                <div className="flex items-center justify-between text-xs pt-1">
-                  <span className="text-neutral-600">
-                    Required Lock-In Deposit: <strong className="text-[#2E0249] font-bold">{formatPriceJMD(activeTrip.deposit)}</strong> / person
-                  </span>
-                  <span className={`font-bold px-2.5 py-0.5 rounded-full text-[11px] ${
-                    isInquiryMode
-                      ? 'bg-purple-100 text-purple-950 border border-purple-300'
-                      : 'text-purple-900 bg-[#FFC72C]/40'
-                  }`}>
-                    {isInquiryMode ? 'Inquiry Mode • No Deposit Needed' : 'Direct Deposit Checkout Available'}
-                  </span>
+                  <h4 className="text-base sm:text-lg font-black text-white font-['Outfit',sans-serif]">
+                    {activeTrip.name}
+                  </h4>
+
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-300 mt-1">
+                    <span className="font-semibold">{activeTrip.destination}</span>
+                    {activeTrip.dates && (
+                      <>
+                        <span>•</span>
+                        <span>{activeTrip.dates}</span>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-purple-800/80 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div>
+                      <span className="text-neutral-400 block text-[11px]">Package Rate (Per Person):</span>
+                      <span className="font-extrabold text-[#FFC72C] text-sm">
+                        {activeTrip.currency === 'USD'
+                          ? `$${activeTrip.price.toLocaleString()} USD`
+                          : formatPriceJMD(activeTrip.price)}
+                      </span>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="text-neutral-400 block text-[11px]">Required Lock-In Deposit:</span>
+                      <span className="font-extrabold text-emerald-400 text-sm">
+                        {activeTrip.currency === 'USD'
+                          ? `$${activeTrip.deposit.toLocaleString()} USD`
+                          : formatPriceJMD(activeTrip.deposit)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                /* Fallback only if opened with no pre-selected trip */
+                <div className="bg-purple-50 p-4 rounded-2xl border border-purple-200 space-y-3">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-purple-950">
+                    Select Group Package
+                  </label>
+                  <select
+                    value={selectedTripId}
+                    onChange={(e) => setSelectedTripId(e.target.value)}
+                    className="w-full bg-white border border-purple-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-neutral-900 focus:outline-none focus:border-[#2E0249]"
+                  >
+                    <optgroup label="International Group Packages">
+                      {trips.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.countryFlag} {t.name} ({t.dates}) — {formatPriceJMD(t.price)}
+                        </option>
+                      ))}
+                    </optgroup>
+                    {localTrips && localTrips.length > 0 && (
+                      <optgroup label="Jamaica Local Trips & Excursions">
+                        {localTrips.map((lt) => (
+                          <option key={lt.id} value={lt.id}>
+                            🇯🇲 {lt.title} ({lt.availableDates || lt.duration || 'Local'}) — {formatPriceJMD(lt.price)}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+
+                  <div className="flex items-center justify-between text-xs pt-1">
+                    <span className="text-neutral-600">
+                      Required Lock-In Deposit: <strong className="text-[#2E0249] font-bold">{formatPriceJMD(activeTrip.deposit)}</strong> / person
+                    </span>
+                    <span className={`font-bold px-2.5 py-0.5 rounded-full text-[11px] ${
+                      isInquiryMode
+                        ? 'bg-purple-100 text-purple-950 border border-purple-300'
+                        : 'text-purple-900 bg-[#FFC72C]/40'
+                    }`}>
+                      {isInquiryMode ? 'Inquiry Mode • No Deposit Needed' : 'Direct Deposit Checkout Available'}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Intent Selector */}
               <div>
