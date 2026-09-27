@@ -29,6 +29,7 @@ import {
   CurrencyRecord,
   LocalTrip,
   LocalTripsPageSettings,
+  WingoRouteRate,
 } from '../types';
 import {
   INITIAL_SETTINGS,
@@ -55,6 +56,7 @@ import {
   INITIAL_SUPPORTED_CURRENCIES,
 } from '../data/originPricingData';
 import { WORLD_DESTINATIONS } from '../data/customTripDestinations';
+import { INITIAL_WINGO_ROUTES } from '../data/initialWingoRates';
 import {
   pushSiteContentToRTDB,
   pushFullSiteContentToRTDB,
@@ -282,6 +284,15 @@ interface AppContextType {
   openLocalTripInquiry: (trip: LocalTrip) => void;
   closeLocalTripInquiry: () => void;
 
+  // Wingo Airlines 11-Country Rates & Costs Database
+  wingoRoutes: WingoRouteRate[];
+  addWingoRoute: (route: Omit<WingoRouteRate, 'id'>) => string;
+  updateWingoRoute: (id: string, updates: Partial<WingoRouteRate>) => void;
+  deleteWingoRoute: (id: string) => void;
+  batchUpdateWingoRoutes: (routes: WingoRouteRate[]) => void;
+  saveWingoRoutesToLive: (customRoutes?: WingoRouteRate[]) => Promise<boolean>;
+  resetWingoRoutesToDefault: () => void;
+
   // Additional Admin actions
   deleteBooking: (id: string) => void;
   saveTrip: (trip: TripPackage) => void;
@@ -429,6 +440,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   const [selectedLocalTripDetail, setSelectedLocalTripDetail] = useState<LocalTrip | null>(null);
   const [selectedLocalTripForInquiry, setSelectedLocalTripForInquiry] = useState<LocalTrip | null>(null);
+
+  // Wingo Airlines 11-Country Rates & Costs Database State
+  const [wingoRoutes, setWingoRoutes] = useState<WingoRouteRate[]>(() => {
+    return getStoredItem('wingo_rates_database', INITIAL_WINGO_ROUTES);
+  });
 
   // Custom Trip Creation State (Where travelers design custom trips to any country)
   const [isCustomTripModalOpen, setIsCustomTripModalOpen] = useState<boolean>(false);
@@ -1095,6 +1111,108 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const closeLocalTripInquiry = () => {
     setSelectedLocalTripForInquiry(null);
+  };
+
+  // Wingo Airlines 11-Country Rates & Costs Database Methods
+  const addWingoRoute = (routeData: Omit<WingoRouteRate, 'id'>): string => {
+    const newId = `wingo-${Date.now()}`;
+    const newRoute: WingoRouteRate = {
+      ...routeData,
+      id: newId,
+      lastUpdated: new Date().toISOString().split('T')[0],
+      updatedBy: adminEmail?.includes('smeltravels876') ? 'Elvoy Bennett' : 'Zachary Buchanan',
+    };
+    const updated = [newRoute, ...wingoRoutes];
+    setWingoRoutes(updated);
+    setStoredItem('wingo_rates_database', updated);
+    fetch('/api/wingo/rates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ routes: updated }),
+    }).catch(() => {});
+    showNotification('Wingo Route Added', `${newRoute.originCountry} ✈ ${newRoute.destinationCountry} route configured.`, 'success');
+    return newId;
+  };
+
+  const updateWingoRoute = (id: string, updates: Partial<WingoRouteRate>) => {
+    const updated = wingoRoutes.map(r => r.id === id ? {
+      ...r,
+      ...updates,
+      lastUpdated: new Date().toISOString().split('T')[0],
+      updatedBy: adminEmail?.includes('smeltravels876') ? 'Elvoy Bennett' : 'Zachary Buchanan',
+    } : r);
+    setWingoRoutes(updated);
+    setStoredItem('wingo_rates_database', updated);
+    fetch('/api/wingo/rates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ routes: updated }),
+    }).catch(() => {});
+  };
+
+  const deleteWingoRoute = (id: string) => {
+    const updated = wingoRoutes.filter(r => r.id !== id);
+    setWingoRoutes(updated);
+    setStoredItem('wingo_rates_database', updated);
+    fetch('/api/wingo/rates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ routes: updated }),
+    }).catch(() => {});
+    showNotification('Route Removed', 'Wingo route deleted from rates database.', 'info');
+  };
+
+  const batchUpdateWingoRoutes = (routes: WingoRouteRate[]) => {
+    setWingoRoutes(routes);
+    setStoredItem('wingo_rates_database', routes);
+    fetch('/api/wingo/rates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ routes }),
+    }).catch(() => {});
+  };
+
+  const saveWingoRoutesToLive = async (customRoutes?: WingoRouteRate[]): Promise<boolean> => {
+    try {
+      const routesToSave = customRoutes || wingoRoutes;
+      setWingoRoutes(routesToSave);
+      setStoredItem('wingo_rates_database', routesToSave);
+
+      const resp = await fetch('/api/wingo/rates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ routes: routesToSave }),
+      });
+      const data = await resp.json();
+
+      await syncToLiveServer({ wingoRoutes: routesToSave });
+
+      if (data?.success) {
+        showNotification(
+          'Wingo Rates Database Saved',
+          'All roundtrip, one-way rates, and costs have been synchronized to the flight verification engine.',
+          'success'
+        );
+        return true;
+      }
+      showNotification('Saved Locally', 'Wingo rates saved to browser storage.', 'info');
+      return true;
+    } catch (e) {
+      console.error('[saveWingoRoutesToLive Error]:', e);
+      showNotification('Save Notice', 'Saved to local browser database.', 'info');
+      return true;
+    }
+  };
+
+  const resetWingoRoutesToDefault = () => {
+    setWingoRoutes(INITIAL_WINGO_ROUTES);
+    setStoredItem('wingo_rates_database', INITIAL_WINGO_ROUTES);
+    fetch('/api/wingo/rates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ routes: INITIAL_WINGO_ROUTES }),
+    }).catch(() => {});
+    showNotification('Wingo Rates Reset', 'Official Wingo 11-country rates and baseline costs restored.', 'info');
   };
 
   // Trips
@@ -3203,6 +3321,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedLocalTripForInquiry,
         openLocalTripInquiry,
         closeLocalTripInquiry,
+        wingoRoutes,
+        addWingoRoute,
+        updateWingoRoute,
+        deleteWingoRoute,
+        batchUpdateWingoRoutes,
+        saveWingoRoutesToLive,
+        resetWingoRoutesToDefault,
       }}
     >
       {children}

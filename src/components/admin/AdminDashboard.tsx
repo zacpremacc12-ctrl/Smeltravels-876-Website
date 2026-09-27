@@ -56,6 +56,7 @@ import { CustomTripDestinationsManager } from './CustomTripDestinationsManager';
 import { AdminOrdersTable } from './AdminOrdersTable';
 import { OriginPricingManager } from './OriginPricingManager';
 import { LocalTripsManager } from './LocalTripsManager';
+import { WingoRatesDatabaseTable } from './WingoRatesDatabaseTable';
 import { WORLD_DESTINATIONS } from '../../data/customTripDestinations';
 import { pushSiteContentToRTDB, pushFullSiteContentToRTDB } from '../../lib/firebase';
 import { getSafeTripImageUrl, handleTripImageError } from '../../lib/imageUtils';
@@ -100,9 +101,10 @@ export const AdminDashboard: React.FC = () => {
     refreshSiteData,
     originPricingRoutes,
     localTrips,
+    wingoRoutes,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'inbox' | 'excel-orders' | 'local-trips' | 'origin-pricing' | 'inquiries' | 'trips' | 'destinations' | 'custom-destinations' | 'guides' | 'faqs' | 'offers' | 'testimonials' | 'settings'>('inbox');
+  const [activeTab, setActiveTab] = useState<'inbox' | 'excel-orders' | 'wingo-rates' | 'local-trips' | 'origin-pricing' | 'inquiries' | 'trips' | 'destinations' | 'custom-destinations' | 'guides' | 'faqs' | 'offers' | 'testimonials' | 'settings'>('inbox');
   const [inquirySearch, setInquirySearch] = useState('');
   const [inquiryFilterStatus, setInquiryFilterStatus] = useState<string>('All');
   const [selectedInquiry, setSelectedInquiry] = useState<BookingInquiry | null>(null);
@@ -565,6 +567,12 @@ export const AdminDashboard: React.FC = () => {
                   icon: FileSpreadsheet,
                 },
                 {
+                  id: 'wingo-rates',
+                  label: `Wingo Rates Database (${wingoRoutes.length})`,
+                  badge: '11 Countries',
+                  icon: Plane,
+                },
+                {
                   id: 'local-trips',
                   label: `Local Trips (${localTrips.length})`,
                   badge: 'Website',
@@ -657,6 +665,9 @@ export const AdminDashboard: React.FC = () => {
 
         {/* TAB 0.5: EXCEL SPREADSHEET DATABASE */}
         {activeTab === 'excel-orders' && <AdminOrdersTable />}
+
+        {/* TAB 0.6: WINGO 11-COUNTRY RATES & COSTS DATABASE */}
+        {activeTab === 'wingo-rates' && <WingoRatesDatabaseTable />}
 
         {/* TAB: LOCAL TRIPS & EXCURSIONS MANAGER */}
         {activeTab === 'local-trips' && <LocalTripsManager />}

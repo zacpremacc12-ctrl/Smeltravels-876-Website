@@ -23,6 +23,7 @@ import {
   FileSpreadsheet,
   PlusCircle,
   Check,
+  Plane,
 } from 'lucide-react';
 
 const formatJMD = (val?: number) => (val !== undefined ? formatPriceJMD(val) : '$0 JMD');
@@ -256,14 +257,26 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
               </button>
             )}
             {onNavigateToTab && (
-              <button
-                onClick={() => onNavigateToTab('excel-orders')}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                <span>Open Excel Database</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              <>
+                <button
+                  onClick={() => onNavigateToTab('excel-orders')}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>Open Excel Database</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+
+                <button
+                  onClick={() => onNavigateToTab('wingo-rates')}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-900 hover:bg-purple-950 text-[#FFC72C] font-bold text-xs shadow-xs transition-colors cursor-pointer border border-purple-700/60"
+                  title="Open Wingo Countries Rates & Costs Database"
+                >
+                  <Plane className="w-4 h-4" />
+                  <span>Wingo Rates Database</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </>
             )}
           </div>
         </div>

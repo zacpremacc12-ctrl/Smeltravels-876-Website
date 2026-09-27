@@ -1,3 +1,5 @@
+import { WingoRouteRate } from '../types';
+
 /**
  * Wingo Flight Engine & Skyscanner Fallback Router
  * 
@@ -82,9 +84,12 @@ export function isWingoSupportedCountry(country: string): boolean {
 export interface FlightRouteVerificationParams {
   originCountry: string;
   destinationCountry: string;
+  originCity?: string;
+  destinationCity?: string;
   journeyType?: 'one_way' | 'round_trip';
   passengers?: number;
   cabinClass?: string;
+  customRoutes?: WingoRouteRate[];
 }
 
 /**
@@ -118,28 +123,59 @@ export function verifyFlightRouteAndPrice(params: FlightRouteVerificationParams)
   const isDomesticColombia = origin.toLowerCase() === 'colombia' && destination.toLowerCase() === 'colombia';
   const currency: 'COP' | 'USD' = isDomesticColombia ? 'COP' : 'USD';
 
-  // Pricing calculations
-  let baseFarePerLeg: number;
-  let taxesPerLeg: number;
-  let ancillaryPerLeg: number;
-
-  if (isDomesticColombia) {
-    // COP rates (approx 150,000 - 250,000 COP per leg)
-    baseFarePerLeg = 180000;
-    taxesPerLeg = 45000;
-    ancillaryPerLeg = 25000;
-  } else {
-    // International USD rates (approx $90 - $160 per leg)
-    // Common routes like Jamaica (KIN/MBJ) <-> Colombia (BOG/MDE/CTG)
-    baseFarePerLeg = 120;
-    taxesPerLeg = 39.25;
-    ancillaryPerLeg = 17.50;
+  // Check if a custom route exists in customRoutes
+  let matchedCustomRoute: WingoRouteRate | undefined;
+  if (params.customRoutes && params.customRoutes.length > 0) {
+    matchedCustomRoute = params.customRoutes.find(r => {
+      if (!r.isActive) return false;
+      const matchForward =
+        normalizeCountryName(r.originCountry).toLowerCase() === origin.toLowerCase() &&
+        normalizeCountryName(r.destinationCountry).toLowerCase() === destination.toLowerCase();
+      const matchReverse =
+        normalizeCountryName(r.originCountry).toLowerCase() === destination.toLowerCase() &&
+        normalizeCountryName(r.destinationCountry).toLowerCase() === origin.toLowerCase();
+      return matchForward || matchReverse;
+    });
   }
 
-  const base_fare_subtotal = Math.round(baseFarePerLeg * multiplier * passengers * 100) / 100;
-  const taxes_and_fees = Math.round(taxesPerLeg * multiplier * passengers * 100) / 100;
-  const ancillary_fees = Math.round(ancillaryPerLeg * multiplier * passengers * 100) / 100;
-  const grand_total = Math.round((base_fare_subtotal + taxes_and_fees + ancillary_fees) * 100) / 100;
+  let base_fare_subtotal: number;
+  let taxes_and_fees: number;
+  let ancillary_fees: number;
+  let grand_total: number;
+
+  if (matchedCustomRoute) {
+    if (journeyType === 'one_way') {
+      base_fare_subtotal = Math.round(matchedCustomRoute.oneWayBaseFare * passengers * 100) / 100;
+      taxes_and_fees = Math.round(matchedCustomRoute.oneWayTaxesAndFees * passengers * 100) / 100;
+      ancillary_fees = Math.round(matchedCustomRoute.oneWayAncillaryFees * passengers * 100) / 100;
+      grand_total = Math.round(matchedCustomRoute.oneWayGrandTotal * passengers * 100) / 100;
+    } else {
+      base_fare_subtotal = Math.round(matchedCustomRoute.roundTripBaseFare * passengers * 100) / 100;
+      taxes_and_fees = Math.round(matchedCustomRoute.roundTripTaxesAndFees * passengers * 100) / 100;
+      ancillary_fees = Math.round(matchedCustomRoute.roundTripAncillaryFees * passengers * 100) / 100;
+      grand_total = Math.round(matchedCustomRoute.roundTripGrandTotal * passengers * 100) / 100;
+    }
+  } else {
+    // Standard default calculations
+    let baseFarePerLeg: number;
+    let taxesPerLeg: number;
+    let ancillaryPerLeg: number;
+
+    if (isDomesticColombia) {
+      baseFarePerLeg = 180000;
+      taxesPerLeg = 45000;
+      ancillaryPerLeg = 25000;
+    } else {
+      baseFarePerLeg = 120;
+      taxesPerLeg = 39.25;
+      ancillaryPerLeg = 17.50;
+    }
+
+    base_fare_subtotal = Math.round(baseFarePerLeg * multiplier * passengers * 100) / 100;
+    taxes_and_fees = Math.round(taxesPerLeg * multiplier * passengers * 100) / 100;
+    ancillary_fees = Math.round(ancillaryPerLeg * multiplier * passengers * 100) / 100;
+    grand_total = Math.round((base_fare_subtotal + taxes_and_fees + ancillary_fees) * 100) / 100;
+  }
 
   return {
     provider: 'wingo',

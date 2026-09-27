@@ -906,6 +906,147 @@ const WINGO_SUPPORTED_COUNTRIES = [
   'venezuela',
 ];
 
+// In-memory editable Wingo rates store initialized with comprehensive route matrix
+let serverWingoRoutes: any[] = [
+  {
+    id: 'wingo-kin-bog',
+    originCountry: 'Jamaica',
+    originCity: 'Kingston',
+    originAirportCode: 'KIN',
+    destinationCountry: 'Colombia',
+    destinationCity: 'Bogotá',
+    destinationAirportCode: 'BOG',
+    routeType: 'international',
+    currency: 'USD',
+    oneWayBaseFare: 120.00,
+    oneWayTaxesAndFees: 39.25,
+    oneWayAncillaryFees: 17.50,
+    oneWayNetCost: 145.00,
+    oneWayGrandTotal: 176.75,
+    roundTripBaseFare: 240.00,
+    roundTripTaxesAndFees: 78.50,
+    roundTripAncillaryFees: 35.00,
+    roundTripNetCost: 290.00,
+    roundTripGrandTotal: 353.50,
+    markupPercentage: 15,
+    notes: 'Direct flight route via El Dorado Intl (BOG). Primary Jamaican group passenger link.',
+    isActive: true,
+    isPopular: true,
+    seasonalNotes: 'High demand June - August and December holidays.',
+    lastUpdated: '2026-09-27',
+    updatedBy: 'Zachary Buchanan',
+  },
+  {
+    id: 'wingo-bog-kin',
+    originCountry: 'Colombia',
+    originCity: 'Bogotá',
+    originAirportCode: 'BOG',
+    destinationCountry: 'Jamaica',
+    destinationCity: 'Kingston',
+    destinationAirportCode: 'KIN',
+    routeType: 'international',
+    currency: 'USD',
+    oneWayBaseFare: 120.00,
+    oneWayTaxesAndFees: 39.25,
+    oneWayAncillaryFees: 17.50,
+    oneWayNetCost: 145.00,
+    oneWayGrandTotal: 176.75,
+    roundTripBaseFare: 240.00,
+    roundTripTaxesAndFees: 78.50,
+    roundTripAncillaryFees: 35.00,
+    roundTripNetCost: 290.00,
+    roundTripGrandTotal: 353.50,
+    markupPercentage: 15,
+    notes: 'Inbound route from Colombia hub to Norman Manley International Airport.',
+    isActive: true,
+    isPopular: true,
+    lastUpdated: '2026-09-27',
+    updatedBy: 'Zachary Buchanan',
+  },
+  {
+    id: 'wingo-kin-mde',
+    originCountry: 'Jamaica',
+    originCity: 'Kingston',
+    originAirportCode: 'KIN',
+    destinationCountry: 'Colombia',
+    destinationCity: 'Medellín',
+    destinationAirportCode: 'MDE',
+    routeType: 'international',
+    currency: 'USD',
+    oneWayBaseFare: 135.00,
+    oneWayTaxesAndFees: 42.00,
+    oneWayAncillaryFees: 20.00,
+    oneWayNetCost: 160.00,
+    oneWayGrandTotal: 197.00,
+    roundTripBaseFare: 270.00,
+    roundTripTaxesAndFees: 84.00,
+    roundTripAncillaryFees: 40.00,
+    roundTripNetCost: 320.00,
+    roundTripGrandTotal: 394.00,
+    markupPercentage: 18,
+    notes: 'Connecting or direct charter via José María Córdova International Airport.',
+    isActive: true,
+    isPopular: true,
+    seasonalNotes: 'Peak during Medellín Flower Festival (Feria de las Flores).',
+    lastUpdated: '2026-09-27',
+    updatedBy: 'Elvoy Bennett',
+  },
+  {
+    id: 'wingo-bog-pty',
+    originCountry: 'Colombia',
+    originCity: 'Bogotá',
+    originAirportCode: 'BOG',
+    destinationCountry: 'Panama',
+    destinationCity: 'Panama City',
+    destinationAirportCode: 'PTY',
+    routeType: 'international',
+    currency: 'USD',
+    oneWayBaseFare: 88.00,
+    oneWayTaxesAndFees: 36.50,
+    oneWayAncillaryFees: 18.00,
+    oneWayNetCost: 110.00,
+    oneWayGrandTotal: 142.50,
+    roundTripBaseFare: 176.00,
+    roundTripTaxesAndFees: 73.00,
+    roundTripAncillaryFees: 36.00,
+    roundTripNetCost: 220.00,
+    roundTripGrandTotal: 285.00,
+    markupPercentage: 20,
+    notes: 'High-frequency corridor connecting Colombia capital with Tocumen International.',
+    isActive: true,
+    isPopular: true,
+    lastUpdated: '2026-09-27',
+    updatedBy: 'Elvoy Bennett',
+  },
+  {
+    id: 'wingo-dom-bog-mde',
+    originCountry: 'Colombia',
+    originCity: 'Bogotá',
+    originAirportCode: 'BOG',
+    destinationCountry: 'Colombia',
+    destinationCity: 'Medellín',
+    destinationAirportCode: 'MDE',
+    routeType: 'domestic',
+    currency: 'COP',
+    oneWayBaseFare: 160000,
+    oneWayTaxesAndFees: 42000,
+    oneWayAncillaryFees: 22000,
+    oneWayNetCost: 185000,
+    oneWayGrandTotal: 224000,
+    roundTripBaseFare: 320000,
+    roundTripTaxesAndFees: 84000,
+    roundTripAncillaryFees: 44000,
+    roundTripNetCost: 370000,
+    roundTripGrandTotal: 448000,
+    markupPercentage: 15,
+    notes: 'Primary domestic trunk route. High daily flight frequencies.',
+    isActive: true,
+    isPopular: true,
+    lastUpdated: '2026-09-27',
+    updatedBy: 'Zachary Buchanan',
+  },
+];
+
 app.get('/api/wingo/network', (req, res) => {
   return res.json({
     success: true,
@@ -923,6 +1064,29 @@ app.get('/api/wingo/network', (req, res) => {
       'Venezuela',
     ],
     hub: 'Colombia',
+  });
+});
+
+app.get('/api/wingo/rates', (req, res) => {
+  return res.json({
+    success: true,
+    routes: serverWingoRoutes,
+    total: serverWingoRoutes.length,
+    updatedAt: new Date().toISOString(),
+  });
+});
+
+app.post('/api/wingo/rates', (req, res) => {
+  const { routes } = req.body;
+  if (!Array.isArray(routes)) {
+    return res.status(400).json({ success: false, error: 'Expected routes array' });
+  }
+  serverWingoRoutes = routes;
+  return res.json({
+    success: true,
+    message: 'Wingo rates database successfully updated and synchronized to flight engine.',
+    total: serverWingoRoutes.length,
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -951,10 +1115,39 @@ app.post('/api/flight-route/verify', (req, res) => {
   const currency = isDomesticColombia ? 'COP' : 'USD';
   const multiplier = journey === 'round_trip' ? 2 : 1;
 
-  const baseFare = isDomesticColombia ? 180000 * multiplier : 120 * multiplier;
-  const taxes = isDomesticColombia ? 45000 * multiplier : 39.25 * multiplier;
-  const ancillary = isDomesticColombia ? 25000 * multiplier : 17.5 * multiplier;
-  const grandTotal = Math.round((baseFare + taxes + ancillary) * 100) / 100;
+  // Search if a custom route exists in our server Wingo database
+  const matchedRoute = serverWingoRoutes.find((r) => {
+    if (!r.isActive) return false;
+    const rOrig = String(r.originCountry || '').trim().toLowerCase();
+    const rDest = String(r.destinationCountry || '').trim().toLowerCase();
+    const matchForward = rOrig === originClean && rDest === destClean;
+    const matchReverse = rOrig === destClean && rDest === originClean;
+    return matchForward || matchReverse;
+  });
+
+  let baseFare: number;
+  let taxes: number;
+  let ancillary: number;
+  let grandTotal: number;
+
+  if (matchedRoute) {
+    if (journey === 'one_way') {
+      baseFare = Number(matchedRoute.oneWayBaseFare) || 0;
+      taxes = Number(matchedRoute.oneWayTaxesAndFees) || 0;
+      ancillary = Number(matchedRoute.oneWayAncillaryFees) || 0;
+      grandTotal = Number(matchedRoute.oneWayGrandTotal) || Math.round((baseFare + taxes + ancillary) * 100) / 100;
+    } else {
+      baseFare = Number(matchedRoute.roundTripBaseFare) || 0;
+      taxes = Number(matchedRoute.roundTripTaxesAndFees) || 0;
+      ancillary = Number(matchedRoute.roundTripAncillaryFees) || 0;
+      grandTotal = Number(matchedRoute.roundTripGrandTotal) || Math.round((baseFare + taxes + ancillary) * 100) / 100;
+    }
+  } else {
+    baseFare = isDomesticColombia ? 180000 * multiplier : 120 * multiplier;
+    taxes = isDomesticColombia ? 45000 * multiplier : 39.25 * multiplier;
+    ancillary = isDomesticColombia ? 25000 * multiplier : 17.5 * multiplier;
+    grandTotal = Math.round((baseFare + taxes + ancillary) * 100) / 100;
+  }
 
   return res.json({
     provider: 'wingo',
@@ -966,10 +1159,11 @@ app.post('/api/flight-route/verify', (req, res) => {
       taxes_and_fees: Math.round(taxes * 100) / 100,
       ancillary_fees: Math.round(ancillary * 100) / 100,
     },
-    grand_total: grandTotal,
+    grand_total: Math.round(grandTotal * 100) / 100,
     notes: 'Route verified. Pricing successfully calculated via Wingo engine.',
   });
 });
+
 
 // --- SKYSCANNER FLIGHT PRICING & INDICATIVE DATE EXPLORER (SECTIONS 36-39) ---
 // Secure server-side Skyscanner integration proxy ensuring API credentials are never exposed

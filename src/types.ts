@@ -736,3 +736,39 @@ export interface LocalTripsPageSettings {
   categories: string[];
 }
 
+// Wingo Airlines 11-Country Network Rates & Costs Database
+export interface WingoRouteRate {
+  id: string;
+  originCountry: string; // e.g. "Colombia", "Jamaica"
+  originCity: string; // e.g. "Bogotá", "Kingston"
+  originAirportCode: string; // e.g. "BOG", "KIN"
+  destinationCountry: string; // e.g. "Jamaica", "Colombia"
+  destinationCity: string; // e.g. "Kingston", "Medellín"
+  destinationAirportCode: string; // e.g. "KIN", "MDE"
+  routeType: 'domestic' | 'international';
+  currency: 'COP' | 'USD';
+  
+  // One-Way Rates and Costs
+  oneWayBaseFare: number;
+  oneWayTaxesAndFees: number;
+  oneWayAncillaryFees: number;
+  oneWayNetCost: number; // Airline operational / wholesale cost
+  oneWayGrandTotal: number; // Customer selling price
+
+  // Round-Trip Rates and Costs
+  roundTripBaseFare: number;
+  roundTripTaxesAndFees: number;
+  roundTripAncillaryFees: number;
+  roundTripNetCost: number; // Airline operational / wholesale cost
+  roundTripGrandTotal: number; // Customer selling price
+
+  // Agency Markup & Meta
+  markupPercentage?: number;
+  notes?: string;
+  isActive: boolean;
+  isPopular?: boolean;
+  seasonalNotes?: string;
+  lastUpdated?: string;
+  updatedBy?: string;
+}
+
