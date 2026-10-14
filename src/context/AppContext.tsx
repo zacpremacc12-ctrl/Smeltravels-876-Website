@@ -1107,6 +1107,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const openLocalTripInquiry = (trip: LocalTrip) => {
     setSelectedLocalTripForInquiry(trip);
+    const bookingTrip: TripPackage = {
+      id: trip.id,
+      slug: trip.slug,
+      name: trip.title,
+      destination: trip.location,
+      country: 'Jamaica',
+      countryFlag: '🇯🇲',
+      year: 2026,
+      dates: trip.availableDates || 'Upcoming',
+      hotel: trip.location,
+      price: trip.price,
+      currency: trip.currency || 'JMD',
+      deposit: trip.deposit || Math.round(trip.price * 0.3),
+      shortDescription: trip.description,
+      fullDescription: trip.fullDescription || trip.description,
+      packageInclusions: trip.inclusions || [],
+      exclusions: trip.exclusions || [],
+      itinerary: [],
+      travelRequirements: ['Valid Government-issued ID'],
+      visaRequirements: 'No visa required for Jamaica local travel',
+      excursions: trip.highlights || [],
+      baggageInfo: 'Standard personal luggage included',
+      paymentPlanInfo: 'Flexible deposit and balance payment plans available with SMELTRAVELS876',
+      featuredImage: trip.featuredImage,
+      gallery: [trip.featuredImage],
+      status: trip.status === 'Sold Out' ? 'Sold Out' : trip.status === 'Limited Spots' ? 'Limited Availability' : 'Available',
+      orderIndex: trip.orderIndex,
+    };
+    setSelectedTripForBooking(bookingTrip);
   };
 
   const closeLocalTripInquiry = () => {

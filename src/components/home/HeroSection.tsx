@@ -11,12 +11,26 @@ import {
   Compass,
   Calendar,
   CheckCircle2,
-  Users
+  Users,
+  MapPin,
+  Phone,
+  MessageCircle,
+  Tag,
+  Zap,
 } from 'lucide-react';
 import { useApp, formatPriceJMD } from '../../context/AppContext';
 
 export const HeroSection: React.FC = () => {
-  const { navigateTo, trips, openCustomTripModal } = useApp();
+  const {
+    navigateTo,
+    trips,
+    localTrips,
+    settings,
+    openCustomTripModal,
+    openLocalTripDetail,
+    openLocalTripInquiry,
+    setSelectedTripForInquiry,
+  } = useApp();
   const [selectedYear, setSelectedYear] = useState<'all' | '2026' | '2027'>('all');
   const [selectedDest, setSelectedDest] = useState<string>('all');
 
@@ -111,85 +125,213 @@ export const HeroSection: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Visual Card Column */}
+          {/* Right Visual Card Column - DYNAMIC FEATURED TRIP (LOCAL OR ABROAD) */}
           <div className="lg:col-span-5 relative">
-            {/* Featured Trip Card Overlay */}
-            <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-white/15 bg-[#1F0333]/90">
-              <div className="relative h-64 sm:h-72 w-full overflow-hidden">
-                <img
-                  src="https://images.unsplash.com/photo-1517411032315-54ef2cb783bb?auto=format&fit=crop&w=1200&q=80"
-                  alt="Panama 2026 Featured Trip"
-                  className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#1F0333] via-transparent to-black/30"></div>
-                
-                <div className="absolute top-4 left-4">
-                  <span className="bg-[#FFC72C] text-[#2E0249] text-xs font-black uppercase px-3 py-1 rounded-full shadow-md">
-                    2026 Featured Trip
-                  </span>
-                </div>
+            {(() => {
+              // Priority 1: Admin-configured Featured Hero Trip from settings
+              const heroConfig = settings.featuredHeroTrip;
 
-                <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium text-white flex items-center gap-1.5 border border-white/20">
-                  <Calendar className="w-3.5 h-3.5 text-[#FFC72C]" />
-                  <span>Oct 13–18, 2026</span>
-                </div>
+              // Find matching local trip or abroad trip if linked
+              const matchedLocalTrip = localTrips.find(
+                (lt) =>
+                  lt.id === heroConfig?.selectedTripId ||
+                  lt.slug === heroConfig?.targetSlugOrId ||
+                  lt.id === 'royalton-negril-flash-sale-2026'
+              ) || localTrips[0];
 
-                <div className="absolute bottom-3 left-4 right-4 text-white">
-                  <h3 className="text-xl sm:text-2xl font-black font-['Outfit',sans-serif] flex items-center gap-2">
-                    <span>🇵🇦 Panama 2026 — Part 2</span>
-                  </h3>
-                  <p className="text-xs text-neutral-300">From Kingston (KIN) • Bed & Breakfast • 2 Excursions</p>
-                </div>
-              </div>
+              const matchedAbroadTrip = trips.find(
+                (t) => t.id === heroConfig?.selectedTripId || t.slug === heroConfig?.targetSlugOrId
+              );
 
-              {/* Card Body Details */}
-              <div className="p-5 space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                  <div>
-                    <span className="text-[11px] text-neutral-400 uppercase tracking-wider block">Starting Rate</span>
-                    <span className="text-2xl font-black text-white font-['Outfit',sans-serif]">
-                      $152,303 <span className="text-xs text-[#FFC72C] font-semibold">JMD / person</span>
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[11px] text-neutral-400 uppercase tracking-wider block">Lock-In Deposit</span>
-                    <span className="text-lg font-bold text-[#FFC72C]">
-                      $83,353 <span className="text-xs text-neutral-300">JMD</span>
-                    </span>
-                  </div>
-                </div>
+              // Determine if local or abroad
+              const isLocal =
+                heroConfig?.tripType === 'local' ||
+                (!heroConfig?.tripType && (heroConfig?.selectedTripId?.includes('royalton') || !!matchedLocalTrip));
 
-                <div className="space-y-1.5 text-xs text-neutral-300">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-[#FFC72C]" />
-                    <span>Includes Flight from Kingston + Carry-on & Personal item</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-[#FFC72C]" />
-                    <span>Roundtrip airport transfers + 2 paid excursions</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-[#FFC72C]" />
-                    <span>Trip memorabilia + Preparation of travel documents</span>
-                  </div>
-                </div>
+              // Effective values with defaults matching user's requested Royalton Negril Flash Sale
+              const badgeText = heroConfig?.badgeText || '🚨🌴 FLASH SALE ALERT! 🇯🇲✈️';
+              const cardTitle =
+                heroConfig?.title ||
+                (isLocal ? matchedLocalTrip?.title : matchedAbroadTrip?.name) ||
+                'Royalton Negril Resort & Spa';
+              const cardDates =
+                heroConfig?.dates ||
+                (isLocal ? matchedLocalTrip?.availableDates : matchedAbroadTrip?.dates) ||
+                'October 30 – November 1, 2026';
+              const cardLocation =
+                heroConfig?.location ||
+                (isLocal ? matchedLocalTrip?.location : `${matchedAbroadTrip?.destination}, ${matchedAbroadTrip?.country}`) ||
+                'Royalton Negril, Jamaica';
+              const cardPrice =
+                heroConfig?.priceDisplay ||
+                (isLocal ? `$${matchedLocalTrip?.price.toLocaleString()}` : `$${matchedAbroadTrip?.price?.toLocaleString()}`) ||
+                '$108,000';
+              const cardPriceSubtitle =
+                heroConfig?.priceSubtitle ||
+                (isLocal ? (matchedLocalTrip?.priceType || 'for 2 adults') : 'JMD / person') ||
+                'JMD for 2 adults';
+              const promoHighlight = heroConfig?.promoHighlight || '👶🏽 Bring ONE child FREE! 🎉';
+              const displayImage =
+                heroConfig?.imageUrl || matchedLocalTrip?.featuredImage || '/images/royalton_negril_resort.jpg';
 
-                <div className="pt-2 flex items-center gap-3">
-                  <button
-                    onClick={() => navigateTo('trip-detail', 'panama-2026')}
-                    className="flex-1 bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-bold text-sm py-3 rounded-xl text-center shadow-md transition-all cursor-pointer"
-                  >
-                    View Package Details
-                  </button>
-                  <button
-                    onClick={() => navigateTo('contact', 'panama-2026')}
-                    className="px-4 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold border border-white/15 transition-all"
-                  >
-                    Inquire
-                  </button>
+              const inclusionsList =
+                heroConfig?.inclusions && heroConfig.inclusions.length > 0
+                  ? heroConfig.inclusions
+                  : [
+                      'Two (2) Adults Package: $108,000 JMD',
+                      '👶🏽 Bring ONE child FREE! 🎉',
+                      'All-Inclusive Resort (Seven Mile Beach)',
+                      'Unlimited Gourmet Dining & Premium Drinks',
+                      'Spa Services, Fitness Centre & Activities',
+                    ];
+
+              const handleFeaturedBooking = () => {
+                if (isLocal && matchedLocalTrip) {
+                  openLocalTripInquiry(matchedLocalTrip);
+                } else if (!isLocal && matchedAbroadTrip) {
+                  navigateTo('trip-detail', matchedAbroadTrip.slug);
+                } else if (matchedLocalTrip) {
+                  openLocalTripInquiry(matchedLocalTrip);
+                } else {
+                  navigateTo('local-trips');
+                }
+              };
+
+              const handleFeaturedDetails = () => {
+                if (isLocal && matchedLocalTrip) {
+                  openLocalTripDetail(matchedLocalTrip.id);
+                } else if (!isLocal && matchedAbroadTrip) {
+                  navigateTo('trip-detail', matchedAbroadTrip.slug);
+                } else {
+                  navigateTo('local-trips');
+                }
+              };
+
+              return (
+                <div className="relative rounded-3xl overflow-hidden shadow-2xl border-2 border-[#FFC72C]/40 bg-[#1F0333]/95 backdrop-blur-md">
+                  {/* Glowing aura */}
+                  <div className="absolute -inset-1 bg-gradient-to-r from-amber-500/20 via-purple-600/30 to-amber-500/20 blur-xl opacity-75 -z-10 pointer-events-none" />
+
+                  {/* Top Image Banner */}
+                  <div className="relative h-64 sm:h-72 w-full overflow-hidden bg-neutral-900 group">
+                    <img
+                      src={displayImage}
+                      alt={cardTitle}
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = '/images/heroes_weekend_royalton.jpg';
+                      }}
+                      className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#1F0333] via-black/25 to-black/40"></div>
+
+                    {/* Top Badges */}
+                    <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
+                      <span className="bg-gradient-to-r from-amber-400 via-[#FFC72C] to-amber-400 text-[#2E0249] text-xs font-black uppercase px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 tracking-wide animate-pulse">
+                        <Zap className="w-3.5 h-3.5 fill-[#2E0249]" />
+                        <span>{badgeText}</span>
+                      </span>
+
+                      <span className="bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-full text-[11px] font-bold text-white flex items-center gap-1.5 border border-white/20 shadow-xs">
+                        <Calendar className="w-3 h-3 text-[#FFC72C]" />
+                        <span>{cardDates}</span>
+                      </span>
+                    </div>
+
+                    {/* Scope Pill (Local Trip vs Abroad) */}
+                    <div className="absolute top-12 left-3">
+                      <span className="bg-purple-900/90 text-white border border-purple-400/40 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-md shadow-sm">
+                        {isLocal ? '🇯🇲 LOCAL JAMAICAN TRIP' : '✈️ ABROAD GROUP TRIP'}
+                      </span>
+                    </div>
+
+                    {/* Bottom Title on Image */}
+                    <div className="absolute bottom-3 left-4 right-4 text-white">
+                      <div className="flex items-center gap-1 text-[11px] text-[#FFC72C] font-semibold mb-0.5">
+                        <MapPin className="w-3 h-3 text-[#FFC72C]" />
+                        <span>{cardLocation}</span>
+                      </div>
+                      <h3 className="text-xl sm:text-2xl font-black font-['Outfit',sans-serif] text-white leading-tight drop-shadow-md">
+                        {cardTitle}
+                      </h3>
+                    </div>
+                  </div>
+
+                  {/* Card Body Details */}
+                  <div className="p-5 space-y-4">
+                    {/* Special Offer Highlight Banner */}
+                    <div className="bg-gradient-to-r from-amber-400/15 via-[#FFC72C]/25 to-amber-400/15 border border-[#FFC72C]/50 rounded-2xl p-3 flex items-center justify-between gap-3">
+                      <div>
+                        <span className="text-[10px] text-amber-200 font-extrabold uppercase tracking-wider block">
+                          Special Flash Offer
+                        </span>
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-2xl sm:text-3xl font-black text-white font-['Outfit',sans-serif]">
+                            {cardPrice}
+                          </span>
+                          <span className="text-xs text-[#FFC72C] font-bold">
+                            {cardPriceSubtitle}
+                          </span>
+                        </div>
+                      </div>
+
+                      {promoHighlight && (
+                        <div className="text-right">
+                          <span className="inline-block bg-[#FFC72C] text-[#2E0249] text-xs font-black px-2.5 py-1 rounded-lg shadow-sm animate-bounce">
+                            {promoHighlight}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Highlights / Inclusions Checklist */}
+                    <div className="space-y-1.5 text-xs text-neutral-200">
+                      {inclusionsList.slice(0, 4).map((inc, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-[#FFC72C] shrink-0" />
+                          <span className="line-clamp-1">{inc}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="pt-2 flex flex-col sm:flex-row items-center gap-2.5">
+                      <button
+                        onClick={handleFeaturedBooking}
+                        className="w-full sm:flex-1 bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-black text-sm py-3 px-4 rounded-xl text-center shadow-lg hover:scale-101 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <span>Book Flash Sale Now</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+
+                      <a
+                        href={`https://wa.me/18768341537?text=${encodeURIComponent(
+                          `Hello Smeltravels876! I am interested in booking the ${cardTitle} (${cardDates}) for ${cardPrice}. Please secure my spot!`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full sm:w-auto px-4 py-3 rounded-xl bg-emerald-600/90 hover:bg-emerald-600 text-white text-xs font-bold border border-emerald-400/40 flex items-center justify-center gap-1.5 shadow-sm transition-all hover:scale-102"
+                        title="Chat on WhatsApp"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5 text-emerald-200" />
+                        <span>(876) 834-1537</span>
+                      </a>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-neutral-400 pt-1 border-t border-white/10">
+                      <button
+                        onClick={handleFeaturedDetails}
+                        className="text-neutral-300 hover:text-[#FFC72C] underline font-medium cursor-pointer"
+                      >
+                        View Full Details & Inclusions
+                      </button>
+                      <span className="text-amber-300 font-semibold">
+                        ✨ Travel More • Stress Less!
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
         </div>
 

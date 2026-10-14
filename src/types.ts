@@ -375,6 +375,29 @@ export interface SiteSettings {
   };
   customTripDestinations?: CountryDestinationInfo[];
   cheapestDateFinderSettings?: CheapestDateFinderSettings;
+  featuredHeroTrip?: FeaturedHeroTripConfig;
+}
+
+export interface FeaturedHeroTripConfig {
+  enabled: boolean;
+  tripType: 'local' | 'abroad' | 'custom';
+  selectedTripId?: string;
+  badgeText: string;
+  title: string;
+  subtitle: string;
+  location: string;
+  dates: string;
+  priceDisplay: string;
+  priceSubtitle: string;
+  promoHighlight: string;
+  depositDisplay?: string;
+  imageUrl: string;
+  inclusions: string[];
+  ctaText: string;
+  ctaAction?: 'local-trip' | 'abroad-trip' | 'contact' | 'whatsapp';
+  targetSlugOrId?: string;
+  directPhone?: string;
+  directWhatsapp?: string;
 }
 
 export type AdminRole = 'Super Admin' | 'Content Manager' | 'Booking Manager';

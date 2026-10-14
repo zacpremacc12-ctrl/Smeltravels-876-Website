@@ -57,6 +57,7 @@ import { AdminOrdersTable } from './AdminOrdersTable';
 import { OriginPricingManager } from './OriginPricingManager';
 import { LocalTripsManager } from './LocalTripsManager';
 import { WingoRatesDatabaseTable } from './WingoRatesDatabaseTable';
+import { FeaturedHeroTripManager } from './FeaturedHeroTripManager';
 import { WORLD_DESTINATIONS } from '../../data/customTripDestinations';
 import { pushSiteContentToRTDB, pushFullSiteContentToRTDB } from '../../lib/firebase';
 import { getSafeTripImageUrl, handleTripImageError } from '../../lib/imageUtils';
@@ -104,7 +105,7 @@ export const AdminDashboard: React.FC = () => {
     wingoRoutes,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'inbox' | 'excel-orders' | 'wingo-rates' | 'local-trips' | 'origin-pricing' | 'inquiries' | 'trips' | 'destinations' | 'custom-destinations' | 'guides' | 'faqs' | 'offers' | 'testimonials' | 'settings'>('inbox');
+  const [activeTab, setActiveTab] = useState<'inbox' | 'excel-orders' | 'wingo-rates' | 'featured-trip' | 'local-trips' | 'origin-pricing' | 'inquiries' | 'trips' | 'destinations' | 'custom-destinations' | 'guides' | 'faqs' | 'offers' | 'testimonials' | 'settings'>('inbox');
   const [inquirySearch, setInquirySearch] = useState('');
   const [inquiryFilterStatus, setInquiryFilterStatus] = useState<string>('All');
   const [selectedInquiry, setSelectedInquiry] = useState<BookingInquiry | null>(null);
@@ -573,6 +574,12 @@ export const AdminDashboard: React.FC = () => {
                   icon: Plane,
                 },
                 {
+                  id: 'featured-trip',
+                  label: 'Featured Hero Trip',
+                  badge: settings.featuredHeroTrip?.tripType === 'local' ? 'Local Trip' : 'Promo',
+                  icon: Sparkles,
+                },
+                {
                   id: 'local-trips',
                   label: `Local Trips (${localTrips.length})`,
                   badge: 'Website',
@@ -668,6 +675,9 @@ export const AdminDashboard: React.FC = () => {
 
         {/* TAB 0.6: WINGO 11-COUNTRY RATES & COSTS DATABASE */}
         {activeTab === 'wingo-rates' && <WingoRatesDatabaseTable />}
+
+        {/* TAB 0.65: FEATURED HERO TRIP MANAGER (LOCAL OR ABROAD) */}
+        {activeTab === 'featured-trip' && <FeaturedHeroTripManager />}
 
         {/* TAB: LOCAL TRIPS & EXCURSIONS MANAGER */}
         {activeTab === 'local-trips' && <LocalTripsManager />}
@@ -2738,6 +2748,53 @@ export const AdminDashboard: React.FC = () => {
                 <p className="text-[11px] text-neutral-600 bg-white/70 p-2.5 rounded-xl border border-neutral-200/80 leading-relaxed">
                   💡 <strong>How it works:</strong> Whenever either administrator updates banking info, ambassador contacts, child pricing, promo codes, or packages, the change is saved permanently to the backend and immediately synchronizes to the other administrator's dashboard and all website visitors worldwide (even across VPNs).
                 </p>
+              </div>
+
+              {/* SECTION: HOMEPAGE FEATURED HERO TRIP (LOCAL OR ABROAD) */}
+              <div className="p-5 bg-gradient-to-r from-amber-500/10 via-[#2E0249]/10 to-amber-500/10 rounded-2xl border-2 border-amber-300 space-y-3.5 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-200 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-[#FFC72C] text-[#2E0249] flex items-center justify-center font-black text-sm shadow-xs">
+                      <Sparkles className="w-5 h-5 fill-current" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-[#2E0249] uppercase tracking-wider font-['Outfit',sans-serif] flex items-center gap-2">
+                        <span>Homepage Featured Trip & Flash Sale Banner</span>
+                        <span className="bg-[#2E0249] text-[#FFC72C] text-[10px] font-black px-2 py-0.5 rounded-full">
+                          {settings.featuredHeroTrip?.tripType === 'local' ? '🇯🇲 Local Trip' : '✈️ Abroad Trip'}
+                        </span>
+                      </h3>
+                      <p className="text-[11px] text-neutral-600">
+                        Controls the flagship hero trip on the customer homepage (currently: <strong>{settings.featuredHeroTrip?.title || 'Royalton Negril Resort & Spa'}</strong>).
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('featured-trip')}
+                    className="bg-[#2E0249] hover:bg-[#3B185F] text-[#FFC72C] font-black text-xs px-4 py-2 rounded-xl transition-all shadow-md flex items-center gap-1.5 shrink-0 cursor-pointer"
+                  >
+                    <span>Open Featured Trip Manager</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="bg-white/80 p-3.5 rounded-xl border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-[#2E0249]">Active Offer:</span>
+                      <span className="text-neutral-800 font-bold">{settings.featuredHeroTrip?.badgeText || '🚨🌴 FLASH SALE ALERT! 🇯🇲✈️'}</span>
+                    </div>
+                    <div className="text-neutral-600 text-[11px]">
+                      📍 {settings.featuredHeroTrip?.location || 'Royalton Negril, Jamaica'} • 📅 {settings.featuredHeroTrip?.dates || 'October 30 – November 1, 2026'} • 💰 {settings.featuredHeroTrip?.priceDisplay || '$108,000'} {settings.featuredHeroTrip?.priceSubtitle || 'for 2 adults'}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${settings.featuredHeroTrip?.enabled !== false ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-neutral-200 text-neutral-600'}`}>
+                      {settings.featuredHeroTrip?.enabled !== false ? '● Live on Homepage' : '○ Paused / Hidden'}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               {/* SECTION: GENERAL CONTACT INFO */}
