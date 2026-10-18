@@ -776,10 +776,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
 
               <div className="space-y-2">
                 <span className="inline-block bg-emerald-100 text-emerald-800 font-extrabold text-xs px-3 py-1 rounded-full uppercase tracking-wider">
-                  Deposit Received & Guaranteed
+                  WiPay Jamaica Verified Payment
                 </span>
-                <h4 className="text-2xl font-black text-neutral-900 font-['Outfit',sans-serif]">
-                  Congratulations, {customerName}!
+                <h4 className="text-xl sm:text-2xl font-black text-neutral-900 font-['Outfit',sans-serif]">
+                  Booking Confirmed! Thank you for choosing Smeltravels876
                 </h4>
                 <p className="text-sm text-neutral-600 max-w-md mx-auto">
                   Your lock-in deposit for <strong>{activeTrip.name}</strong> has been secured. Your spot is officially reserved!
@@ -1125,7 +1125,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                     }`}
                   >
                     <CreditCard className="w-5 h-5" />
-                    <span>Credit / Debit</span>
+                    <span>WiPay / Card</span>
                   </button>
 
                   <button
@@ -1428,7 +1428,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                   ) : (
                     <>
                       <Lock className="w-4 h-4" />
-                      <span>Pay Deposit of {formatPriceJMD(depositDue)}</span>
+                      <span>Book Now (Pay Deposit of {formatPriceJMD(depositDue)})</span>
                     </>
                   )}
                 </button>

@@ -890,6 +890,99 @@ app.post('/api/trip-inquiry', async (req, res) => {
   }
 });
 
+// --- WIPAY JAMAICA LIVE DEVELOPER API GATEWAY ---
+const WIPAY_ACCOUNT_NUMBER = '2397990892';
+const WIPAY_API_KEY = 'qxhk2m4kvg';
+const WIPAY_ENDPOINT = 'https://jm.wipayfinancial.com/plugins/payments/request';
+
+app.post('/api/wipay/create-payment', async (req, res) => {
+  try {
+    const {
+      total,
+      deposit,
+      order_id,
+      origin,
+      response_url,
+      country_code,
+      currency,
+      fee_structure,
+      method,
+      tripTitle,
+      customerName,
+      email,
+      phone,
+      parish,
+    } = req.body;
+
+    const depositAmount = Number(total || deposit || 0);
+    if (!depositAmount || depositAmount <= 0) {
+      return res.status(400).json({ success: false, error: 'A valid deposit total is required.' });
+    }
+
+    const orderId = order_id || `ST-${Date.now()}`;
+    const totalFormatted = depositAmount.toFixed(2);
+
+    // WiPay Jamaica live parameters
+    const params = new URLSearchParams({
+      account_number: WIPAY_ACCOUNT_NUMBER,
+      api_key: WIPAY_API_KEY,
+      total: totalFormatted,
+      country_code: country_code || 'JM',
+      currency: currency || 'JMD',
+      environment: 'live',
+      fee_structure: fee_structure === 'client_pay' ? 'customer_pay' : (fee_structure || 'customer_pay'),
+      method: method || 'credit_card',
+      order_id: orderId,
+      origin: origin || 'Smeltravels876',
+      response_url: response_url || 'https://smeltravels876.com/booking-success',
+    });
+
+    console.log(`[WiPay Server] Requesting live checkout link for Order ${orderId}, Total: $${totalFormatted} JMD`);
+
+    const wipayResponse = await fetch(WIPAY_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString(),
+    });
+
+    const data = await wipayResponse.json();
+    console.log('[WiPay Server] Response received:', data);
+
+    if (data.url && (data.message === 'OK' || data.url.includes('/checkout/payment') || data.transaction_id)) {
+      return res.json({
+        success: true,
+        url: data.url,
+        transaction_id: data.transaction_id || `WP-TXN-${Date.now()}`,
+        order_id: orderId,
+        deposit: depositAmount,
+      });
+    }
+
+    // In case WiPay returned an error message in JSON
+    if (data.message && data.message !== 'OK') {
+      return res.status(400).json({
+        success: false,
+        error: data.message,
+        url: data.url,
+      });
+    }
+
+    return res.json({
+      success: true,
+      url: data.url,
+      transaction_id: data.transaction_id || `WP-TXN-${Date.now()}`,
+      order_id: orderId,
+      deposit: depositAmount,
+    });
+  } catch (error: any) {
+    console.error('[WiPay Server Error]:', error);
+    return res.status(500).json({ success: false, error: error.message || 'Failed to initialize WiPay payment' });
+  }
+});
+
 // --- WINGO FLIGHT ENGINE & SKYSCANNER FALLBACK ROUTER ---
 const WINGO_SUPPORTED_COUNTRIES = [
   'colombia',

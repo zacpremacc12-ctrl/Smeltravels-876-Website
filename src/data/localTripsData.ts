@@ -38,7 +38,7 @@ export const INITIAL_LOCAL_TRIPS: LocalTrip[] = [
     duration: '3 Days / 2 Nights',
     availableDates: 'October 30 – November 1, 2026',
     status: 'Limited Spots',
-    ctaText: 'Book Flash Sale',
+    ctaText: 'Book Now (Pay Deposit)',
     inclusions: [
       'Two (2) Adults Package ($108,000 JMD Total)',
       '👶🏽 Bring ONE (1) Child Allowed FREE! 🎉',
@@ -99,7 +99,7 @@ export const INITIAL_LOCAL_TRIPS: LocalTrip[] = [
     duration: '4 Days / 3 Nights',
     availableDates: 'October 16 - 19, 2026',
     status: 'Limited Spots',
-    ctaText: 'Book Heroes Weekend',
+    ctaText: 'Book Now (Pay Deposit)',
     inclusions: [
       'Two (2) Adults Package for Heroes Weekend (Oct 16–19, 2026)',
       'Luxury All-Inclusive Accommodations (Adults Only 18+)',
@@ -158,7 +158,7 @@ export const INITIAL_LOCAL_TRIPS: LocalTrip[] = [
     duration: 'Full-Day (8 Hours)',
     availableDates: 'Every Weekend & Custom Dates',
     status: 'Available',
-    ctaText: 'Reserve Excursion',
+    ctaText: 'Book Now (Pay Deposit)',
     inclusions: [
       'Roundtrip air-conditioned transportation from Kingston or Montego Bay',
       "Admission to Dunn's River Falls & Irie Blue Hole",
@@ -208,7 +208,7 @@ export const INITIAL_LOCAL_TRIPS: LocalTrip[] = [
     duration: 'Full-Day (10 Hours)',
     availableDates: 'Fridays, Saturdays & Sundays',
     status: 'Available',
-    ctaText: 'Book Beach Trip',
+    ctaText: 'Book Now (Pay Deposit)',
     inclusions: [
       'Roundtrip VIP luxury coaster transport',
       'Seven Mile Beach club access with loungers',
@@ -258,7 +258,7 @@ export const INITIAL_LOCAL_TRIPS: LocalTrip[] = [
     duration: 'Full-Day (11 Hours)',
     availableDates: 'Thursdays & Saturdays',
     status: 'Available',
-    ctaText: 'Explore Portland',
+    ctaText: 'Book Now (Pay Deposit)',
     inclusions: [
       'Private 2-person bamboo raft ride on the Rio Grande',
       "Blue Lagoon boat tour & Frenchman's Cove entrance",

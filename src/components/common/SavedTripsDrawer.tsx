@@ -27,6 +27,7 @@ export const SavedTripsDrawer: React.FC = () => {
     clearAllSavedTrips,
     navigateTo,
     secureSpotForTrip,
+    openWiPayCheckout,
   } = useApp();
 
   // Close on Escape key press
@@ -48,7 +49,14 @@ export const SavedTripsDrawer: React.FC = () => {
 
   const handleSecureSpot = (trip: TripPackage) => {
     closeSavedTripsDrawer();
-    secureSpotForTrip(trip);
+    openWiPayCheckout({
+      tripId: trip.id,
+      title: trip.name,
+      deposit: trip.deposit,
+      totalPrice: trip.price,
+      dates: trip.dates,
+      location: `${trip.destination}, ${trip.country}`,
+    });
   };
 
   const handleViewTrip = (trip: TripPackage) => {
@@ -305,7 +313,7 @@ export const SavedTripsDrawer: React.FC = () => {
                                 className="w-full py-2 px-3 text-[11px] font-bold text-[#2E0249] bg-[#FFC72C] hover:bg-amber-300 rounded-xl shadow-2xs text-center flex items-center justify-center gap-1 transition-colors cursor-pointer"
                               >
                                 <Sparkles className="w-3 h-3 text-[#2E0249]/70 fill-current" />
-                                <span>Secure Spot</span>
+                                <span>Book Now (Pay Deposit)</span>
                               </button>
                             </div>
                           </div>

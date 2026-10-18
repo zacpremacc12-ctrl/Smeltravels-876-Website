@@ -35,7 +35,10 @@ import {
   Layers,
   Sparkles,
   Plane,
+  CalendarClock,
+  Lock,
 } from 'lucide-react';
+import { AdminInstallmentScheduleModal } from './AdminInstallmentScheduleModal';
 
 const ORDER_TYPES: OrderTypeCategory[] = [
   'Booking Inquiry',
@@ -92,6 +95,7 @@ export const AdminOrdersTable: React.FC = () => {
 
   // Active modal states
   const [inspectOrder, setInspectOrder] = useState<AdminOrderExcelRecord | null>(null);
+  const [schedulingOrder, setSchedulingOrder] = useState<AdminOrderExcelRecord | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
@@ -662,6 +666,7 @@ export const AdminOrdersTable: React.FC = () => {
                 <th className="p-3 min-w-[140px] font-bold border-r border-purple-900">Status</th>
                 <th className="p-3 min-w-[140px] font-bold border-r border-purple-900">Assigned Admin</th>
                 <th className="p-3 min-w-[220px] font-bold border-r border-purple-900">Admin Notes</th>
+                <th className="p-3 min-w-[170px] font-bold border-r border-purple-900">Payment Timeframe</th>
                 <th className="p-3 min-w-[100px] text-center font-bold sticky right-0 bg-[#2E0249] shadow-l">Actions</th>
               </tr>
             </thead>
@@ -670,7 +675,7 @@ export const AdminOrdersTable: React.FC = () => {
             <tbody className="divide-y divide-neutral-200">
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={20} className="p-12 text-center text-neutral-400 bg-neutral-50/50">
+                  <td colSpan={21} className="p-12 text-center text-neutral-400 bg-neutral-50/50">
                     <FileSpreadsheet className="w-10 h-10 mx-auto mb-2 text-neutral-300" />
                     <p className="font-bold text-neutral-600">No orders match the selected filters</p>
                     <p className="text-xs mt-1">Try clearing your search or reset filters above.</p>
@@ -957,9 +962,67 @@ export const AdminOrdersTable: React.FC = () => {
                         )}
                       </td>
 
+                      {/* Payment Timeframe (Installment Schedule & Deadlines) */}
+                      <td className="p-2.5 border-r border-neutral-200 whitespace-nowrap">
+                        {order.depositPaid > 0 || order.paymentStatus === 'Deposit Paid' || order.paymentStatus === 'Paid in Full' ? (
+                          order.paymentSchedule?.installments && order.paymentSchedule.installments.length > 0 ? (
+                            <button
+                              onClick={() => setSchedulingOrder(order)}
+                              className="px-2.5 py-1 bg-purple-100 hover:bg-purple-200 text-[#2E0249] rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition-colors cursor-pointer border border-purple-300 shadow-2xs"
+                              title="Manage Installment Deadlines & Amounts"
+                            >
+                              <CalendarClock className="w-3.5 h-3.5 text-purple-700" />
+                              <span>{order.paymentSchedule.installments.length} Installments Set</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setSchedulingOrder(order)}
+                              className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition-colors cursor-pointer border border-amber-300 shadow-2xs"
+                              title="Initial WiPay deposit paid. Click to configure payment timeframe & deadlines."
+                            >
+                              <CalendarClock className="w-3.5 h-3.5 text-amber-700" />
+                              <span>Set Deadlines</span>
+                            </button>
+                          )
+                        ) : (
+                          <div
+                            className="px-2 py-1 bg-neutral-100 text-neutral-400 rounded-lg text-[10px] font-semibold flex items-center gap-1 border border-neutral-200 cursor-not-allowed select-none"
+                            title="Payment timeframe can only be created after the initial WiPay deposit is completed"
+                          >
+                            <Lock className="w-3 h-3 text-neutral-400" />
+                            <span>Awaiting Initial Deposit</span>
+                          </div>
+                        )}
+                      </td>
+
                       {/* Actions Column (Sticky Right) */}
                       <td className="p-2.5 text-center sticky right-0 bg-white/95 backdrop-blur-xs shadow-l whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => {
+                              if (order.depositPaid > 0 || order.paymentStatus === 'Deposit Paid' || order.paymentStatus === 'Paid in Full') {
+                                setSchedulingOrder(order);
+                              } else {
+                                showNotification(
+                                  'Initial Deposit Required',
+                                  'A payment timeframe can only be created after the customer completes the initial WiPay deposit process.',
+                                  'warning'
+                                );
+                              }
+                            }}
+                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                              order.depositPaid > 0 || order.paymentStatus === 'Deposit Paid' || order.paymentStatus === 'Paid in Full'
+                                ? 'text-amber-700 hover:bg-amber-100'
+                                : 'text-neutral-400 hover:bg-neutral-100'
+                            }`}
+                            title={
+                              order.depositPaid > 0 || order.paymentStatus === 'Deposit Paid' || order.paymentStatus === 'Paid in Full'
+                                ? 'Configure Payment Deadlines & Installments'
+                                : 'Payment timeframe locked until initial WiPay deposit is completed'
+                            }
+                          >
+                            <CalendarClock className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={() => setInspectOrder(order)}
                             className="p-1.5 rounded-lg text-purple-900 hover:bg-purple-100 transition-colors cursor-pointer"
@@ -1271,6 +1334,66 @@ export const AdminOrdersTable: React.FC = () => {
                   />
                 </div>
               </div>
+
+              {/* Payment Timeframe & Deadlines Schedule Section */}
+              <div className="bg-gradient-to-br from-purple-50 to-amber-50/40 p-4 rounded-2xl border border-purple-200 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-[#2E0249] text-[#FFC72C] flex items-center justify-center font-bold shadow-xs shrink-0">
+                      <CalendarClock className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-neutral-900 uppercase tracking-wider">
+                        Payment Timeframe & Installment Deadlines
+                      </h4>
+                      <p className="text-[11px] text-neutral-600">
+                        {inspectOrder.depositPaid > 0 || inspectOrder.paymentStatus === 'Deposit Paid' || inspectOrder.paymentStatus === 'Paid in Full'
+                          ? 'Initial deposit completed! Configure deadline dates and amounts for remaining balance.'
+                          : 'Customer must complete initial WiPay deposit before payment deadlines can be scheduled.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {inspectOrder.depositPaid > 0 || inspectOrder.paymentStatus === 'Deposit Paid' || inspectOrder.paymentStatus === 'Paid in Full' ? (
+                    <button
+                      type="button"
+                      onClick={() => setSchedulingOrder(inspectOrder)}
+                      className="px-4 py-2 bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-black text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:scale-101 shrink-0"
+                    >
+                      <CalendarClock className="w-4 h-4" />
+                      <span>{inspectOrder.paymentSchedule?.installments?.length ? 'Edit Deadlines & Amounts' : 'Set Deadlines & Amounts'}</span>
+                    </button>
+                  ) : (
+                    <div className="px-3 py-1.5 bg-neutral-100 text-neutral-400 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-neutral-200 shrink-0">
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>Awaiting WiPay Deposit</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Show installment list if already configured */}
+                {inspectOrder.paymentSchedule?.installments && inspectOrder.paymentSchedule.installments.length > 0 && (
+                  <div className="space-y-2 pt-2 border-t border-purple-200/60">
+                    <div className="text-[10px] font-bold text-purple-900 uppercase tracking-wider">Configured Deadlines:</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {inspectOrder.paymentSchedule.installments.map((inst, i) => (
+                        <div key={inst.id || i} className="p-2.5 bg-white rounded-xl border border-purple-100 text-xs flex items-center justify-between shadow-2xs">
+                          <div>
+                            <span className="font-bold text-neutral-800 block text-xs">{inst.label}</span>
+                            <span className="text-[11px] text-neutral-500">Deadline: <strong className="text-purple-950 font-mono">{inst.dueDate}</strong></span>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-mono font-black text-[#2E0249] block">{formatPriceJMD(inst.amount)}</span>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                              inst.status === 'Paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                            }`}>{inst.status}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center justify-between border-t border-neutral-100 pt-4">
@@ -1523,6 +1646,14 @@ export const AdminOrdersTable: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ADMIN INSTALLMENT SCHEDULE MODAL (Post-Deposit Timeframe & Deadlines) */}
+      {schedulingOrder && (
+        <AdminInstallmentScheduleModal
+          order={schedulingOrder}
+          onClose={() => setSchedulingOrder(null)}
+        />
       )}
     </div>
   );

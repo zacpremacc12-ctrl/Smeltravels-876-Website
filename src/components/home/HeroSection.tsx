@@ -17,6 +17,7 @@ import {
   MessageCircle,
   Tag,
   Zap,
+  Eye,
 } from 'lucide-react';
 import { useApp, formatPriceJMD } from '../../context/AppContext';
 
@@ -30,6 +31,7 @@ export const HeroSection: React.FC = () => {
     openLocalTripDetail,
     openLocalTripInquiry,
     setSelectedTripForInquiry,
+    openWiPayCheckout,
   } = useApp();
   const [selectedYear, setSelectedYear] = useState<'all' | '2026' | '2027'>('all');
   const [selectedDest, setSelectedDest] = useState<string>('all');
@@ -187,23 +189,49 @@ export const HeroSection: React.FC = () => {
 
               const handleFeaturedBooking = () => {
                 if (isLocal && matchedLocalTrip) {
-                  openLocalTripInquiry(matchedLocalTrip);
+                  openWiPayCheckout({
+                    tripId: matchedLocalTrip.id,
+                    title: matchedLocalTrip.title,
+                    deposit: matchedLocalTrip.deposit || 35000,
+                    totalPrice: matchedLocalTrip.price || 108000,
+                    dates: matchedLocalTrip.availableDates || heroConfig?.dates || 'October 30 – November 1, 2026',
+                    location: matchedLocalTrip.location || 'Royalton Negril, Jamaica',
+                  });
                 } else if (!isLocal && matchedAbroadTrip) {
-                  navigateTo('trip-detail', matchedAbroadTrip.slug);
-                } else if (matchedLocalTrip) {
-                  openLocalTripInquiry(matchedLocalTrip);
+                  openWiPayCheckout({
+                    tripId: matchedAbroadTrip.id,
+                    title: matchedAbroadTrip.name,
+                    deposit: matchedAbroadTrip.deposit,
+                    totalPrice: matchedAbroadTrip.price,
+                    dates: matchedAbroadTrip.dates,
+                    location: `${matchedAbroadTrip.destination}, ${matchedAbroadTrip.country}`,
+                  });
                 } else {
-                  navigateTo('local-trips');
+                  openWiPayCheckout({
+                    tripId: 'royalton-negril-flash-sale-2026',
+                    title: cardTitle,
+                    deposit: 35000,
+                    totalPrice: 108000,
+                    dates: cardDates,
+                    location: cardLocation,
+                  });
                 }
               };
 
               const handleFeaturedDetails = () => {
-                if (isLocal && matchedLocalTrip) {
-                  openLocalTripDetail(matchedLocalTrip.id);
+                if (isLocal) {
+                  const targetId =
+                    matchedLocalTrip?.id ||
+                    heroConfig?.selectedTripId ||
+                    heroConfig?.targetSlugOrId ||
+                    'royalton-negril-flash-sale-2026';
+                  openLocalTripDetail(targetId);
                 } else if (!isLocal && matchedAbroadTrip) {
                   navigateTo('trip-detail', matchedAbroadTrip.slug);
+                } else if (matchedLocalTrip) {
+                  openLocalTripDetail(matchedLocalTrip.id);
                 } else {
-                  navigateTo('local-trips');
+                  openLocalTripDetail('royalton-negril-flash-sale-2026');
                 }
               };
 
@@ -213,7 +241,11 @@ export const HeroSection: React.FC = () => {
                   <div className="absolute -inset-1 bg-gradient-to-r from-amber-500/20 via-purple-600/30 to-amber-500/20 blur-xl opacity-75 -z-10 pointer-events-none" />
 
                   {/* Top Image Banner */}
-                  <div className="relative h-64 sm:h-72 w-full overflow-hidden bg-neutral-900 group">
+                  <div
+                    onClick={handleFeaturedDetails}
+                    className="relative h-64 sm:h-72 w-full overflow-hidden bg-neutral-900 group cursor-pointer"
+                    title="Click to view full trip details"
+                  >
                     <img
                       src={displayImage}
                       alt={cardTitle}
@@ -250,7 +282,7 @@ export const HeroSection: React.FC = () => {
                         <MapPin className="w-3 h-3 text-[#FFC72C]" />
                         <span>{cardLocation}</span>
                       </div>
-                      <h3 className="text-xl sm:text-2xl font-black font-['Outfit',sans-serif] text-white leading-tight drop-shadow-md">
+                      <h3 className="text-xl sm:text-2xl font-black font-['Outfit',sans-serif] text-white leading-tight drop-shadow-md group-hover:text-[#FFC72C] transition-colors">
                         {cardTitle}
                       </h3>
                     </div>
@@ -298,8 +330,10 @@ export const HeroSection: React.FC = () => {
                       <button
                         onClick={handleFeaturedBooking}
                         className="w-full sm:flex-1 bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-black text-sm py-3 px-4 rounded-xl text-center shadow-lg hover:scale-101 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                        id="featured-hero-book-now-btn"
+                        title="Book Now (Pay Deposit) with secure WiPay Jamaica checkout"
                       >
-                        <span>Book Flash Sale Now</span>
+                        <span>Book Now (Pay Deposit)</span>
                         <ArrowRight className="w-4 h-4" />
                       </button>
 
@@ -319,12 +353,16 @@ export const HeroSection: React.FC = () => {
 
                     <div className="flex items-center justify-between text-[11px] text-neutral-400 pt-1 border-t border-white/10">
                       <button
+                        type="button"
                         onClick={handleFeaturedDetails}
-                        className="text-neutral-300 hover:text-[#FFC72C] underline font-medium cursor-pointer"
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-[#FFC72C] hover:text-amber-200 transition-all py-1.5 px-3 rounded-lg bg-white/10 hover:bg-white/15 border border-[#FFC72C]/40 hover:border-[#FFC72C] cursor-pointer shadow-xs active:scale-95"
+                        id="featured-trip-view-details-btn"
+                        title="View complete trip details, inclusions, itinerary, and photos"
                       >
-                        View Full Details & Inclusions
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>View Full Details & Inclusions</span>
                       </button>
-                      <span className="text-amber-300 font-semibold">
+                      <span className="text-amber-300 font-semibold hidden sm:inline">
                         ✨ Travel More • Stress Less!
                       </span>
                     </div>

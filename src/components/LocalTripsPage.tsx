@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp, formatPriceJMD } from '../context/AppContext';
 import { LocalTrip, TripPackage } from '../types';
+import { LocalTripDetailModal } from './common/LocalTripDetailModal';
 import {
   MapPin,
   Calendar,
@@ -34,6 +35,8 @@ export const LocalTripsPage: React.FC = () => {
     navigateTo,
     selectedLocalTripDetail,
     setSelectedLocalTripDetail,
+    openLocalTripDetail,
+    openWiPayCheckout,
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,36 +85,14 @@ export const LocalTripsPage: React.FC = () => {
   }, [localTrips, selectedCategory, searchQuery, sortBy]);
 
   const handleOpenBooking = (trip: LocalTrip) => {
-    // Map LocalTrip to existing booking flow
-    const bookingTrip: TripPackage = {
-      id: trip.id,
-      slug: trip.slug,
-      name: trip.title,
-      destination: trip.location,
-      country: 'Jamaica',
-      countryFlag: '🇯🇲',
-      year: 2026,
-      dates: trip.availableDates || 'Upcoming',
-      hotel: trip.location,
-      price: trip.price,
-      currency: trip.currency || 'JMD',
+    openWiPayCheckout({
+      tripId: trip.id,
+      title: trip.title,
       deposit: trip.deposit || Math.round(trip.price * 0.3),
-      shortDescription: trip.description,
-      fullDescription: trip.fullDescription || trip.description,
-      packageInclusions: trip.inclusions || [],
-      exclusions: trip.exclusions || [],
-      itinerary: [],
-      travelRequirements: ['Valid Government-issued ID'],
-      visaRequirements: 'No visa required for Jamaica local travel',
-      excursions: trip.highlights || [],
-      baggageInfo: 'Standard personal luggage included',
-      paymentPlanInfo: 'Flexible deposit and balance payment plans available with SMELTRAVELS876',
-      featuredImage: trip.featuredImage,
-      gallery: [trip.featuredImage],
-      status: trip.status === 'Sold Out' ? 'Sold Out' : trip.status === 'Limited Spots' ? 'Limited Availability' : 'Available',
-      orderIndex: trip.orderIndex,
-    };
-    setSelectedTripForBooking(bookingTrip);
+      totalPrice: trip.price,
+      dates: trip.availableDates || trip.duration,
+      location: trip.location,
+    });
     setActiveModalTrip(null);
     setSelectedLocalTripDetail(null);
   };
@@ -421,11 +402,11 @@ export const LocalTripsPage: React.FC = () => {
                               Package Rate ({trip.priceType || 'Per Person'})
                             </div>
                             <div className="text-xl font-extrabold text-[#FFC72C] leading-none mt-1">
-                              {trip.currency === 'USD' ? `$${trip.price.toLocaleString()} USD` : formatPriceJMD(trip.price)}
+                              {formatPriceJMD(trip.price)}
                             </div>
                             {opts.showDeposit && trip.deposit && trip.deposit > 0 && (
                               <div className="text-[11px] text-emerald-400 font-bold mt-1">
-                                Low Deposit: {trip.currency === 'USD' ? `$${trip.deposit.toLocaleString()} USD` : formatPriceJMD(trip.deposit)}
+                                Low Deposit: {formatPriceJMD(trip.deposit)}
                               </div>
                             )}
                           </div>
@@ -436,8 +417,8 @@ export const LocalTripsPage: React.FC = () => {
                         )}
 
                         <button
-                          onClick={() => setActiveModalTrip(trip)}
-                          className="text-xs text-neutral-300 hover:text-white font-bold flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-neutral-700/60 hover:bg-neutral-700 transition-colors"
+                          onClick={() => openLocalTripDetail(trip.id)}
+                          className="text-xs text-neutral-300 hover:text-white font-bold flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-neutral-700/60 hover:bg-neutral-700 transition-colors cursor-pointer"
                           id={`view-details-btn-${trip.id}`}
                         >
                           <Eye className="w-3.5 h-3.5" /> Details
@@ -446,8 +427,8 @@ export const LocalTripsPage: React.FC = () => {
 
                       <div className="grid grid-cols-2 gap-2">
                         <button
-                          onClick={() => setActiveModalTrip(trip)}
-                          className="py-2.5 px-3 rounded-xl bg-neutral-700 hover:bg-neutral-600 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-neutral-600"
+                          onClick={() => openLocalTripDetail(trip.id)}
+                          className="py-2.5 px-3 rounded-xl bg-neutral-700 hover:bg-neutral-600 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-neutral-600 cursor-pointer"
                         >
                           <span>Full Overview</span>
                         </button>
@@ -455,14 +436,15 @@ export const LocalTripsPage: React.FC = () => {
                         <button
                           onClick={() => handleOpenBooking(trip)}
                           disabled={trip.status === 'Sold Out'}
-                          className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 shadow-md ${
+                          className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer ${
                             trip.status === 'Sold Out'
                               ? 'bg-neutral-700 text-neutral-400 cursor-not-allowed'
                               : 'bg-[#FFC72C] text-[#2E0249] hover:bg-amber-300 hover:shadow-[#FFC72C]/20'
                           }`}
                           id={`book-trip-btn-${trip.id}`}
+                          title="Book Now (Pay Deposit) with secure WiPay Jamaica checkout"
                         >
-                          <span>{trip.ctaText || 'Book Now'}</span>
+                          <span>Book Now (Pay Deposit)</span>
                           <ArrowRight className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -536,229 +518,11 @@ export const LocalTripsPage: React.FC = () => {
       </section>
 
       {/* Interactive Trip Detail Modal */}
-      {currentDetailTrip && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div
-            className="bg-neutral-900 border border-purple-800/60 rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col relative text-neutral-100"
-            onClick={(e) => e.stopPropagation()}
-            id={`local-trip-detail-modal-${currentDetailTrip.id}`}
-          >
-            {/* Modal Header / Banner */}
-            <div className="relative aspect-[16/9] sm:aspect-[21/9] w-full bg-neutral-950 overflow-hidden shrink-0">
-              <img
-                src={currentDetailTrip.featuredImage}
-                alt={currentDetailTrip.title}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src =
-                    'https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=1200&q=80';
-                }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-neutral-900/40 to-black/60" />
-
-              {/* Close button */}
-              <button
-                onClick={() => {
-                  setActiveModalTrip(null);
-                  setSelectedLocalTripDetail(null);
-                }}
-                className="absolute top-4 right-4 p-2 rounded-full bg-black/60 hover:bg-black text-white hover:text-[#FFC72C] transition-all border border-white/20"
-                id="close-trip-detail-modal-btn"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              {/* Top Badges */}
-              <div className="absolute top-4 left-4 flex flex-wrap items-center gap-2">
-                <span className="text-xs font-black uppercase tracking-wider px-3 py-1 rounded-full bg-[#2E0249] text-[#FFC72C] border border-[#FFC72C]/40">
-                  {currentDetailTrip.category}
-                </span>
-                {getStatusBadge(currentDetailTrip.status)}
-              </div>
-
-              {/* Title on Banner */}
-              <div className="absolute bottom-4 left-4 right-4">
-                {currentDetailTrip.subtitle && (
-                  <div className="text-xs font-bold text-[#FFC72C] uppercase tracking-wider mb-1">
-                    {currentDetailTrip.subtitle}
-                  </div>
-                )}
-                <h2 className="text-xl sm:text-3xl font-black text-white leading-tight">
-                  {currentDetailTrip.title}
-                </h2>
-                <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-neutral-200">
-                  <span className="flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-[#FFC72C]" />
-                    {currentDetailTrip.location}
-                  </span>
-                  {currentDetailTrip.duration && (
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-[#FFC72C]" />
-                      {currentDetailTrip.duration}
-                    </span>
-                  )}
-                  {currentDetailTrip.availableDates && (
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5 text-[#FFC72C]" />
-                      {currentDetailTrip.availableDates}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-5 sm:p-7 space-y-6">
-              {/* Pricing & Deposit Banner */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-neutral-800/90 border border-neutral-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <div className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">
-                    Total Package Rate ({currentDetailTrip.priceType || 'Per Person'})
-                  </div>
-                  <div className="text-2xl sm:text-3xl font-black text-[#FFC72C] mt-1">
-                    {currentDetailTrip.currency === 'USD'
-                      ? `$${currentDetailTrip.price.toLocaleString()} USD`
-                      : formatPriceJMD(currentDetailTrip.price)}
-                  </div>
-                  {currentDetailTrip.deposit && currentDetailTrip.deposit > 0 && (
-                    <div className="text-xs font-bold text-emerald-400 mt-1 flex items-center gap-1">
-                      <ShieldCheck className="w-4 h-4" />
-                      <span>
-                        Deposit to Reserve Spot:{' '}
-                        {currentDetailTrip.currency === 'USD'
-                          ? `$${currentDetailTrip.deposit.toLocaleString()} USD`
-                          : formatPriceJMD(currentDetailTrip.deposit)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleOpenBooking(currentDetailTrip)}
-                    disabled={currentDetailTrip.status === 'Sold Out'}
-                    className={`px-6 py-3 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 shadow-lg ${
-                      currentDetailTrip.status === 'Sold Out'
-                        ? 'bg-neutral-700 text-neutral-400 cursor-not-allowed'
-                        : 'bg-[#FFC72C] text-[#2E0249] hover:bg-amber-300 shadow-[#FFC72C]/20'
-                    }`}
-                    id="modal-reserve-spot-btn"
-                  >
-                    <span>{currentDetailTrip.ctaText || 'Reserve Spot Now'}</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Description */}
-              <div>
-                <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <Info className="w-4 h-4 text-[#FFC72C]" />
-                  Trip Overview
-                </h4>
-                <p className="text-sm text-neutral-200 leading-relaxed font-normal">
-                  {currentDetailTrip.fullDescription || currentDetailTrip.description}
-                </p>
-              </div>
-
-              {/* Highlights */}
-              {currentDetailTrip.highlights && currentDetailTrip.highlights.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-[#FFC72C]" />
-                    Trip Highlights
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {currentDetailTrip.highlights.map((h, i) => (
-                      <span
-                        key={i}
-                        className="text-xs font-bold px-3 py-1.5 rounded-xl bg-neutral-800 border border-purple-800/40 text-neutral-200 flex items-center gap-1.5"
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#FFC72C]"></span>
-                        {h}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Inclusions & Exclusions */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
-                {currentDetailTrip.inclusions && currentDetailTrip.inclusions.length > 0 && (
-                  <div className="p-4 rounded-2xl bg-neutral-800/70 border border-neutral-700/60">
-                    <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4" />
-                      What's Included
-                    </h4>
-                    <ul className="space-y-2">
-                      {currentDetailTrip.inclusions.map((inc, i) => (
-                        <li key={i} className="text-xs text-neutral-200 flex items-start gap-2">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                          <span>{inc}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {currentDetailTrip.exclusions && currentDetailTrip.exclusions.length > 0 && (
-                  <div className="p-4 rounded-2xl bg-neutral-800/70 border border-neutral-700/60">
-                    <h4 className="text-xs font-bold text-rose-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                      <XCircle className="w-4 h-4" />
-                      What's Not Included
-                    </h4>
-                    <ul className="space-y-2">
-                      {currentDetailTrip.exclusions.map((exc, i) => (
-                        <li key={i} className="text-xs text-neutral-300 flex items-start gap-2">
-                          <XCircle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
-                          <span>{exc}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-
-              {/* Contact / Inquire Options */}
-              <div className="pt-4 border-t border-neutral-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-                <div className="text-neutral-400 text-center sm:text-left">
-                  Have questions about this trip? Reach our team directly:
-                </div>
-                <div className="flex items-center gap-2">
-                  <a
-                    href={`https://wa.me/18768341537?text=${encodeURIComponent(
-                      `Hi SMELTRAVELS876, I would like more information on the "${currentDetailTrip.title}" local trip!`
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1.5 transition-colors"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    <span>WhatsApp</span>
-                  </a>
-
-                  <a
-                    href={`tel:${currentDetailTrip.contactPhone || settings.primaryPhone}`}
-                    className="px-3.5 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-bold flex items-center gap-1.5 border border-neutral-700 transition-colors"
-                  >
-                    <Phone className="w-3.5 h-3.5 text-[#FFC72C]" />
-                    <span>Call Us</span>
-                  </a>
-
-                  <a
-                    href={`mailto:${currentDetailTrip.contactEmail || settings.primaryEmail}?subject=${encodeURIComponent(
-                      `Inquiry: ${currentDetailTrip.title}`
-                    )}`}
-                    className="px-3.5 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-bold flex items-center gap-1.5 border border-neutral-700 transition-colors"
-                  >
-                    <Mail className="w-3.5 h-3.5 text-[#FFC72C]" />
-                    <span>Email</span>
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      {activeModalTrip && !selectedLocalTripDetail && (
+        <LocalTripDetailModal
+          trip={activeModalTrip}
+          onClose={() => setActiveModalTrip(null)}
+        />
       )}
     </div>
   );

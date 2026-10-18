@@ -3258,6 +3258,87 @@ export const AdminDashboard: React.FC = () => {
                     className="w-full p-2.5 border border-neutral-300 rounded-xl"
                   />
                 </div>
+
+                {/* WIPAY JAMAICA LIVE ACCOUNT & ME LINK SETTINGS */}
+                <div className="p-4 bg-gradient-to-r from-amber-50 via-purple-50 to-amber-50 rounded-2xl border-2 border-amber-300 space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-[#2E0249] text-[#FFC72C] flex items-center justify-center font-black text-xs shadow-xs">
+                        WP
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black text-[#2E0249]">
+                          WiPay Jamaica Live Merchant Account (@smeltravels)
+                        </h4>
+                        <p className="text-[11px] text-neutral-600">
+                          Connected to live master link with dynamic pricing parameters and embedded lightbox overlay.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="bg-emerald-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider shadow-xs flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                      Live & Embedded
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 text-xs">
+                    <div>
+                      <label className="font-bold text-neutral-700 block mb-1">WiPay Account Number (10 Digits)</label>
+                      <input
+                        type="text"
+                        placeholder="2397990892"
+                        value={localSettings.companyBanking?.wipayAccountNumber || '2397990892'}
+                        onChange={(e) => updateBankingField('wipayAccountNumber', e.target.value)}
+                        className="w-full p-2.5 border border-neutral-300 rounded-xl font-mono text-xs bg-white font-bold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-neutral-700 block mb-1">WiPay Live Developer API Key</label>
+                      <input
+                        type="text"
+                        placeholder="qxhk2m4kvg"
+                        value={localSettings.companyBanking?.wipayApiKey || 'qxhk2m4kvg'}
+                        onChange={(e) => updateBankingField('wipayApiKey', e.target.value)}
+                        className="w-full p-2.5 border border-neutral-300 rounded-xl font-mono text-xs bg-white font-bold text-purple-900"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-neutral-700 block mb-1">Master WiPay Me Link</label>
+                      <input
+                        type="url"
+                        placeholder="https://jm.wipayfinancial.com/to_me/smeltravels"
+                        value={localSettings.companyBanking?.wipayMasterLink || 'https://jm.wipayfinancial.com/to_me/smeltravels'}
+                        onChange={(e) => updateBankingField('wipayMasterLink', e.target.value)}
+                        className="w-full p-2.5 border border-neutral-300 rounded-xl font-mono text-xs bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-neutral-700 block mb-1">WiPay Me Username / Account</label>
+                      <input
+                        type="text"
+                        placeholder="smeltravels"
+                        value={localSettings.companyBanking?.wipayMeUsername || 'smeltravels'}
+                        onChange={(e) => updateBankingField('wipayMeUsername', e.target.value)}
+                        className="w-full p-2.5 border border-neutral-300 rounded-xl font-mono text-xs bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-white/90 rounded-xl border border-amber-200 text-[11px] text-neutral-700 space-y-1">
+                    <div className="font-bold text-[#2E0249] flex items-center gap-1.5">
+                      <span>✓ Dynamic Link Injected On Click:</span>
+                    </div>
+                    <code className="block bg-neutral-100 p-2 rounded-lg text-[10px] font-mono text-purple-950 break-all select-all">
+                      {(localSettings.companyBanking?.wipayMasterLink || 'https://jm.wipayfinancial.com/to_me/smeltravels')}?total={'{trip.deposit}'}&amount={'{trip.deposit}'}&client_note={'{trip.title}'}
+                    </code>
+                    <p className="text-[10px] text-neutral-500 pt-1">
+                      Travelers stay on-site in a modal lightbox overlay without opening new tabs. Once payment completes, the overlay closes automatically with a clean booking confirmation message.
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {/* QUICK ACCESS: CUSTOM TRIP DESTINATIONS & GALLERIES */}

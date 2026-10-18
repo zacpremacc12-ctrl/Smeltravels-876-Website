@@ -84,6 +84,10 @@ export const INITIAL_SETTINGS: SiteSettings = {
     officeDepositAddress: '12 Trafalgar Road, Suite 4B, Kingston 10, Jamaica',
     cardGatewayProvider: 'WiPay Caribbean / NCB eCommerce',
     cardGatewayMerchantId: 'MERCHANT-876-SMEL',
+    wipayAccountNumber: '2397990892',
+    wipayApiKey: 'qxhk2m4kvg',
+    wipayMasterLink: 'https://jm.wipayfinancial.com/to_me/smeltravels',
+    wipayMeUsername: 'smeltravels',
     paymentInstructions: 'Deposits directly credit the official SMELTRAVELS876 corporate operational account. Upload your transfer receipt or WhatsApp confirmation for real-time verification.',
   },
   brandColors: {

@@ -35,6 +35,7 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
     savedTripIds,
     toggleSaveTrip,
     secureSpotForTrip,
+    openWiPayCheckout,
     settings,
     showNotification,
   } = useApp();
@@ -113,10 +114,20 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
             </button>
 
             <button
-              onClick={() => secureSpotForTrip(trip)}
+              onClick={() =>
+                openWiPayCheckout({
+                  tripId: trip.id,
+                  title: trip.name,
+                  deposit: trip.deposit,
+                  totalPrice: trip.price,
+                  dates: trip.dates,
+                  location: `${trip.destination}, ${trip.country}`,
+                })
+              }
               className="bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-bold text-xs sm:text-sm px-4 py-2 rounded-xl transition-all shadow-sm cursor-pointer"
+              title="Book Now (Pay Deposit) with secure WiPay Jamaica checkout"
             >
-              Secure Your Spot
+              Book Now (Pay Deposit)
             </button>
           </div>
         </div>
@@ -557,12 +568,22 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
 
               <div className="space-y-2.5 pt-2">
                 <button
-                  onClick={() => secureSpotForTrip(trip)}
+                  onClick={() =>
+                    openWiPayCheckout({
+                      tripId: trip.id,
+                      title: trip.name,
+                      deposit: trip.deposit,
+                      totalPrice: trip.price,
+                      dates: trip.dates,
+                      location: `${trip.destination}, ${trip.country}`,
+                    })
+                  }
                   className="w-full bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-bold text-sm py-3.5 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                   id="package-secure-spot-btn"
+                  title="Book Now (Pay Deposit) with secure WiPay Jamaica checkout"
                 >
                   <Sparkles className="w-4 h-4 fill-current" />
-                  <span>Secure Your Spot</span>
+                  <span>Book Now (Pay Deposit)</span>
                 </button>
 
                 <button

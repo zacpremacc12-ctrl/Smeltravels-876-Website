@@ -27,6 +27,7 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, highlight2026 }) => {
     savedTripIds,
     toggleSaveTrip,
     secureSpotForTrip,
+    openWiPayCheckout,
   } = useApp();
 
   const isSaved = savedTripIds.includes(trip.id);
@@ -264,7 +265,16 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, highlight2026 }) => {
           </button>
 
           <button
-            onClick={() => secureSpotForTrip(trip)}
+            onClick={() =>
+              openWiPayCheckout({
+                tripId: trip.id,
+                title: trip.name,
+                deposit: trip.deposit,
+                totalPrice: trip.price,
+                dates: trip.dates,
+                location: `${trip.destination}, ${trip.country}`,
+              })
+            }
             disabled={trip.status === 'Sold Out' || trip.status === 'Closed'}
             className={`w-full font-bold text-xs py-2.5 px-3 rounded-xl transition-colors flex items-center justify-center gap-1 shadow-sm cursor-pointer ${
               trip.status === 'Sold Out' || trip.status === 'Closed'
@@ -272,10 +282,10 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, highlight2026 }) => {
                 : 'bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249]'
             }`}
             id={`book-trip-${trip.id}`}
-            title="Secure your spot for this trip"
+            title="Book Now (Pay Deposit) with secure WiPay Jamaica checkout"
           >
             <Sparkles className="w-3.5 h-3.5 fill-current" />
-            <span>Secure Your Spot</span>
+            <span>Book Now (Pay Deposit)</span>
           </button>
         </div>
       </div>

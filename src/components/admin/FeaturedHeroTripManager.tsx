@@ -31,6 +31,8 @@ export const FeaturedHeroTripManager: React.FC = () => {
     updateSettings,
     trips,
     localTrips,
+    addLocalTrip,
+    updateLocalTrip,
     showNotification,
   } = useApp();
 
@@ -188,11 +190,78 @@ export const FeaturedHeroTripManager: React.FC = () => {
         featuredHeroTrip: featuredForm,
       });
 
+      // Synchronize into Local Trips database if marked as local
+      if (featuredForm.tripType === 'local') {
+        const existingLocal = localTrips.find(
+          (t) =>
+            t.id === featuredForm.selectedTripId ||
+            t.slug === featuredForm.targetSlugOrId ||
+            t.title.toLowerCase() === featuredForm.title.toLowerCase()
+        );
+
+        const numericPrice =
+          typeof featuredForm.priceDisplay === 'string'
+            ? parseInt(featuredForm.priceDisplay.replace(/[^0-9]/g, ''), 10) || 108000
+            : 108000;
+
+        if (existingLocal) {
+          updateLocalTrip(existingLocal.id, {
+            title: featuredForm.title,
+            subtitle: featuredForm.subtitle,
+            location: featuredForm.location,
+            availableDates: featuredForm.dates,
+            featuredImage: featuredForm.imageUrl,
+            inclusions: featuredForm.inclusions,
+            price: numericPrice,
+            isFeatured: true,
+            isPublished: true,
+          });
+        } else {
+          addLocalTrip({
+            title: featuredForm.title,
+            subtitle: featuredForm.subtitle,
+            slug:
+              featuredForm.targetSlugOrId ||
+              featuredForm.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            description: featuredForm.subtitle || featuredForm.title,
+            fullDescription: `🚨🌴 FLASH SALE ALERT! 🇯🇲✈️\n\n${featuredForm.subtitle}\n\n📍 ${featuredForm.location}\n📅 ${featuredForm.dates}\n💰 Total package price: ${featuredForm.priceDisplay}\n\n📲 Book now with Smeltravels876!\n📞 Call/WhatsApp: (876) 834-1537\n🌐 www.Smeltravels876.com\n\n✨ Travel More ✈️ Stress Less! 💛💙`,
+            featuredImage: featuredForm.imageUrl || '/images/royalton_negril_resort.jpg',
+            location: featuredForm.location,
+            category: 'Weekend Getaways',
+            price: numericPrice,
+            currency: 'JMD',
+            priceType: featuredForm.priceSubtitle || 'Two (2) Adults',
+            deposit: 35000,
+            duration: '3 Days / 2 Nights',
+            availableDates: featuredForm.dates,
+            status: 'Limited Spots',
+            ctaText: featuredForm.ctaText || 'Book Flash Sale',
+            inclusions: featuredForm.inclusions,
+            highlights: ['Flash Sale Deal', featuredForm.priceDisplay, 'Featured Offer'],
+            isPublished: true,
+            isFeatured: true,
+            orderIndex: 0,
+            displayOptions: {
+              showPrice: true,
+              showDeposit: true,
+              showDates: true,
+              showDuration: true,
+              showLocation: true,
+              showAvailability: true,
+              showCategory: true,
+              showInclusions: true,
+            },
+            contactPhone: '(876) 834-1537',
+            contactEmail: 'smeltravels876@gmail.com',
+          });
+        }
+      }
+
       if (ok) {
         setSaveSuccess(true);
         showNotification(
           'Featured Trip Saved',
-          `The homepage hero now showcases "${featuredForm.title}". Live for all visitors!`,
+          `The homepage hero now showcases "${featuredForm.title}". Mirrored to Local Trips!`,
           'success'
         );
         setTimeout(() => setSaveSuccess(false), 4000);

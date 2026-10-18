@@ -5,7 +5,7 @@ import { TripCard } from '../common/TripCard';
 import { getSafeTripImageUrl, handleTripImageError } from '../../lib/imageUtils';
 
 export const FeaturedTripsSection: React.FC = () => {
-  const { trips, navigateTo } = useApp();
+  const { trips, navigateTo, openWiPayCheckout } = useApp();
 
   // Priority to Mexico package for 2026 featured trip
   const featuredTrip = trips.find(t => t.country.toLowerCase().includes('mexico') || t.id.includes('mexico')) || trips.find(t => t.id === 'panama-2026' || t.is2026Featured) || trips[0];
@@ -109,12 +109,30 @@ export const FeaturedTripsSection: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     <button
                       onClick={() => navigateTo('trip-detail', featuredTrip.slug)}
-                      className="bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-bold text-sm px-6 py-3 rounded-xl shadow-md transition-all cursor-pointer"
+                      className="bg-white/15 hover:bg-white/25 text-white font-bold text-sm px-5 py-3 rounded-xl border border-white/20 transition-all cursor-pointer"
                     >
-                      View Mexico Package
+                      View Full Details
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        openWiPayCheckout({
+                          tripId: featuredTrip.id,
+                          title: featuredTrip.name,
+                          deposit: featuredTrip.deposit,
+                          totalPrice: featuredTrip.price,
+                          dates: featuredTrip.dates,
+                          location: `${featuredTrip.destination}, ${featuredTrip.country}`,
+                        })
+                      }
+                      className="bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-black text-sm px-6 py-3 rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                      title="Book Now (Pay Deposit) with secure WiPay Jamaica checkout"
+                    >
+                      <Sparkles className="w-4 h-4 fill-current" />
+                      <span>Book Now (Pay Deposit)</span>
                     </button>
                   </div>
                 </div>

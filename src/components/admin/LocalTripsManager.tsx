@@ -187,7 +187,7 @@ export const LocalTripsManager: React.FC = () => {
       duration: 'Weekend',
       availableDates: '',
       status: 'Available',
-      ctaText: 'Book Now',
+      ctaText: 'Book Now (Pay Deposit)',
       inclusions: ['Roundtrip air-conditioned transportation', 'Guided island excursion'],
       exclusions: ['Gratuities / tips'],
       highlights: ['Authentic Jamaican Experience'],
@@ -1029,9 +1029,9 @@ export const LocalTripsManager: React.FC = () => {
                       </label>
                       <input
                         type="text"
-                        value={editingTrip.ctaText || 'Book Now'}
+                        value={editingTrip.ctaText || 'Book Now (Pay Deposit)'}
                         onChange={(e) => setEditingTrip({ ...editingTrip, ctaText: e.target.value })}
-                        placeholder="e.g. Book Heroes Weekend or Reserve Spot"
+                        placeholder="e.g. Book Now (Pay Deposit)"
                         className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 text-sm focus:outline-none focus:border-[#2E0249]"
                       />
                     </div>

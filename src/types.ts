@@ -113,8 +113,34 @@ export interface BookingSubmission {
   discountPercentage?: number;
   discountAmount?: number;
   internalNotes: string[];
+  paymentSchedule?: PaymentSchedule;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PaymentInstallment {
+  id: string;
+  installmentNumber: number;
+  label: string; // e.g. "Installment #1 (50% Milestone)", "Final Balance"
+  amount: number; // in JMD
+  dueDate: string; // ISO or YYYY-MM-DD
+  status: 'Pending' | 'Paid' | 'Overdue' | 'Waived';
+  paidAt?: string;
+  paymentMethod?: string;
+  transactionRef?: string;
+  notes?: string;
+}
+
+export interface PaymentSchedule {
+  totalPrice: number;
+  depositPaid: number;
+  initialDepositDate: string;
+  initialTransactionId?: string;
+  remainingBalance: number;
+  currency: string;
+  installments: PaymentInstallment[];
+  configuredByAdmin?: string;
+  lastConfiguredAt?: string;
 }
 
 export type BookingInquiry = BookingSubmission;
@@ -279,7 +305,43 @@ export interface CompanyBankingSettings {
   officeDepositAddress: string;
   cardGatewayProvider?: string;
   cardGatewayMerchantId?: string;
+  wipayAccountNumber?: string;
+  wipayApiKey?: string;
+  wipayMasterLink?: string;
+  wipayMeUsername?: string;
   paymentInstructions?: string;
+}
+
+export interface WiPayCheckoutPayload {
+  tripId?: string;
+  title: string;
+  deposit: number;
+  totalPrice?: number;
+  dates?: string;
+  location?: string;
+  customerName?: string;
+  email?: string;
+  phone?: string;
+  countryOrParish?: string;
+  adultsCount?: number;
+  childrenCount?: number;
+  ambassadorName?: string;
+  preferredContactMethod?: string;
+  specialRequests?: string;
+}
+
+export interface BookingConfirmationDetails {
+  referenceNumber: string;
+  tripTitle: string;
+  depositPaid: number;
+  totalPrice?: number;
+  currency: string;
+  customerName: string;
+  email: string;
+  phone?: string;
+  paymentMethod: string;
+  transactionId: string;
+  date: string;
 }
 
 export interface Ambassador {
@@ -527,6 +589,7 @@ export interface AdminOrderExcelRecord {
   flightPricingStatus?: 'Estimated' | 'Manual Flight Pricing Required';
   estimatedMinimumBudgetUSD?: number;
   flightRouteMatched?: string;
+  paymentSchedule?: PaymentSchedule;
   lastUpdated?: string;
 }
 

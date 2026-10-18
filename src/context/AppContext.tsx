@@ -30,6 +30,10 @@ import {
   LocalTrip,
   LocalTripsPageSettings,
   WingoRouteRate,
+  WiPayCheckoutPayload,
+  BookingConfirmationDetails,
+  PaymentSchedule,
+  PaymentInstallment,
 } from '../types';
 import {
   INITIAL_SETTINGS,
@@ -174,6 +178,7 @@ interface AppContextType {
   sendBookingToExcel: (booking: BookingSubmission) => { success: boolean; id: string; isNew: boolean };
   isOrderInExcel: (refOrIdentifier?: string, email?: string) => boolean;
   syncAllInboxOrdersToExcel: () => { totalAdded: number; totalExisting: number };
+  updateBookingPaymentSchedule: (orderIdOrRef: string, schedule: PaymentSchedule) => void;
 
   // Bookmarks / Saved Trips
   savedTripIds: string[];
@@ -231,6 +236,15 @@ interface AppContextType {
   setIsReviewModalOpen: (open: boolean) => void;
   openReviewModal: () => void;
   closeReviewModal: () => void;
+
+  // WiPay Jamaica Live Gateway Integration
+  isWiPayCheckoutOpen: boolean;
+  wiPayCheckoutPayload: WiPayCheckoutPayload | null;
+  confirmedBookingDetails: BookingConfirmationDetails | null;
+  openWiPayCheckout: (payload: WiPayCheckoutPayload) => void;
+  closeWiPayCheckout: () => void;
+  completeWiPayBooking: (bookingData: Partial<BookingSubmission>) => BookingSubmission;
+  closeConfirmationModal: () => void;
 
   // Quick View modals
   selectedTripForBooking: TripPackage | null;
@@ -433,7 +447,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Local Trips State (Jamaican Tours, Excursions, Weekend Getaways)
   const [localTrips, setLocalTrips] = useState<LocalTrip[]>(() => {
-    return getStoredItem('local_trips', INITIAL_LOCAL_TRIPS);
+    const stored = getStoredItem<LocalTrip[]>('local_trips', INITIAL_LOCAL_TRIPS);
+    const royaltonItem = INITIAL_LOCAL_TRIPS.find((t) => t.id === 'royalton-negril-flash-sale-2026') || INITIAL_LOCAL_TRIPS[0];
+    if (royaltonItem) {
+      const idx = stored.findIndex((t) => t.id === royaltonItem.id || t.slug === royaltonItem.slug);
+      if (idx === -1) {
+        const merged = [royaltonItem, ...stored];
+        setStoredItem('local_trips', merged);
+        return merged;
+      }
+    }
+    return stored;
   });
   const [localTripsPageSettings, setLocalTripsPageSettings] = useState<LocalTripsPageSettings>(() => {
     return getStoredItem('local_trips_settings', INITIAL_LOCAL_TRIPS_PAGE_SETTINGS);
@@ -494,6 +518,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Modals & Navigation state
+  const [isWiPayCheckoutOpen, setIsWiPayCheckoutOpen] = useState(false);
+  const [wiPayCheckoutPayload, setWiPayCheckoutPayload] = useState<WiPayCheckoutPayload | null>(null);
+  const [confirmedBookingDetails, setConfirmedBookingDetails] = useState<BookingConfirmationDetails | null>(null);
+
+  const openWiPayCheckout = (payload: WiPayCheckoutPayload) => {
+    setWiPayCheckoutPayload(payload);
+    setIsWiPayCheckoutOpen(true);
+  };
+
+  const closeWiPayCheckout = () => {
+    setIsWiPayCheckoutOpen(false);
+    setWiPayCheckoutPayload(null);
+  };
+
+  const closeConfirmationModal = () => {
+    setConfirmedBookingDetails(null);
+  };
+
   const [selectedTripForBooking, setSelectedTripForBooking] = useState<TripPackage | null>(null);
   const [selectedTripForInquiry, setSelectedTripForInquiry] = useState<TripPackage | null>(null);
   const [selectedTripDetail, setSelectedTripDetail] = useState<TripPackage | null>(null);
@@ -1095,7 +1137,76 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const openLocalTripDetail = (idOrSlug: string) => {
-    const found = localTrips.find((t) => t.id === idOrSlug || t.slug === idOrSlug);
+    let found = localTrips.find((t) => t.id === idOrSlug || t.slug === idOrSlug);
+    if (!found) {
+      found = INITIAL_LOCAL_TRIPS.find((t) => t.id === idOrSlug || t.slug === idOrSlug);
+    }
+    if (!found && settings.featuredHeroTrip) {
+      const hero = settings.featuredHeroTrip;
+      const parsedPrice =
+        typeof hero.priceDisplay === 'string'
+          ? parseInt(hero.priceDisplay.replace(/[^0-9]/g, ''), 10) || 108000
+          : 108000;
+      found = {
+        id: hero.selectedTripId || 'royalton-negril-flash-sale-2026',
+        slug: hero.targetSlugOrId || 'royalton-negril-flash-sale-2026',
+        title: hero.title || 'Royalton Negril Resort & Spa — Flash Sale',
+        subtitle: hero.subtitle || 'Special Offer: $108,000 for 2 Adults • 1 Child Free',
+        description:
+          hero.subtitle ||
+          '🚨🌴 FLASH SALE ALERT! Your next getaway is calling! Escape to Royalton Negril Resort & Spa from October 30 – November 1, 2026 and enjoy a tropical experience with someone special!',
+        fullDescription:
+          `🚨🌴 FLASH SALE ALERT! 🇯🇲✈️\n\nYour next getaway is calling! 😍☀️ Escape to Royalton Negril Resort & Spa from October 30 – November 1, 2026 and enjoy a tropical experience with someone special!\n\n💛 SPECIAL OFFER: $108,000 for 2 adults!\n👶🏽 Bring ONE child FREE! 🎉\n\n📍 Royalton Negril, Jamaica\n📅 October 30 – November 1, 2026\n💰 Total package price: $108,000\n\nDon’t miss your chance to relax, unwind, and make unforgettable memories! 🏖️🍹\n\n📲 Book now with Smeltravels876!\n📞 Call/WhatsApp: (876) 834-1537\n🌐 www.Smeltravels876.com\n\n✨ Travel More ✈️ Stress Less! 💛💙\n\n⚠️ Flash sale offer—contact us to secure your spot!`,
+        featuredImage: hero.imageUrl || '/images/royalton_negril_resort.jpg',
+        location: hero.location || 'Royalton Negril, Jamaica',
+        category: 'Weekend Getaways',
+        price: parsedPrice,
+        currency: 'JMD',
+        priceType: hero.priceSubtitle || 'Two (2) Adults',
+        deposit: 35000,
+        duration: '3 Days / 2 Nights',
+        availableDates: hero.dates || 'October 30 – November 1, 2026',
+        status: 'Limited Spots',
+        ctaText: hero.ctaText || 'Book Flash Sale',
+        inclusions: hero.inclusions || [
+          'Two (2) Adults Package ($108,000 JMD)',
+          '👶🏽 Bring ONE (1) Child Allowed FREE! 🎉',
+          'Luxury All-Inclusive Accommodations',
+          'All Gourmet Dining, Specialty Bars & Premium Drinks',
+          'Seven Mile Beach Access & Resort Pools',
+          'Spa Services, Fitness Centre & Resort Activities',
+        ],
+        exclusions: [
+          'Motorized water excursions outside resort property',
+          'Airport transfer to Negril (available as add-on)',
+          'Personal spa treatments and premium vintage wines',
+        ],
+        highlights: [
+          '🚨 Flash Sale Deal',
+          'Two (2) Adults $108,000',
+          '👶🏽 1 Child Allowed FREE',
+          'October 30 – November 1, 2026',
+          'Royalton Negril Beachfront',
+          'All-Inclusive Luxury',
+        ],
+        isPublished: true,
+        isFeatured: true,
+        orderIndex: 0,
+        displayOptions: {
+          showPrice: true,
+          showDeposit: true,
+          showDates: true,
+          showDuration: true,
+          showLocation: true,
+          showAvailability: true,
+          showCategory: true,
+          showInclusions: true,
+        },
+        contactEmail: 'smeltravels876@gmail.com',
+        contactPhone: '(876) 834-1537',
+        createdAt: new Date().toISOString(),
+      };
+    }
     if (found) {
       setSelectedLocalTripDetail(found);
     }
@@ -1419,7 +1530,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               ...(updates.phone ? { phone: updates.phone } : {}),
               ...(updates.totalPrice !== undefined ? { totalPrice: updates.totalPrice } : {}),
               ...(updates.depositPaid !== undefined ? { depositPaid: updates.depositPaid } : {}),
-              ...(updates.orderStatus ? { status: updates.orderStatus as any } : {}),
+              ...(updates.paymentSchedule !== undefined ? { paymentSchedule: updates.paymentSchedule } : {}),
               ...(updates.adminNotes ? { internalNotes: [...(b.internalNotes || []), `[Admin Edit ${new Date().toLocaleDateString()}]: ${updates.adminNotes}`] } : {}),
               updatedAt: now,
             };
@@ -1430,6 +1541,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return updated;
       });
     }
+  };
+
+  const updateBookingPaymentSchedule = (orderIdOrRef: string, schedule: PaymentSchedule) => {
+    const now = new Date().toISOString();
+
+    // 1. Update in Excel Orders Database
+    setAdminOrdersExcel(prev => {
+      const updated = prev.map(order => {
+        if (order.id === orderIdOrRef || order.orderRef === orderIdOrRef) {
+          return {
+            ...order,
+            paymentSchedule: schedule,
+            lastUpdated: now,
+          };
+        }
+        return order;
+      });
+      syncToLiveServer({ adminOrdersExcel: updated });
+      return updated;
+    });
+
+    // 2. Update in Bookings Store
+    setBookings(prev => {
+      const updated = prev.map(b => {
+        if (b.id === orderIdOrRef || b.referenceNumber === orderIdOrRef) {
+          return {
+            ...b,
+            paymentSchedule: schedule,
+            updatedAt: now,
+          };
+        }
+        return b;
+      });
+      syncToLiveServer({ bookings: updated });
+      return updated;
+    });
+
+    showNotification('Payment Schedule Saved', `Installment deadlines and amounts updated for ${orderIdOrRef}.`, 'success');
   };
 
   const deleteAdminOrderExcel = (id: string) => {
@@ -2071,6 +2220,215 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     return ref;
+  };
+
+  // Complete WiPay booking & payment automatically
+  const completeWiPayBooking = (bookingData: Partial<BookingSubmission>): BookingSubmission => {
+    const now = new Date();
+    const yearPrefix = now.getFullYear();
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const ref = `ST-${yearPrefix}-${randomSuffix}`;
+    const generatedTxn = `WP-JM-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    const depositAmount = bookingData.depositPaid || 0;
+    const tripTitle = bookingData.tripName || 'Jamaican Tour & Travel';
+    const totalPkgPrice = bookingData.totalPrice || depositAmount;
+    const remainingBalance = Math.max(0, totalPkgPrice - depositAmount);
+
+    // Initial Installment Time Frame - created ONLY after the initial deposit is made!
+    let initialSchedule: PaymentSchedule | undefined = undefined;
+    if (remainingBalance > 0) {
+      const dueDate1 = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      const dueDate2 = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
+      const part1 = Math.round(remainingBalance / 2);
+      const part2 = remainingBalance - part1;
+
+      initialSchedule = {
+        totalPrice: totalPkgPrice,
+        depositPaid: depositAmount,
+        initialDepositDate: now.toISOString(),
+        initialTransactionId: generatedTxn,
+        remainingBalance,
+        currency: 'JMD',
+        configuredByAdmin: 'Executive Operations Desk (Pending Admin Deadlines Setup)',
+        lastConfiguredAt: now.toISOString(),
+        installments: [
+          {
+            id: `inst-${Date.now()}-1`,
+            installmentNumber: 1,
+            label: 'Installment #1 (Midway Milestone)',
+            amount: part1,
+            dueDate: dueDate1.toISOString().split('T')[0],
+            status: 'Pending',
+          },
+          {
+            id: `inst-${Date.now()}-2`,
+            installmentNumber: 2,
+            label: 'Installment #2 (Final Balance Payment)',
+            amount: part2,
+            dueDate: dueDate2.toISOString().split('T')[0],
+            status: 'Pending',
+          },
+        ],
+      };
+    }
+
+    const newBooking: BookingSubmission = {
+      id: `booking-wipay-${Date.now()}`,
+      referenceNumber: ref,
+      tripId: bookingData.tripId || `trip-${Date.now()}`,
+      tripName: tripTitle,
+      customerName: (bookingData.customerName || currentUser?.name || 'Valued Traveler').trim(),
+      email: (bookingData.email || currentUser?.email || 'booking@smeltravels876.com').trim(),
+      phone: (bookingData.phone || currentUser?.phone || '(876) 834-1537').trim(),
+      countryOrParish: bookingData.countryOrParish || 'Jamaica',
+      adultsCount: bookingData.adultsCount || 1,
+      childrenCount: bookingData.childrenCount || 0,
+      preferredTravelDate: bookingData.preferredTravelDate || 'Flexible',
+      travelInterestType: 'ready_to_book',
+      specialRequests: bookingData.specialRequests || `Live WiPay Deposit of $${depositAmount.toLocaleString()} JMD paid online`,
+      preferredContactMethod: bookingData.preferredContactMethod || 'whatsapp',
+      status: 'Deposit Paid',
+      depositPaid: depositAmount,
+      totalPrice: totalPkgPrice,
+      currency: 'JMD',
+      ambassadorName: bookingData.ambassadorName || 'Executive Operations Desk',
+      internalNotes: [`WiPay Jamaica live payment confirmed on ${now.toLocaleString()}. Txn: ${generatedTxn}.`],
+      paymentSchedule: initialSchedule,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+    };
+
+    setBookings(prev => {
+      const updated = [newBooking, ...prev];
+      syncToLiveServer({ bookings: updated });
+      return updated;
+    });
+
+    // Automatically add to Excel database
+    const excelOrder: AdminOrderExcelRecord = {
+      id: `order-wipay-${Date.now()}`,
+      orderRef: ref,
+      receivedAt: now.toISOString(),
+      orderType: 'Deposit Record',
+      customerName: newBooking.customerName,
+      email: newBooking.email,
+      phone: newBooking.phone || '',
+      parishOrCountry: newBooking.countryOrParish || 'Jamaica',
+      tripOrDestination: newBooking.tripName,
+      travelDates: newBooking.preferredTravelDate || '2026/2027 Season',
+      adultsCount: newBooking.adultsCount || 1,
+      childrenCount: newBooking.childrenCount || 0,
+      budget: `${formatPriceJMD(newBooking.totalPrice)} (Package Total)`,
+      totalPrice: newBooking.totalPrice,
+      depositPaid: depositAmount,
+      currency: 'JMD',
+      paymentStatus: 'Deposit Paid',
+      orderStatus: 'Confirmed',
+      preferredContact: 'WhatsApp',
+      assignedAdmin: 'Zachary Buchanan',
+      specialRequests: newBooking.specialRequests,
+      inclusions: 'Flights, Hotel, Airport Transfers, 2 Excursions',
+      adminNotes: `Live WiPay deposit verified on ${now.toLocaleString()}. Txn: ${generatedTxn}.`,
+      paymentSchedule: initialSchedule,
+      lastUpdated: now.toISOString(),
+    };
+    setAdminOrdersExcel(prev => {
+      const updated = [excelOrder, ...prev];
+      syncToLiveServer({ adminOrdersExcel: updated });
+      return updated;
+    });
+
+    // Create deposit record
+    const depositRecord: TravelerDepositRecord = {
+      id: `dep-${Date.now()}`,
+      tripId: newBooking.tripId,
+      tripName: tripTitle,
+      amount: depositAmount,
+      currency: 'JMD',
+      date: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      bookingRef: ref,
+      paymentMethod: 'WiPay Jamaica Live Gateway',
+      transactionId: generatedTxn,
+      status: 'Confirmed',
+    };
+
+    if (currentUser) {
+      recordUserDeposit(depositRecord, currentUser.email);
+    } else if (newBooking.email) {
+      recordUserDeposit(depositRecord, newBooking.email);
+    }
+
+    // Add to Admin Inbox for Elvoy & Zachary
+    addInboxItem({
+      type: 'deposit',
+      title: `🟢 [WiPay Deposit Paid] $${depositAmount.toLocaleString()} JMD for ${tripTitle}`,
+      senderName: newBooking.customerName,
+      senderEmail: newBooking.email,
+      senderPhone: newBooking.phone,
+      summary: `Traveler ${newBooking.customerName} completed WiPay Jamaica deposit of $${depositAmount.toLocaleString()} JMD for ${tripTitle}. Ref: ${ref}. Txn: ${generatedTxn}.`,
+      details: `WIPAY CONFIRMED BOOKING:\nTrip: ${tripTitle}\nDeposit Paid: $${depositAmount.toLocaleString()} JMD\nTotal Package: $${newBooking.totalPrice.toLocaleString()} JMD\nReference: ${ref}\nWiPay Txn: ${generatedTxn}\nTraveler: ${newBooking.customerName}\nEmail: ${newBooking.email}\nPhone: ${newBooking.phone}\nParish: ${newBooking.countryOrParish}\nPreferred Travel Dates: ${newBooking.preferredTravelDate}`,
+      tripName: tripTitle,
+      referenceNumber: ref,
+      adminRecipients: ['Elvoy Bennett', 'Zachary Buchanan'],
+      recipientEmails: ['zbuchanan.smeltravels@gmail.com', 'smeltravels876@gmail.com'],
+      emailStatus: 'Delivered',
+    });
+
+    // Update Customer profile
+    setCustomers(prev => {
+      const existing = prev.find(c => c.email.toLowerCase() === newBooking.email.toLowerCase());
+      let updatedCustomers: CustomerRecord[];
+      if (existing) {
+        updatedCustomers = prev.map(c =>
+          c.id === existing.id
+            ? {
+                ...c,
+                tripsOfInterest: Array.from(new Set([...c.tripsOfInterest, tripTitle])),
+                bookingCount: c.bookingCount + 1,
+                totalSpent: (c.totalSpent || 0) + depositAmount,
+                status: 'Active Traveler',
+              }
+            : c
+        );
+      } else {
+        const newCustomer: CustomerRecord = {
+          id: `cust-${Date.now()}`,
+          name: newBooking.customerName,
+          email: newBooking.email,
+          phone: newBooking.phone,
+          countryOrParish: newBooking.countryOrParish,
+          tripsOfInterest: [tripTitle],
+          bookingCount: 1,
+          inquiryCount: 0,
+          totalSpent: depositAmount,
+          notes: [`WiPay deposit confirmed for ${tripTitle} with reference ${ref}`],
+          status: 'Active Traveler',
+          communicationPreference: 'whatsapp',
+          createdAt: now.toISOString().split('T')[0],
+        };
+        updatedCustomers = [newCustomer, ...prev];
+      }
+      syncToLiveServer({ customers: updatedCustomers });
+      return updatedCustomers;
+    });
+
+    // Set confirmation details for clean confirmation view
+    setConfirmedBookingDetails({
+      referenceNumber: ref,
+      tripTitle,
+      depositPaid: depositAmount,
+      totalPrice: newBooking.totalPrice,
+      currency: 'JMD',
+      customerName: newBooking.customerName,
+      email: newBooking.email,
+      phone: newBooking.phone,
+      paymentMethod: 'WiPay Jamaica Verified Checkout',
+      transactionId: generatedTxn,
+      date: now.toLocaleString(),
+    });
+
+    return newBooking;
   };
 
   const updateBookingStatus = (id: string, status: BookingSubmission['status'], note?: string) => {
@@ -3262,7 +3620,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isReviewModalOpen,
         setIsReviewModalOpen,
         openReviewModal,
-        closeReviewModal,
+        // WiPay Jamaica Live Gateway Integration
+        isWiPayCheckoutOpen,
+        wiPayCheckoutPayload,
+        confirmedBookingDetails,
+        openWiPayCheckout,
+        closeWiPayCheckout,
+        completeWiPayBooking,
+        closeConfirmationModal,
         selectedTripForBooking,
         setSelectedTripForBooking,
         selectedTripForInquiry,
@@ -3290,6 +3655,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         adminOrdersExcel,
         addAdminOrderExcel,
         updateAdminOrderExcel,
+        updateBookingPaymentSchedule,
         deleteAdminOrderExcel,
         batchUpdateAdminOrdersExcel,
         sendInboxItemToExcel,

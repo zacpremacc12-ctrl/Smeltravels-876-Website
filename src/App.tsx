@@ -19,6 +19,7 @@ import { AdminDashboard } from './components/admin/AdminDashboard';
 
 // Modals & Floating Elements
 import { BookingModal } from './components/common/BookingModal';
+import { LocalTripDetailModal } from './components/common/LocalTripDetailModal';
 import { QuickSearchModal } from './components/common/QuickSearchModal';
 import { WhatsAppFloatingButton } from './components/common/WhatsAppFloatingButton';
 import { AuthModal } from './components/common/AuthModal';
@@ -26,6 +27,8 @@ import { ReviewSubmissionModal } from './components/common/ReviewSubmissionModal
 import { SavedTripsDrawer } from './components/common/SavedTripsDrawer';
 import { CustomTripModal } from './components/common/CustomTripModal';
 import { UserInquiryTrackerModal } from './components/common/UserInquiryTrackerModal';
+import { WiPayCheckoutModal } from './components/common/WiPayCheckoutModal';
+import { BookingConfirmationModal } from './components/common/BookingConfirmationModal';
 
 const MainContent: React.FC = () => {
   const {
@@ -33,9 +36,16 @@ const MainContent: React.FC = () => {
     pageParam,
     selectedTripForBooking,
     setSelectedTripForBooking,
+    selectedLocalTripDetail,
+    closeLocalTripDetail,
     isSearchOpen,
     setIsSearchOpen,
     notification,
+    isWiPayCheckoutOpen,
+    wiPayCheckoutPayload,
+    closeWiPayCheckout,
+    confirmedBookingDetails,
+    closeConfirmationModal,
   } = useApp();
 
   const renderCurrentView = () => {
@@ -119,6 +129,14 @@ const MainContent: React.FC = () => {
         />
       )}
 
+      {/* Local Trip Full Overview / Detail Modal */}
+      {selectedLocalTripDetail && (
+        <LocalTripDetailModal
+          trip={selectedLocalTripDetail}
+          onClose={closeLocalTripDetail}
+        />
+      )}
+
       {/* Quick Search Modal */}
       {isSearchOpen && (
         <QuickSearchModal onClose={() => setIsSearchOpen(false)} />
@@ -138,6 +156,25 @@ const MainContent: React.FC = () => {
 
       {/* User Inquiry & Deposit Progress Tracker (Guest & User accessible) */}
       <UserInquiryTrackerModal />
+
+      {/* Live WiPay Jamaica Embedded Checkout Lightbox / Overlay */}
+      {isWiPayCheckoutOpen && wiPayCheckoutPayload && (
+        <WiPayCheckoutModal
+          payload={wiPayCheckoutPayload}
+          onClose={closeWiPayCheckout}
+          onSuccess={() => {
+            closeWiPayCheckout();
+          }}
+        />
+      )}
+
+      {/* Clean Booking Confirmed Modal */}
+      {confirmedBookingDetails && (
+        <BookingConfirmationModal
+          details={confirmedBookingDetails}
+          onClose={closeConfirmationModal}
+        />
+      )}
 
       {/* WhatsApp Floating Button */}
       <WhatsAppFloatingButton />

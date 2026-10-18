@@ -25,6 +25,7 @@ import {
   Lock,
   Compass,
   Palmtree,
+  CalendarClock,
 } from 'lucide-react';
 import { useApp, formatPriceJMD } from '../../context/AppContext';
 import { AdminOrderExcelRecord, BookingSubmission, OrderWorkflowStatus } from '../../types';
@@ -55,6 +56,7 @@ export const UserInquiryTrackerModal: React.FC = () => {
     showNotification,
     navigateTo,
     openCustomTripModal,
+    openWiPayCheckout,
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -666,6 +668,133 @@ export const UserInquiryTrackerModal: React.FC = () => {
                   <div className="text-[11px] text-purple-700 mt-1 font-semibold">
                     {isPaidInFull ? '✓ Fully Settled' : 'Flexible payment schedule'}
                   </div>
+                </div>
+              </div>
+
+              {/* POST-DEPOSIT PAYMENT TIMEFRAME & DEADLINES SCHEDULE */}
+              <div className="rounded-2xl border border-purple-200 overflow-hidden shadow-2xs">
+                <div className="bg-gradient-to-r from-[#2E0249] via-[#3B185F] to-[#2E0249] p-4 text-white flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-[#FFC72C] text-[#2E0249] flex items-center justify-center font-bold shadow-xs">
+                      <CalendarClock className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs sm:text-sm font-bold font-['Outfit',sans-serif] text-white">
+                        Payment Timeframe & Installment Deadlines
+                      </h4>
+                      <p className="text-[11px] text-neutral-300">
+                        {selectedRecord.depositPaid > 0 || selectedRecord.paymentStatus === 'Deposit Paid' || selectedRecord.paymentStatus === 'Paid in Full'
+                          ? 'Timeframe established following verified WiPay deposit.'
+                          : 'Payment timeframe is generated only after initial WiPay deposit is completed.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-white/10 text-[#FFC72C] border border-white/20">
+                    JMD Currency
+                  </span>
+                </div>
+
+                <div className="p-4 bg-purple-50/40 space-y-3">
+                  {selectedRecord.depositPaid > 0 || selectedRecord.paymentStatus === 'Deposit Paid' || selectedRecord.paymentStatus === 'Paid in Full' ? (
+                    selectedRecord.paymentSchedule?.installments && selectedRecord.paymentSchedule.installments.length > 0 ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between text-xs text-neutral-700">
+                          <span className="font-semibold">
+                            Scheduled by Specialist:{' '}
+                            <strong className="text-neutral-900">
+                              {selectedRecord.paymentSchedule.configuredByAdmin || selectedRecord.assignedAdmin || 'Zachary Buchanan'}
+                            </strong>
+                          </span>
+                          <span className="text-emerald-700 font-bold flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Initial WiPay Deposit Received: {formatPriceJMD(selectedRecord.depositPaid)}</span>
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                          {selectedRecord.paymentSchedule.installments.map((inst, idx) => (
+                            <div
+                              key={inst.id || idx}
+                              className="p-3 bg-white rounded-xl border border-purple-200/80 shadow-2xs space-y-1.5"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-neutral-900 text-xs">
+                                  {inst.label}
+                                </span>
+                                <span
+                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                    inst.status === 'Paid'
+                                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                      : inst.status === 'Overdue'
+                                      ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                                      : 'bg-amber-100 text-amber-800 border border-amber-300'
+                                  }`}
+                                >
+                                  {inst.status === 'Paid' ? '✓ Paid' : inst.status === 'Overdue' ? '⚠️ Overdue' : '⏳ Pending'}
+                                </span>
+                              </div>
+
+                              <div className="flex items-baseline justify-between pt-1">
+                                <span className="text-lg font-black text-[#2E0249] font-mono">
+                                  {formatPriceJMD(inst.amount)}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-1 text-[11px] text-neutral-600 font-medium pt-0.5 border-t border-neutral-100">
+                                <Clock className="w-3 h-3 text-purple-700" />
+                                <span>Deadline: <strong className="text-neutral-900 font-mono">{inst.dueDate}</strong></span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-900 flex items-start gap-2.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <strong>Initial Deposit Verified: {formatPriceJMD(selectedRecord.depositPaid)}!</strong>
+                          <p className="text-[11px] text-emerald-800 mt-0.5">
+                            Your spot is locked. Your assigned travel administrator ({selectedRecord.assignedAdmin || 'Zachary Buchanan'}) is currently drafting your customized installment deadlines and payment timeframe for the remaining balance of {formatPriceJMD(balanceDue)}. You will also receive an update on WhatsApp.
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-start gap-2">
+                        <Lock className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="block">Initial WiPay Deposit Required to Unlock Timeframe</strong>
+                          <span className="text-[11px] text-amber-800">
+                            The deadline schedule and installment breakdown for the rest of your trip payments will be established once the initial deposit is confirmed via WiPay.
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          closeInquiryTracker();
+                          openWiPayCheckout({
+                            tripId: selectedRecord.orderRef,
+                            title: selectedRecord.tripOrDestination,
+                            deposit: selectedRecord.depositPaid || 45000,
+                            totalPrice: selectedRecord.totalPrice || 280000,
+                            customerName: selectedRecord.customerName,
+                            email: selectedRecord.email,
+                            phone: selectedRecord.phone,
+                            countryOrParish: selectedRecord.parishOrCountry,
+                            dates: selectedRecord.travelDates,
+                          });
+                        }}
+                        className="px-4 py-2 bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-black text-xs rounded-xl shadow-xs transition-all shrink-0 cursor-pointer hover:scale-101 flex items-center justify-center gap-1.5"
+                      >
+                        <Lock className="w-3.5 h-3.5 fill-current" />
+                        <span>Book Now (Pay Deposit of {formatPriceJMD(selectedRecord.depositPaid || 45000)})</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
