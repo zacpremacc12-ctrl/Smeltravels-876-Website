@@ -942,8 +942,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const syncToLiveServer = async (payload: Record<string, any>): Promise<boolean> => {
     try {
       return await syncAllBackends(payload);
-    } catch (e) {
-      console.error('[Live Sync Error]:', e);
+    } catch (e: any) {
+      console.warn('[Live Sync Notice]:', e?.message || e);
       return false;
     }
   };

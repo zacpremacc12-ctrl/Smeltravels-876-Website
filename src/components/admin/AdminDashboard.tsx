@@ -453,28 +453,28 @@ export const AdminDashboard: React.FC = () => {
   return (
     <div className="bg-neutral-100 min-h-screen pb-20">
       {/* Admin Header */}
-      <div className="bg-[#2E0249] text-white border-b border-purple-900 sticky top-16 z-20 shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white p-0.5 flex items-center justify-center shadow overflow-hidden">
+      <div className="bg-[#2E0249] text-white border-b border-purple-900 sticky top-16 z-20 shadow-lg">
+        <div className="w-full max-w-[98%] 2xl:max-w-[1850px] mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-white p-1 flex items-center justify-center shadow-md overflow-hidden shrink-0">
               <img
                 src="/logo.png"
                 alt="SMELTRAVELS876 Logo"
-                className="w-9 h-9 object-contain rounded-lg"
+                className="w-10 h-10 object-contain rounded-xl"
                 referrerPolicy="no-referrer"
               />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-black font-['Outfit',sans-serif]">SMELTRAVELS876 CMS</h1>
-                <span className="text-[10px] bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 px-2 py-0.5 rounded font-mono font-bold flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-2xl sm:text-3xl font-black font-['Outfit',sans-serif] tracking-tight text-white">SMELTRAVELS876 CMS</h1>
+                <span className="text-[11px] bg-emerald-500/30 text-emerald-300 border border-emerald-400/50 px-2.5 py-0.5 rounded-full font-mono font-bold flex items-center gap-1.5 shadow-xs">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                   AUTO-SYNC TO LIVE FEED
                 </span>
               </div>
-              <p className="text-xs text-neutral-300 flex flex-wrap items-center gap-2 mt-0.5">
-                <span>Agency Back-Office • Administrator: <strong className="text-[#FFC72C]">{adminEmail?.includes('smeltravels876') ? 'Elvoy Bennett (smeltravels876@gmail.com)' : 'Zachary Buchanan (zbuchanan.smeltravels@gmail.com)'}</strong></span>
-                <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-400/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-400/30 font-medium">
+              <p className="text-xs sm:text-sm text-neutral-300 flex flex-wrap items-center gap-2 mt-1">
+                <span>Agency Back-Office • Administrator: <strong className="text-[#FFC72C] font-bold">{adminEmail?.includes('smeltravels876') ? 'Elvoy Bennett (smeltravels876@gmail.com)' : 'Zachary Buchanan (zbuchanan.smeltravels@gmail.com)'}</strong></span>
+                <span className="inline-flex items-center gap-1 text-[11px] bg-emerald-400/20 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-400/40 font-semibold">
                   <span>✓</span> Unified Settings Parity Active (Elvoy & Zachary)
                 </span>
               </p>
@@ -529,7 +529,7 @@ export const AdminDashboard: React.FC = () => {
         </div>
 
         {/* Tab Navigation with Slide Across Arrow Controls */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-1">
+        <div className="w-full max-w-[98%] 2xl:max-w-[1850px] mx-auto px-4 sm:px-6 lg:px-8 pt-1.5">
           <div className="flex items-center gap-2">
             {/* Left slide arrow button */}
             <button
@@ -666,7 +666,7 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Main Admin Content Body */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+      <div className="w-full max-w-[98%] 2xl:max-w-[1850px] mx-auto px-4 sm:px-6 lg:px-8 mt-6">
         {/* TAB 0: ADMIN INBOX */}
         {activeTab === 'inbox' && <AdminInboxView onNavigateToTab={(t) => setActiveTab(t as any)} />}
 

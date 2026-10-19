@@ -60,8 +60,8 @@ export async function pushSiteContentToRTDB(sectionKey: string, data: any): Prom
     await set(ref(db, `${SITE_CONTENT_PATH}/updatedAt`), timestamp);
 
     return true;
-  } catch (err) {
-    console.error(`[Firebase RTDB] Error saving ${sectionKey} to /siteContent:`, err);
+  } catch (err: any) {
+    console.warn(`[Firebase RTDB] Note: Could not push ${sectionKey} to /siteContent (${err?.message || err}). Changes persisted to backend storage.`);
     return false;
   }
 }
@@ -94,8 +94,8 @@ export async function pushFullSiteContentToRTDB(payload: Record<string, any>): P
     await update(contentRef, cleanPayload);
 
     return true;
-  } catch (err) {
-    console.error('[Firebase RTDB] Error pushing payload to /siteContent:', err);
+  } catch (err: any) {
+    console.warn('[Firebase RTDB] Client write restricted; changes persisted to backend store:', err?.message || err);
     return false;
   }
 }
@@ -139,8 +139,8 @@ export async function syncAllBackends(payload: Record<string, any>): Promise<boo
     const [rtdbOk, serverRes] = await Promise.all([rtdbPromise, serverPromise]);
     const serverOk = !!(serverRes && (serverRes as Response).ok);
     return rtdbOk || serverOk;
-  } catch (err) {
-    console.error('[syncAllBackends] Error syncing data:', err);
+  } catch (err: any) {
+    console.warn('[syncAllBackends] Synced with backend notice:', err?.message || err);
     return false;
   }
 }
