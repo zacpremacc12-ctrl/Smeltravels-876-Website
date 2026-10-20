@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, ArrowRight, ShieldCheck, Calendar, Plane } from 'lucide-react';
+import { Sparkles, ArrowRight, ShieldCheck, Calendar, Plane, Lock, Camera } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { TripCard } from '../common/TripCard';
 import { getSafeTripImageUrl, handleTripImageError } from '../../lib/imageUtils';
@@ -7,9 +7,16 @@ import { getSafeTripImageUrl, handleTripImageError } from '../../lib/imageUtils'
 export const FeaturedTripsSection: React.FC = () => {
   const { trips, navigateTo, openWiPayCheckout } = useApp();
 
-  // Priority to Mexico package for 2026 featured trip
-  const featuredTrip = trips.find(t => t.country.toLowerCase().includes('mexico') || t.id.includes('mexico')) || trips.find(t => t.id === 'panama-2026' || t.is2026Featured) || trips[0];
-  const otherUpcoming = trips.filter(t => t.id !== featuredTrip?.id).slice(0, 2);
+  const openTrips = trips.filter(t => !t.isPastTrip && t.status !== 'Past Trip' && t.status !== 'Closed');
+  const pastTrips = trips.filter(t => t.isPastTrip || t.status === 'Past Trip');
+
+  // Priority to Mexico package for 2026 featured trip, or first open upcoming trip
+  const featuredTrip = openTrips.find(t => t.country.toLowerCase().includes('mexico') || t.id.includes('mexico'))
+    || openTrips.find(t => t.id === 'panama-2026' || t.is2026Featured)
+    || openTrips[0]
+    || trips[0];
+
+  const otherUpcoming = openTrips.filter(t => t.id !== featuredTrip?.id).slice(0, 2);
 
   return (
     <section className="py-16 md:py-24 bg-[#FAF9F6] border-b border-neutral-200" id="trips">
@@ -117,23 +124,47 @@ export const FeaturedTripsSection: React.FC = () => {
                       View Full Details
                     </button>
 
-                    <button
-                      onClick={() =>
-                        openWiPayCheckout({
-                          tripId: featuredTrip.id,
-                          title: featuredTrip.name,
-                          deposit: featuredTrip.deposit,
-                          totalPrice: featuredTrip.price,
-                          dates: featuredTrip.dates,
-                          location: `${featuredTrip.destination}, ${featuredTrip.country}`,
-                        })
-                      }
-                      className="bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-black text-sm px-6 py-3 rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5"
-                      title="Book Now (Pay Deposit) with secure WiPay Jamaica checkout"
-                    >
-                      <Sparkles className="w-4 h-4 fill-current" />
-                      <span>Book Now (Pay Deposit)</span>
-                    </button>
+                    {featuredTrip.status === 'Closed' ? (
+                      <button
+                        type="button"
+                        disabled={true}
+                        className="bg-white/20 text-white/50 font-bold text-sm px-6 py-3 rounded-xl cursor-not-allowed flex items-center gap-1.5 border border-white/10"
+                      >
+                        <Lock className="w-4 h-4" />
+                        <span>Bookings Closed</span>
+                      </button>
+                    ) : (featuredTrip.status === 'Past Trip' || featuredTrip.isPastTrip) ? (
+                      <button
+                        onClick={() => navigateTo('trip-detail', featuredTrip.slug)}
+                        className="bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-black text-sm px-6 py-3 rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Camera className="w-4 h-4 fill-current" />
+                        <span>View Photos & Videos</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() =>
+                          openWiPayCheckout({
+                            tripId: featuredTrip.id,
+                            title: featuredTrip.name,
+                            deposit: featuredTrip.deposit,
+                            totalPrice: featuredTrip.price,
+                            dates: featuredTrip.dates,
+                            location: `${featuredTrip.destination}, ${featuredTrip.country}`,
+                          })
+                        }
+                        disabled={featuredTrip.status === 'Sold Out'}
+                        className={`font-black text-sm px-6 py-3 rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 ${
+                          featuredTrip.status === 'Sold Out'
+                            ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed'
+                            : 'bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249]'
+                        }`}
+                        title={featuredTrip.status === 'Sold Out' ? 'Package Sold Out' : 'Book Now (Pay Deposit) with secure WiPay Jamaica checkout'}
+                      >
+                        <Sparkles className="w-4 h-4 fill-current" />
+                        <span>{featuredTrip.status === 'Sold Out' ? 'Sold Out' : 'Book Now (Pay Deposit)'}</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -142,11 +173,47 @@ export const FeaturedTripsSection: React.FC = () => {
         )}
 
         {/* Other trips quick grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {otherUpcoming.map((trip) => (
-            <TripCard key={trip.id} trip={trip} />
-          ))}
-        </div>
+        {otherUpcoming.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {otherUpcoming.map((trip) => (
+              <TripCard key={trip.id} trip={trip} />
+            ))}
+          </div>
+        )}
+
+        {/* Completed Past Trips & Traveler Memories Showcase Strip */}
+        {pastTrips.length > 0 && (
+          <div className="mt-16 pt-12 border-t border-neutral-200">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-950 text-xs font-black uppercase tracking-wider mb-2">
+                  <Camera className="w-3.5 h-3.5 text-amber-600 fill-current" />
+                  <span>TRAVELER MEMORIES & RECAPS</span>
+                </div>
+                <h3 className="text-2xl sm:text-3xl font-black text-neutral-900 tracking-tight font-['Outfit',sans-serif]">
+                  Completed Past Trips & Photo Galleries
+                </h3>
+                <p className="text-neutral-600 text-xs sm:text-sm mt-1 max-w-xl">
+                  Relive the authentic moments, smiles, excursions, and video highlights shared by Jamaican travelers on our completed tours!
+                </p>
+              </div>
+
+              <button
+                onClick={() => navigateTo('trips')}
+                className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-purple-900 hover:text-purple-700 cursor-pointer"
+              >
+                <span>Browse All Past Trips ({pastTrips.length})</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {pastTrips.slice(0, 3).map((past) => (
+                <TripCard key={past.id} trip={past} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

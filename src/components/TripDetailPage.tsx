@@ -20,6 +20,7 @@ import {
   Bookmark,
   Camera,
   Film,
+  Lock,
 } from 'lucide-react';
 import { TripPackage } from '../types';
 import { useApp, formatPriceJMD } from '../context/AppContext';
@@ -673,6 +674,47 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
                     <span>Browse Upcoming 2026/2027 Trips</span>
                   </button>
                 </div>
+              ) : trip.status === 'Closed' ? (
+                <div className="space-y-3 pt-2">
+                  <div className="bg-neutral-100 text-neutral-800 p-4 rounded-2xl border border-neutral-300 space-y-2">
+                    <div className="flex items-center gap-2 text-xs font-black text-neutral-700 uppercase tracking-wider">
+                      <Lock className="w-4 h-4 text-neutral-600" />
+                      <span>Bookings Officially Closed</span>
+                    </div>
+                    <h4 className="text-sm font-bold font-['Outfit',sans-serif] text-neutral-900">
+                      Purchases Closed for this Package
+                    </h4>
+                    <p className="text-xs text-neutral-600 leading-relaxed">
+                      Registration and ticket purchases for this package are closed. You cannot purchase this trip package at this time.
+                    </p>
+                    <button
+                      type="button"
+                      disabled={true}
+                      className="w-full bg-neutral-200 text-neutral-400 font-bold text-xs py-3 px-4 rounded-xl cursor-not-allowed flex items-center justify-center gap-2 border border-neutral-300"
+                    >
+                      <Lock className="w-4 h-4" />
+                      <span>Book Now Disabled (Closed)</span>
+                    </button>
+                  </div>
+
+                  <a
+                    href={getWhatsAppBookingLink()}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full bg-[#25D366] hover:bg-[#20ba59] text-white font-semibold text-xs py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Inquire About Next Edition on WhatsApp</span>
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={() => navigateTo('trips')}
+                    className="w-full bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-semibold text-xs py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span>Browse Open Group Packages</span>
+                  </button>
+                </div>
               ) : (
                 <div className="space-y-2.5 pt-2">
                   <button
@@ -686,12 +728,17 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
                         location: `${trip.destination}, ${trip.country}`,
                       })
                     }
-                    className="w-full bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-bold text-sm py-3.5 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    disabled={trip.status === 'Sold Out'}
+                    className={`w-full font-bold text-sm py-3.5 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                      trip.status === 'Sold Out'
+                        ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
+                        : 'bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249]'
+                    }`}
                     id="package-secure-spot-btn"
-                    title="Book Now (Pay Deposit) with secure WiPay Jamaica checkout"
+                    title={trip.status === 'Sold Out' ? 'Package Sold Out' : 'Book Now (Pay Deposit) with secure WiPay Jamaica checkout'}
                   >
                     <Sparkles className="w-4 h-4 fill-current" />
-                    <span>Book Now (Pay Deposit)</span>
+                    <span>{trip.status === 'Sold Out' ? 'Package Sold Out' : 'Book Now (Pay Deposit)'}</span>
                   </button>
 
                   <button

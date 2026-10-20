@@ -41,10 +41,40 @@ export const WiPayCheckoutModal: React.FC<WiPayCheckoutModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const { settings, currentUser, completeWiPayBooking, showNotification } = useApp();
+  const { settings, currentUser, completeWiPayBooking, showNotification, trips } = useApp();
+
+  const matchedTrip = trips?.find(t => t.id === payload.tripId || t.slug === payload.tripId);
+  const isTripClosedOrPast = matchedTrip
+    ? (matchedTrip.status === 'Closed' || matchedTrip.status === 'Past Trip' || matchedTrip.isPastTrip)
+    : false;
 
   // Multi-step modal flow: 'details' -> 'loading' -> 'iframe' -> 'confirmed'
   const [stage, setStage] = useState<'details' | 'loading' | 'iframe' | 'confirmed'>('details');
+
+  if (isTripClosedOrPast) {
+    return (
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl border border-rose-200 animate-in fade-in">
+          <div className="w-14 h-14 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center mx-auto shadow-inner">
+            <Lock className="w-7 h-7" />
+          </div>
+          <h3 className="text-xl font-black text-neutral-900 font-['Outfit',sans-serif]">
+            Package Purchases Closed
+          </h3>
+          <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed">
+            "{matchedTrip?.name || payload.title}" is currently {matchedTrip?.status === 'Past Trip' || matchedTrip?.isPastTrip ? 'concluded as a Past Trip' : 'officially closed for new bookings'}. Public ticket purchases and deposits cannot be processed.
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full bg-[#2E0249] hover:bg-[#3B185F] text-[#FFC72C] font-bold text-xs py-3 rounded-xl transition-all cursor-pointer shadow-md"
+          >
+            Close Window
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Step 1: Traveler Details State
   const [customerName, setCustomerName] = useState(

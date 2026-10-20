@@ -10,6 +10,7 @@ import {
   CreditCard,
   Camera,
   Bookmark,
+  Lock,
 } from 'lucide-react';
 import { TripPackage } from '../../types';
 import { formatPriceJMD, useApp } from '../../context/AppContext';
@@ -288,6 +289,28 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, highlight2026 }) => {
               <span>Photos & Videos</span>
             </button>
           </div>
+        ) : trip.status === 'Closed' ? (
+          <div className="pt-2 grid grid-cols-2 gap-2">
+            <button
+              onClick={() => navigateTo('trip-detail', trip.slug)}
+              className="w-full bg-[#2E0249] hover:bg-[#3B185F] text-white font-bold text-xs py-2.5 px-3 rounded-xl transition-colors flex items-center justify-center gap-1 cursor-pointer"
+              id={`view-trip-${trip.id}`}
+              title={`View package details for ${trip.name}`}
+            >
+              <span>View Package</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              type="button"
+              disabled={true}
+              className="w-full font-bold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 bg-neutral-200 text-neutral-500 cursor-not-allowed border border-neutral-300 shadow-none opacity-85 select-none"
+              title="Bookings for this tour package are officially closed"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>Bookings Closed</span>
+            </button>
+          </div>
         ) : (
           <div className="pt-2 grid grid-cols-2 gap-2">
             <button
@@ -311,9 +334,9 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, highlight2026 }) => {
                   location: `${trip.destination}, ${trip.country}`,
                 })
               }
-              disabled={trip.status === 'Sold Out' || trip.status === 'Closed'}
+              disabled={trip.status === 'Sold Out'}
               className={`w-full font-bold text-xs py-2.5 px-3 rounded-xl transition-colors flex items-center justify-center gap-1 shadow-sm cursor-pointer ${
-                trip.status === 'Sold Out' || trip.status === 'Closed'
+                trip.status === 'Sold Out'
                   ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
                   : 'bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249]'
               }`}
@@ -321,7 +344,7 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, highlight2026 }) => {
               title="Book Now (Pay Deposit) with secure WiPay Jamaica checkout"
             >
               <Sparkles className="w-3.5 h-3.5 fill-current" />
-              <span>Book Now (Pay Deposit)</span>
+              <span>{trip.status === 'Sold Out' ? 'Sold Out' : 'Book Now (Pay Deposit)'}</span>
             </button>
           </div>
         )}

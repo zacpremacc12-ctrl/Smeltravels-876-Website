@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Sparkles, Filter, Calendar, MapPin, DollarSign, X } from 'lucide-react';
+import { Sparkles, Filter, Calendar, MapPin, DollarSign, X, Camera, Film, Lock } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { TripCard } from './common/TripCard';
 import { TripStatus } from '../types';
@@ -10,6 +10,8 @@ interface TripsPageProps {
 
 export const TripsPage: React.FC<TripsPageProps> = ({ initialFilterParam }) => {
   const { trips, navigateTo, openCustomTripModal } = useApp();
+
+  const [viewCategory, setViewCategory] = useState<'all' | 'upcoming' | 'past'>('all');
 
   const [selectedYear, setSelectedYear] = useState<string>(() => {
     if (initialFilterParam === '2026') return '2026';
@@ -34,8 +36,26 @@ export const TripsPage: React.FC<TripsPageProps> = ({ initialFilterParam }) => {
     return Array.from(new Set(trips.map(t => t.destination)));
   }, [trips]);
 
+  const upcomingTripsCount = useMemo(() => {
+    return trips.filter(t => !t.isPastTrip && t.status !== 'Past Trip').length;
+  }, [trips]);
+
+  const pastTripsCount = useMemo(() => {
+    return trips.filter(t => t.isPastTrip || t.status === 'Past Trip').length;
+  }, [trips]);
+
   const filteredTrips = useMemo(() => {
     return trips.filter((t) => {
+      const isTripPast = t.isPastTrip || t.status === 'Past Trip';
+
+      // Category tab filter
+      if (viewCategory === 'upcoming' && isTripPast) {
+        return false;
+      }
+      if (viewCategory === 'past' && !isTripPast) {
+        return false;
+      }
+
       // Year filter
       if (selectedYear !== 'All' && t.year.toString() !== selectedYear) {
         return false;
@@ -45,8 +65,14 @@ export const TripsPage: React.FC<TripsPageProps> = ({ initialFilterParam }) => {
         return false;
       }
       // Status filter
-      if (selectedStatus !== 'All' && t.status !== selectedStatus) {
-        return false;
+      if (selectedStatus !== 'All') {
+        if (selectedStatus === 'Past Trip') {
+          if (!isTripPast) return false;
+        } else if (selectedStatus === 'Upcoming') {
+          if (isTripPast) return false;
+        } else if (t.status !== selectedStatus) {
+          return false;
+        }
       }
       // Price filter
       if (t.price > maxPrice) {
@@ -65,9 +91,10 @@ export const TripsPage: React.FC<TripsPageProps> = ({ initialFilterParam }) => {
       }
       return true;
     });
-  }, [trips, selectedYear, selectedDestination, selectedStatus, maxPrice, searchKeyword]);
+  }, [trips, viewCategory, selectedYear, selectedDestination, selectedStatus, maxPrice, searchKeyword]);
 
   const resetFilters = () => {
+    setViewCategory('all');
     setSelectedYear('All');
     setSelectedDestination('All');
     setSelectedStatus('All');
@@ -79,7 +106,7 @@ export const TripsPage: React.FC<TripsPageProps> = ({ initialFilterParam }) => {
     <div className="bg-[#FAF9F6] min-h-screen py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Page Header */}
-        <div className="mb-10 text-center sm:text-left">
+        <div className="mb-8 text-center sm:text-left">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-100 text-[#2E0249] text-xs font-bold uppercase tracking-wider mb-2">
             <Sparkles className="w-3.5 h-3.5 text-[#FFC72C] fill-current" />
             <span>CURATED GROUP TRAVEL</span>
@@ -90,6 +117,61 @@ export const TripsPage: React.FC<TripsPageProps> = ({ initialFilterParam }) => {
           <p className="text-neutral-600 text-sm sm:text-base mt-2 max-w-2xl">
             Browse our upcoming international group trips departing from Kingston. Every package is thoughtfully coordinated with flights, hotels, airport transfers, and paid excursions.
           </p>
+
+          {/* Quick Category Tabs: All / Upcoming / Past Trips */}
+          <div className="mt-6 flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setViewCategory('all')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                viewCategory === 'all'
+                  ? 'bg-[#2E0249] text-[#FFC72C] shadow-md ring-2 ring-purple-900/20'
+                  : 'bg-white hover:bg-neutral-100 text-neutral-700 border border-neutral-200'
+              }`}
+            >
+              <span>All Packages</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                viewCategory === 'all' ? 'bg-[#FFC72C] text-[#2E0249]' : 'bg-neutral-100 text-neutral-600'
+              }`}>
+                {trips.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setViewCategory('upcoming')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                viewCategory === 'upcoming'
+                  ? 'bg-[#2E0249] text-[#FFC72C] shadow-md ring-2 ring-purple-900/20'
+                  : 'bg-white hover:bg-neutral-100 text-neutral-700 border border-neutral-200'
+              }`}
+            >
+              <span>Upcoming & Open</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                viewCategory === 'upcoming' ? 'bg-[#FFC72C] text-[#2E0249]' : 'bg-neutral-100 text-neutral-600'
+              }`}>
+                {upcomingTripsCount}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setViewCategory('past')}
+              className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                viewCategory === 'past'
+                  ? 'bg-gradient-to-r from-amber-400 to-[#FFC72C] text-[#2E0249] shadow-md ring-2 ring-amber-400/40'
+                  : 'bg-white hover:bg-amber-50 text-purple-950 border border-purple-200'
+              }`}
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>Past Trips & Memories</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                viewCategory === 'past' ? 'bg-[#2E0249] text-[#FFC72C]' : 'bg-purple-100 text-purple-900'
+              }`}>
+                {pastTripsCount}
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* Filters Bar */}
@@ -102,7 +184,7 @@ export const TripsPage: React.FC<TripsPageProps> = ({ initialFilterParam }) => {
 
             <div className="flex items-center gap-2 text-xs">
               <span className="text-neutral-500">Showing <strong>{filteredTrips.length}</strong> of {trips.length} trips</span>
-              {(selectedYear !== 'All' || selectedDestination !== 'All' || selectedStatus !== 'All' || searchKeyword) && (
+              {(viewCategory !== 'all' || selectedYear !== 'All' || selectedDestination !== 'All' || selectedStatus !== 'All' || searchKeyword) && (
                 <button
                   onClick={resetFilters}
                   className="text-purple-900 font-bold hover:underline flex items-center gap-1 ml-2"
@@ -178,6 +260,8 @@ export const TripsPage: React.FC<TripsPageProps> = ({ initialFilterParam }) => {
                 <option value="Limited Availability">Limited Availability</option>
                 <option value="Coming Soon">Coming Soon</option>
                 <option value="Sold Out">Sold Out</option>
+                <option value="Closed">Closed</option>
+                <option value="Past Trip">📸 Past Trips & Memories</option>
               </select>
             </div>
 

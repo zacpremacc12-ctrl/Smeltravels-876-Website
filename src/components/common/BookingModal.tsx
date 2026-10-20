@@ -383,6 +383,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
     }
     setAmbassadorError('');
 
+    if (!isInquiryMode && (activeTrip.status === 'Closed' || activeTrip.status === 'Past Trip' || activeTrip.isPastTrip)) {
+      showNotification('Package Closed', 'This trip package is closed or concluded. Ticket purchases cannot be processed.', 'error');
+      return;
+    }
+
     if (!cardName) {
       setCardName(customerName.trim());
     }
@@ -407,6 +412,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
         return;
       }
       setCardErrors({});
+    }
+
+    if (activeTrip.status === 'Closed' || activeTrip.status === 'Past Trip' || activeTrip.isPastTrip) {
+      showNotification('Package Closed', 'This tour package is closed. No payments can be processed.', 'error');
+      return;
     }
 
     setIsSubmitting(true);
@@ -2156,21 +2166,32 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
                   Cancel
                 </button>
 
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  id="btn-proceed-checkout"
-                  className="bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-bold text-sm px-8 py-3 rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
-                >
-                  {isSubmitting ? (
-                    <span>Carrying to Checkout...</span>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 fill-current" />
-                      <span>Proceed to Deposit Checkout ({formatPriceJMD(depositDue)})</span>
-                    </>
-                  )}
-                </button>
+                {!isInquiryMode && (activeTrip.status === 'Closed' || activeTrip.status === 'Past Trip' || activeTrip.isPastTrip) ? (
+                  <button
+                    type="button"
+                    disabled={true}
+                    className="bg-neutral-200 text-neutral-500 font-bold text-sm px-8 py-3 rounded-xl cursor-not-allowed flex items-center gap-2 border border-neutral-300 shadow-none opacity-90"
+                  >
+                    <Lock className="w-4 h-4" />
+                    <span>Bookings Closed for this Package</span>
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    id="btn-proceed-checkout"
+                    className="bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-bold text-sm px-8 py-3 rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    {isSubmitting ? (
+                      <span>Carrying to Checkout...</span>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 fill-current" />
+                        <span>Proceed to Deposit Checkout ({formatPriceJMD(depositDue)})</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </>
           )}

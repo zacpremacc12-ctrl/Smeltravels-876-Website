@@ -45,6 +45,9 @@ import {
   ChevronRight,
   ArrowRight,
   FileSpreadsheet,
+  Camera,
+  Film,
+  Play,
 } from 'lucide-react';
 import { useApp, formatPriceJMD } from '../../context/AppContext';
 import { BookingInquiry, TripPackage, TripStatus, BlogPost, FAQItem, PromotionalOffer, TestimonialItem, Destination, Ambassador, SiteSettings } from '../../types';
@@ -58,6 +61,7 @@ import { OriginPricingManager } from './OriginPricingManager';
 import { LocalTripsManager } from './LocalTripsManager';
 import { WingoRatesDatabaseTable } from './WingoRatesDatabaseTable';
 import { FeaturedHeroTripManager } from './FeaturedHeroTripManager';
+import { PastTripMediaManager } from './PastTripMediaManager';
 import { WORLD_DESTINATIONS } from '../../data/customTripDestinations';
 import { pushSiteContentToRTDB, pushFullSiteContentToRTDB } from '../../lib/firebase';
 import { getSafeTripImageUrl, handleTripImageError } from '../../lib/imageUtils';
@@ -161,6 +165,8 @@ export const AdminDashboard: React.FC = () => {
 
   // Quick edit trip state
   const [editingTrip, setEditingTrip] = useState<TripPackage | null>(null);
+  const [managingPastTrip, setManagingPastTrip] = useState<TripPackage | null>(null);
+  const [adminTripFilter, setAdminTripFilter] = useState<'all' | 'upcoming' | 'past'>('all');
   const [newInclusionInput, setNewInclusionInput] = useState<string>('');
   const [bulkInclusionsMode, setBulkInclusionsMode] = useState<boolean>(false);
   const [bulkInclusionsText, setBulkInclusionsText] = useState<string>('');
@@ -1034,137 +1040,252 @@ export const AdminDashboard: React.FC = () => {
               </button>
             </div>
 
+            {/* Filter Sub-Tabs in Admin Trips Manager */}
+            <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-neutral-200">
+              <button
+                type="button"
+                onClick={() => setAdminTripFilter('all')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  adminTripFilter === 'all'
+                    ? 'bg-[#2E0249] text-[#FFC72C] shadow-sm'
+                    : 'bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50'
+                }`}
+              >
+                All Packages ({trips.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setAdminTripFilter('upcoming')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  adminTripFilter === 'upcoming'
+                    ? 'bg-[#2E0249] text-[#FFC72C] shadow-sm'
+                    : 'bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50'
+                }`}
+              >
+                Upcoming & Open ({trips.filter(t => !t.isPastTrip && t.status !== 'Past Trip').length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setAdminTripFilter('past')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                  adminTripFilter === 'past'
+                    ? 'bg-purple-900 text-[#FFC72C] shadow-sm border border-purple-700'
+                    : 'bg-white text-purple-950 border border-purple-200 hover:bg-purple-50'
+                }`}
+              >
+                <Camera className="w-3.5 h-3.5 text-amber-500" />
+                <span>📸 Past Trips ({trips.filter(t => t.isPastTrip || t.status === 'Past Trip').length})</span>
+              </button>
+            </div>
+
             {/* Trip Cards in Admin */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {trips.map((t) => (
-                <div key={t.id} className="bg-white rounded-2xl border border-neutral-200 p-5 shadow-sm space-y-4 hover:border-purple-200 transition-colors">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <img src={t.featuredImage} alt={t.name} className="w-16 h-16 rounded-xl object-cover border border-neutral-200" />
-                        {t.tripLogo && (
-                          <img
-                            src={t.tripLogo}
-                            alt="Trip Logo"
-                            className="absolute -bottom-1 -right-1 w-6 h-6 rounded-md bg-white p-0.5 border border-purple-200 shadow object-contain"
-                            title="Custom Trip Logo"
-                          />
-                        )}
+              {trips
+                .filter((t) => {
+                  const isPast = t.isPastTrip || t.status === 'Past Trip';
+                  if (adminTripFilter === 'upcoming') return !isPast;
+                  if (adminTripFilter === 'past') return isPast;
+                  return true;
+                })
+                .map((t) => {
+                  const isPast = t.isPastTrip || t.status === 'Past Trip';
+                  const photoCount = (t.pastTripMedia || []).filter(m => m.type === 'image').length;
+                  const videoCount = (t.pastTripMedia || []).filter(m => m.type === 'video').length;
+
+                  return (
+                    <div
+                      key={t.id}
+                      className={`bg-white rounded-2xl border p-5 shadow-sm space-y-4 transition-colors ${
+                        isPast ? 'border-purple-300 ring-2 ring-purple-900/10' : 'border-neutral-200 hover:border-purple-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="relative">
+                            <img src={t.featuredImage} alt={t.name} className="w-16 h-16 rounded-xl object-cover border border-neutral-200" />
+                            {t.tripLogo && (
+                              <img
+                                src={t.tripLogo}
+                                alt="Trip Logo"
+                                className="absolute -bottom-1 -right-1 w-6 h-6 rounded-md bg-white p-0.5 border border-purple-200 shadow object-contain"
+                                title="Custom Trip Logo"
+                              />
+                            )}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-base">{t.countryFlag}</span>
+                              <span className="text-xs font-semibold text-neutral-800">{t.country}</span>
+                              {t.countryAcronym && (
+                                <span className="bg-[#FFC72C] text-[#2E0249] px-1.5 py-0.5 rounded font-black text-[10px] tracking-wider uppercase shadow-2xs">
+                                  {t.countryAcronym}
+                                </span>
+                              )}
+                              <span className="text-xs font-bold text-purple-900">• {t.year}</span>
+                              {isPast && (
+                                <span className="bg-purple-900 text-[#FFC72C] text-[9px] px-2 py-0.5 rounded-full font-black border border-purple-700 shadow-2xs flex items-center gap-1">
+                                  <Camera className="w-3 h-3" />
+                                  <span>PAST TRIP SHOWCASE</span>
+                                </span>
+                              )}
+                              {t.is2026Featured && <span className="bg-[#FFC72C] text-[#2E0249] text-[9px] px-1.5 py-0.5 rounded font-black">2026 FEATURED</span>}
+                              {t.is2027Collection && <span className="bg-purple-100 text-purple-900 text-[9px] px-1.5 py-0.5 rounded font-bold">2027 COLLECTION</span>}
+                              {t.isAdultsOnly ? (
+                                <span className="bg-rose-100 text-rose-800 text-[9px] px-1.5 py-0.5 rounded font-black border border-rose-200">
+                                  🔞 ADULTS ONLY (18+)
+                                </span>
+                              ) : (
+                                <span className="bg-emerald-50 text-emerald-800 text-[9px] px-1.5 py-0.5 rounded font-bold border border-emerald-200">
+                                  Child: {formatPriceJMD(t.childPrice ?? Math.round(t.price * 0.7))}
+                                </span>
+                              )}
+                              {t.gallery && t.gallery.length > 0 && (
+                                <span className="bg-neutral-100 text-neutral-600 text-[9px] px-1.5 py-0.5 rounded font-semibold">
+                                  +{t.gallery.length} photos
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="font-bold text-neutral-900 font-['Outfit',sans-serif] text-base mt-0.5">{t.name}</h3>
+                            <p className="text-xs text-neutral-500">{t.dates} • {t.hotel}</p>
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <div className="text-base font-black text-neutral-900">{formatPriceJMD(t.price)}</div>
+                          <div className="text-[11px] text-neutral-500">Dep: {formatPriceJMD(t.deposit)}</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-base">{t.countryFlag}</span>
-                          <span className="text-xs font-semibold text-neutral-800">{t.country}</span>
-                          {t.countryAcronym && (
-                            <span className="bg-[#FFC72C] text-[#2E0249] px-1.5 py-0.5 rounded font-black text-[10px] tracking-wider uppercase shadow-2xs">
-                              {t.countryAcronym}
-                            </span>
-                          )}
-                          <span className="text-xs font-bold text-purple-900">• {t.year}</span>
-                          {t.is2026Featured && <span className="bg-[#FFC72C] text-[#2E0249] text-[9px] px-1.5 py-0.5 rounded font-black">2026 FEATURED</span>}
-                          {t.is2027Collection && <span className="bg-purple-100 text-purple-900 text-[9px] px-1.5 py-0.5 rounded font-bold">2027 COLLECTION</span>}
-                          {t.isAdultsOnly ? (
-                            <span className="bg-rose-100 text-rose-800 text-[9px] px-1.5 py-0.5 rounded font-black border border-rose-200">
-                              🔞 ADULTS ONLY (18+)
-                            </span>
-                          ) : (
-                            <span className="bg-emerald-50 text-emerald-800 text-[9px] px-1.5 py-0.5 rounded font-bold border border-emerald-200">
-                              Child: {formatPriceJMD(t.childPrice ?? Math.round(t.price * 0.7))}
-                            </span>
-                          )}
-                          {t.gallery && t.gallery.length > 0 && (
-                            <span className="bg-neutral-100 text-neutral-600 text-[9px] px-1.5 py-0.5 rounded font-semibold">
-                              +{t.gallery.length} photos
+
+                      {/* Past Trip Banner if active */}
+                      {isPast && (
+                        <div className="bg-gradient-to-r from-purple-900 to-[#2E0249] text-white p-3 rounded-xl border border-purple-800 flex items-center justify-between gap-3 text-xs shadow-2xs">
+                          <div className="flex items-center gap-2">
+                            <Camera className="w-4 h-4 text-[#FFC72C] shrink-0" />
+                            <div>
+                              <span className="font-extrabold text-[#FFC72C] block">Public Past Trip Showcase Active</span>
+                              <span className="text-[11px] text-purple-200">
+                                {photoCount} Photos • {videoCount} Videos published for traveler memories
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setManagingPastTrip(t)}
+                            className="bg-[#FFC72C] hover:bg-amber-300 text-[#2E0249] px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-all shrink-0 cursor-pointer shadow-xs active:scale-95"
+                          >
+                            Post Media
+                          </button>
+                        </div>
+                      )}
+
+                      {/* What is Included Preview Bar */}
+                      <div className="bg-neutral-50/80 p-2.5 rounded-xl border border-neutral-200/80 text-[11px] text-neutral-600 space-y-1">
+                        <div className="flex items-center justify-between font-bold text-neutral-800">
+                          <span className="flex items-center gap-1.5">
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>What is Included ({t.packageInclusions?.length || 0} items):</span>
+                          </span>
+                          <span className="text-[10px] text-purple-800 font-semibold cursor-pointer hover:underline" onClick={() => {
+                            setEditingTrip(t);
+                            setNewInclusionInput('');
+                            setBulkInclusionsMode(false);
+                            setBulkInclusionsText((t.packageInclusions || []).join('\n'));
+                          }}>
+                            Edit Inclusions
+                          </span>
+                        </div>
+                        <p className="text-neutral-500 truncate text-[11px]">
+                          {t.packageInclusions && t.packageInclusions.length > 0
+                            ? t.packageInclusions.slice(0, 3).join(' • ') + (t.packageInclusions.length > 3 ? ` • +${t.packageInclusions.length - 3} more` : '')
+                            : 'No package inclusions set yet'}
+                        </p>
+                      </div>
+
+                      {/* Quick Availability Selector & Action Buttons */}
+                      <div className="pt-3 border-t border-neutral-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-bold text-neutral-600">Availability:</span>
+                          <select
+                            value={t.status}
+                            onChange={(e) => {
+                              const newStatus = e.target.value as TripStatus;
+                              const isNowPast = newStatus === 'Past Trip';
+                              const updated: TripPackage = {
+                                ...t,
+                                status: newStatus,
+                                isPastTrip: isNowPast ? true : (newStatus === 'Available' ? false : t.isPastTrip),
+                                pastTripDateSummary: isNowPast ? (t.pastTripDateSummary || `Completed in ${t.dates || t.year}`) : t.pastTripDateSummary,
+                                pastTripRecap: isNowPast ? (t.pastTripRecap || `Our unforgettable group journey to ${t.destination}, ${t.country}. Relive the special moments, excursions, and traveler memories below!`) : t.pastTripRecap,
+                              };
+                              saveTrip(updated);
+                              if (isNowPast) {
+                                showNotification('Marked as Past Trip!', `Set "${t.name}" as a Past Trip. You can now post photos and videos.`);
+                                setManagingPastTrip(updated);
+                              } else {
+                                showNotification('Availability Updated', `Set "${t.name}" availability to ${newStatus}.`);
+                              }
+                            }}
+                            className="px-2.5 py-1 rounded-lg border border-neutral-300 bg-white text-xs font-bold text-neutral-800 cursor-pointer shadow-2xs hover:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-900/20"
+                          >
+                            <option value="Available">🟢 Available</option>
+                            <option value="Limited Availability">🟡 Limited Availability</option>
+                            <option value="Coming Soon">🔵 Coming Soon</option>
+                            <option value="Sold Out">🔴 Sold Out</option>
+                            <option value="Closed">⚪ Closed</option>
+                            <option value="Past Trip">📸 Past Trip (Photos & Videos)</option>
+                          </select>
+                          {t.availabilityNote && (
+                            <span className="bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                              {t.availabilityNote}
                             </span>
                           )}
                         </div>
-                        <h3 className="font-bold text-neutral-900 font-['Outfit',sans-serif] text-base mt-0.5">{t.name}</h3>
-                        <p className="text-xs text-neutral-500">{t.dates} • {t.hotel}</p>
+
+                        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => setManagingPastTrip(t)}
+                            className={`px-2.5 py-1.5 rounded-lg transition-all text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer ${
+                              isPast
+                                ? 'bg-purple-900 text-[#FFC72C] hover:bg-purple-800 border border-purple-700'
+                                : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300'
+                            }`}
+                            title="Manage Past Trip photos, video reels, and traveler recap"
+                          >
+                            <Camera className="w-3.5 h-3.5 text-amber-400" />
+                            <span>
+                              {isPast
+                                ? `📸 Past Media (${photoCount + videoCount})`
+                                : 'Make Past Trip'}
+                            </span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setEditingTrip(t);
+                              setNewInclusionInput('');
+                              setBulkInclusionsMode(false);
+                              setBulkInclusionsText((t.packageInclusions || []).join('\n'));
+                            }}
+                            className="p-1.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 rounded-lg transition-colors font-semibold"
+                          >
+                            Edit Details
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (window.confirm(`Delete trip "${t.name}"?`)) {
+                                deleteTrip(t.id);
+                              }
+                            }}
+                            className="p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
-
-                    <div className="text-right shrink-0">
-                      <div className="text-base font-black text-neutral-900">{formatPriceJMD(t.price)}</div>
-                      <div className="text-[11px] text-neutral-500">Dep: {formatPriceJMD(t.deposit)}</div>
-                    </div>
-                  </div>
-
-                  {/* What is Included Preview Bar */}
-                  <div className="bg-neutral-50/80 p-2.5 rounded-xl border border-neutral-200/80 text-[11px] text-neutral-600 space-y-1">
-                    <div className="flex items-center justify-between font-bold text-neutral-800">
-                      <span className="flex items-center gap-1.5">
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>What is Included ({t.packageInclusions?.length || 0} items):</span>
-                      </span>
-                      <span className="text-[10px] text-purple-800 font-semibold cursor-pointer hover:underline" onClick={() => {
-                        setEditingTrip(t);
-                        setNewInclusionInput('');
-                        setBulkInclusionsMode(false);
-                        setBulkInclusionsText((t.packageInclusions || []).join('\n'));
-                      }}>
-                        Edit Inclusions
-                      </span>
-                    </div>
-                    <p className="text-neutral-500 truncate text-[11px]">
-                      {t.packageInclusions && t.packageInclusions.length > 0
-                        ? t.packageInclusions.slice(0, 3).join(' • ') + (t.packageInclusions.length > 3 ? ` • +${t.packageInclusions.length - 3} more` : '')
-                        : 'No package inclusions set yet'}
-                    </p>
-                  </div>
-
-                  {/* Quick Availability Selector & Action Buttons */}
-                  <div className="pt-3 border-t border-neutral-100 flex flex-wrap items-center justify-between gap-2 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-bold text-neutral-600">Availability:</span>
-                      <select
-                        value={t.status}
-                        onChange={(e) => {
-                          const newStatus = e.target.value as TripStatus;
-                          const updated = { ...t, status: newStatus };
-                          saveTrip(updated);
-                          showNotification('Availability Updated', `Set "${t.name}" availability to ${newStatus}.`);
-                        }}
-                        className="px-2.5 py-1 rounded-lg border border-neutral-300 bg-white text-xs font-bold text-neutral-800 cursor-pointer shadow-2xs hover:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-900/20"
-                      >
-                        <option value="Available">🟢 Available</option>
-                        <option value="Limited Availability">🟡 Limited Availability</option>
-                        <option value="Coming Soon">🔵 Coming Soon</option>
-                        <option value="Sold Out">🔴 Sold Out</option>
-                        <option value="Closed">⚪ Closed</option>
-                      </select>
-                      {t.availabilityNote && (
-                        <span className="bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded text-[10px] font-bold">
-                          {t.availabilityNote}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="space-x-2 shrink-0">
-                      <button
-                        onClick={() => {
-                          setEditingTrip(t);
-                          setNewInclusionInput('');
-                          setBulkInclusionsMode(false);
-                          setBulkInclusionsText((t.packageInclusions || []).join('\n'));
-                        }}
-                        className="p-1.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 rounded-lg transition-colors font-semibold"
-                      >
-                        Edit Details
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (window.confirm(`Delete trip "${t.name}"?`)) {
-                            deleteTrip(t.id);
-                          }
-                        }}
-                        className="p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                  );
+                })}
             </div>
 
             {/* Trip Editor Modal */}
@@ -1203,7 +1324,7 @@ export const AdminDashboard: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       <div>
                         <label className="font-bold text-neutral-700 block mb-1">Total Rate (JMD)</label>
                         <input
@@ -1231,6 +1352,31 @@ export const AdminDashboard: React.FC = () => {
                         >
                           <option value={2026}>2026</option>
                           <option value={2027}>2027</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="font-bold text-neutral-700 block mb-1">Trip Status</label>
+                        <select
+                          value={editingTrip.status}
+                          onChange={(e) => {
+                            const newStatus = e.target.value as TripStatus;
+                            const isNowPast = newStatus === 'Past Trip';
+                            setEditingTrip({
+                              ...editingTrip,
+                              status: newStatus,
+                              isPastTrip: isNowPast ? true : editingTrip.isPastTrip,
+                              pastTripDateSummary: isNowPast ? (editingTrip.pastTripDateSummary || `Completed in ${editingTrip.year}`) : editingTrip.pastTripDateSummary,
+                              pastTripRecap: isNowPast ? (editingTrip.pastTripRecap || `Our unforgettable group journey to ${editingTrip.destination}, ${editingTrip.country}. Relive the special moments, excursions, and traveler memories below!`) : editingTrip.pastTripRecap,
+                            });
+                          }}
+                          className="w-full p-2 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-purple-900/20 focus:outline-none font-bold text-neutral-800"
+                        >
+                          <option value="Available">🟢 Available</option>
+                          <option value="Limited Availability">🟡 Limited Availability</option>
+                          <option value="Coming Soon">🔵 Coming Soon</option>
+                          <option value="Sold Out">🔴 Sold Out</option>
+                          <option value="Closed">⚪ Closed</option>
+                          <option value="Past Trip">📸 Past Trip</option>
                         </select>
                       </div>
                     </div>
@@ -1856,6 +2002,14 @@ export const AdminDashboard: React.FC = () => {
                         <span className="font-semibold">2027 Collection Trip</span>
                       </label>
                     </div>
+
+                    {/* PAST TRIP SHOWCASE, PHOTOS & VIDEOS SUITE */}
+                    <div className="pt-2 border-t border-purple-100">
+                      <PastTripMediaManager
+                        trip={editingTrip}
+                        onChange={(updatedTrip) => setEditingTrip(updatedTrip)}
+                      />
+                    </div>
                   </div>
 
                   <div className="pt-3 border-t border-neutral-200 flex justify-end gap-2">
@@ -1898,6 +2052,82 @@ export const AdminDashboard: React.FC = () => {
                     >
                       Save Changes
                     </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Dedicated Past Trip Media Manager Modal */}
+            {managingPastTrip && (
+              <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
+                <div className="bg-white rounded-3xl max-w-4xl w-full p-5 sm:p-7 space-y-4 max-h-[92vh] overflow-y-auto shadow-2xl border border-purple-200 animate-in fade-in">
+                  <div className="flex items-center justify-between pb-3 border-b border-neutral-200">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{managingPastTrip.countryFlag}</span>
+                        <h3 className="text-lg font-black text-neutral-900 font-['Outfit',sans-serif]">
+                          Past Trip Photos, Videos & Showcase: {managingPastTrip.name}
+                        </h3>
+                      </div>
+                      <p className="text-xs text-neutral-500 mt-0.5">
+                        Post pictures, YouTube/Vimeo highlights, and traveler memories to show to the public.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setManagingPastTrip(null)}
+                      className="p-1.5 rounded-xl text-neutral-400 hover:text-neutral-800 hover:bg-neutral-100 transition-colors cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <PastTripMediaManager
+                    trip={managingPastTrip}
+                    onChange={(updated) => setManagingPastTrip(updated)}
+                  />
+
+                  <div className="pt-4 border-t border-neutral-200 flex flex-wrap items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigateTo('trip-detail', managingPastTrip.slug);
+                        setManagingPastTrip(null);
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Preview Public Page & Memories</span>
+                    </button>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setManagingPastTrip(null)}
+                        className="px-4 py-2.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-semibold cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = {
+                            ...managingPastTrip,
+                            isPastTrip: true,
+                            status: 'Past Trip' as TripStatus,
+                          };
+                          saveTrip(updated);
+                          setManagingPastTrip(null);
+                          showNotification(
+                            'Past Trip Saved & Live!',
+                            `"${updated.name}" is now live as a Past Trip with ${(updated.pastTripMedia || []).length} traveler media items!`
+                          );
+                        }}
+                        className="px-6 py-2.5 rounded-xl bg-[#2E0249] hover:bg-[#3B185F] text-[#FFC72C] text-xs font-black shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Save & Publish to Public</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
