@@ -18,10 +18,13 @@ import {
   AlertTriangle,
   Info,
   Bookmark,
+  Camera,
+  Film,
 } from 'lucide-react';
 import { TripPackage } from '../types';
 import { useApp, formatPriceJMD } from '../context/AppContext';
 import { getSafeTripImageUrl, handleTripImageError } from '../lib/imageUtils';
+import { PastTripMemoriesSection } from './common/PastTripMemoriesSection';
 
 interface TripDetailPageProps {
   slug: string;
@@ -39,9 +42,11 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
     settings,
     showNotification,
   } = useApp();
-  const [activeTab, setActiveTab] = useState<'overview' | 'inclusions' | 'itinerary' | 'requirements' | 'payment'>('overview');
-
   const trip = trips.find(t => t.slug === slug || t.id === slug) || trips[0];
+  const isPast = trip ? (trip.isPastTrip || trip.status === 'Past Trip') : false;
+  const [activeTab, setActiveTab] = useState<'overview' | 'inclusions' | 'itinerary' | 'requirements' | 'payment' | 'memories'>(
+    isPast ? 'memories' : 'overview'
+  );
 
   if (!trip) {
     return (
@@ -74,12 +79,24 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
   };
 
   const getWhatsAppBookingLink = () => {
-    const text = `Hi SMELTRAVELS876! I am interested in booking the "${trip.name}" (${trip.dates}) package. Please send me further details.`;
+    const text = isPast
+      ? `Hi SMELTRAVELS876! I was admiring the past trip photos for "${trip.name}" (${trip.dates}). When are you hosting the next edition?`
+      : `Hi SMELTRAVELS876! I am interested in booking the "${trip.name}" (${trip.dates}) package. Please send me further details.`;
     return `https://wa.me/${settings.whatsappNumber}?text=${encodeURIComponent(text)}`;
   };
 
   return (
     <div className="bg-[#FAF9F6] min-h-screen pb-20">
+      {/* Past Trip Banner */}
+      {isPast && (
+        <div className="bg-[#2E0249] text-[#FFC72C] py-2.5 px-4 border-b border-purple-800 text-xs font-bold flex items-center justify-center gap-2 text-center shadow-xs">
+          <Camera className="w-4 h-4 fill-current shrink-0" />
+          <span>
+            COMPLETED PAST TRIP: This tour concluded {trip.pastTripDateSummary ? `in ${trip.pastTripDateSummary}` : ''}. Browse real traveler pictures, video highlights, and recap memories below!
+          </span>
+        </div>
+      )}
+
       {/* Top Back Navigation Bar */}
       <div className="bg-white border-b border-neutral-200 py-3 sticky top-16 z-30 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
@@ -107,28 +124,39 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
 
             <button
               onClick={handleShare}
-              className="p-2 text-neutral-500 hover:text-neutral-900 rounded-lg hover:bg-neutral-100 transition-colors text-xs font-semibold flex items-center gap-1.5"
+              className="p-2 text-neutral-500 hover:text-neutral-900 rounded-lg hover:bg-neutral-100 transition-colors text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
             >
               <Share2 className="w-4 h-4" />
               <span className="hidden sm:inline">Share Trip</span>
             </button>
 
-            <button
-              onClick={() =>
-                openWiPayCheckout({
-                  tripId: trip.id,
-                  title: trip.name,
-                  deposit: trip.deposit,
-                  totalPrice: trip.price,
-                  dates: trip.dates,
-                  location: `${trip.destination}, ${trip.country}`,
-                })
-              }
-              className="bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-bold text-xs sm:text-sm px-4 py-2 rounded-xl transition-all shadow-sm cursor-pointer"
-              title="Book Now (Pay Deposit) with secure WiPay Jamaica checkout"
-            >
-              Book Now (Pay Deposit)
-            </button>
+            {isPast ? (
+              <button
+                onClick={() => setActiveTab('memories')}
+                className="bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-black text-xs sm:text-sm px-4 py-2 rounded-xl transition-all shadow-sm cursor-pointer flex items-center gap-1.5"
+                title="View photos and video highlights from this completed tour"
+              >
+                <Camera className="w-4 h-4" />
+                <span>Photos & Videos ({trip.pastTripMedia?.length || 0})</span>
+              </button>
+            ) : (
+              <button
+                onClick={() =>
+                  openWiPayCheckout({
+                    tripId: trip.id,
+                    title: trip.name,
+                    deposit: trip.deposit,
+                    totalPrice: trip.price,
+                    dates: trip.dates,
+                    location: `${trip.destination}, ${trip.country}`,
+                  })
+                }
+                className="bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-bold text-xs sm:text-sm px-4 py-2 rounded-xl transition-all shadow-sm cursor-pointer"
+                title="Book Now (Pay Deposit) with secure WiPay Jamaica checkout"
+              >
+                Book Now (Pay Deposit)
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -157,10 +185,14 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
                 )}
                 <span>•</span>
                 <span>{trip.destination}</span>
-                <span className="bg-white/20 text-white px-2.5 py-0.5 rounded font-extrabold text-[11px] border border-white/30 tracking-wide">
-                  {trip.status}
+                <span className={`px-2.5 py-0.5 rounded font-extrabold text-[11px] tracking-wide ${
+                  isPast
+                    ? 'bg-[#FFC72C] text-[#2E0249] border border-[#FFC72C]'
+                    : 'bg-white/20 text-white border border-white/30'
+                }`}>
+                  {isPast ? '📸 COMPLETED PAST TRIP' : trip.status}
                 </span>
-                {trip.availabilityNote && (
+                {trip.availabilityNote && !isPast && (
                   <span className="bg-amber-400 text-neutral-950 px-2 py-0.5 rounded text-[11px] font-extrabold shadow-sm">
                     {trip.availabilityNote}
                   </span>
@@ -245,7 +277,9 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
             {/* Nav Tabs */}
             <div className="flex items-center gap-2 border-b border-neutral-200 pb-2 overflow-x-auto scrollbar-none text-xs sm:text-sm font-bold">
               {[
+                ...(isPast ? [{ id: 'memories', label: `📸 Traveler Memories & Videos (${(trip.pastTripMedia || []).length})` }] : []),
                 { id: 'overview', label: 'Overview' },
+                ...(!isPast && (trip.pastTripMedia?.length || 0) > 0 ? [{ id: 'memories', label: `📸 Photos & Videos (${trip.pastTripMedia?.length})` }] : []),
                 { id: 'inclusions', label: 'Inclusions & Services' },
                 { id: 'itinerary', label: 'Day-by-Day Itinerary' },
                 { id: 'requirements', label: 'Travel & Visa Requirements' },
@@ -254,7 +288,7 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`px-4 py-2.5 rounded-xl whitespace-nowrap transition-colors ${
+                  className={`px-4 py-2.5 rounded-xl whitespace-nowrap transition-colors cursor-pointer ${
                     activeTab === tab.id
                       ? 'bg-[#2E0249] text-[#FFC72C]'
                       : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
@@ -265,9 +299,40 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
               ))}
             </div>
 
+            {/* Tab: Memories (Photos, Videos & Recap) */}
+            {activeTab === 'memories' && (
+              <div className="space-y-6 animate-in fade-in">
+                <PastTripMemoriesSection trip={trip} />
+              </div>
+            )}
+
             {/* Tab 1: Overview */}
             {activeTab === 'overview' && (
               <div className="space-y-6 animate-in fade-in">
+                {/* Past Trip Memories Teaser Card */}
+                {trip.pastTripMedia && trip.pastTripMedia.length > 0 && (
+                  <div className="bg-gradient-to-r from-purple-900 to-[#2E0249] text-white p-5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-md">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-[#FFC72C] text-[#2E0249] flex items-center justify-center font-bold shrink-0">
+                        <Camera className="w-5 h-5 fill-current" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-white">Traveler Photo Album & Video Reel</h4>
+                        <p className="text-xs text-neutral-200 mt-0.5">
+                          {trip.pastTripMedia.filter((m) => m.type === 'image').length} photos and {trip.pastTripMedia.filter((m) => m.type === 'video').length} video highlights published from this completed tour!
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('memories')}
+                      className="px-4 py-2 bg-[#FFC72C] hover:bg-amber-300 text-[#2E0249] rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer shadow-xs active:scale-95"
+                    >
+                      Explore Memories Tab →
+                    </button>
+                  </div>
+                )}
+
                 <div className="bg-white rounded-2xl p-6 sm:p-8 border border-neutral-200 shadow-sm space-y-4">
                   <h3 className="text-xl font-bold text-neutral-900 font-['Outfit',sans-serif]">
                     Experience Summary
@@ -566,44 +631,88 @@ export const TripDetailPage: React.FC<TripDetailPageProps> = ({ slug }) => {
                 )}
               </div>
 
-              <div className="space-y-2.5 pt-2">
-                <button
-                  onClick={() =>
-                    openWiPayCheckout({
-                      tripId: trip.id,
-                      title: trip.name,
-                      deposit: trip.deposit,
-                      totalPrice: trip.price,
-                      dates: trip.dates,
-                      location: `${trip.destination}, ${trip.country}`,
-                    })
-                  }
-                  className="w-full bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-bold text-sm py-3.5 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-                  id="package-secure-spot-btn"
-                  title="Book Now (Pay Deposit) with secure WiPay Jamaica checkout"
-                >
-                  <Sparkles className="w-4 h-4 fill-current" />
-                  <span>Book Now (Pay Deposit)</span>
-                </button>
+              {isPast ? (
+                <div className="space-y-3 pt-2">
+                  <div className="bg-purple-950 text-white p-4 rounded-2xl border border-purple-800 space-y-2.5">
+                    <div className="flex items-center gap-2 text-xs font-black text-[#FFC72C] uppercase tracking-wider">
+                      <Camera className="w-4 h-4 fill-current" />
+                      <span>Tour Concluded</span>
+                    </div>
+                    <h4 className="text-sm font-bold font-['Outfit',sans-serif] text-white">
+                      This Group Adventure Has Completed
+                    </h4>
+                    <p className="text-xs text-neutral-300 leading-relaxed">
+                      {trip.pastTripDateSummary ? `${trip.pastTripDateSummary}. ` : ''}
+                      Explore authentic photos and video reels from our Jamaican travelers!
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('memories')}
+                      className="w-full bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-bold text-xs py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer mt-1"
+                    >
+                      <Camera className="w-4 h-4" />
+                      <span>Browse Photos & Videos ({trip.pastTripMedia?.length || 0})</span>
+                    </button>
+                  </div>
 
-                <button
-                  onClick={() => setSelectedTripForBooking(trip)}
-                  className="w-full bg-[#2E0249] hover:bg-[#3B185F] text-white font-semibold text-xs py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2"
-                  id="package-ask-trip-btn"
-                >
-                  <span>Ask About This Trip</span>
-                </button>
+                  <a
+                    href={getWhatsAppBookingLink()}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full bg-[#25D366] hover:bg-[#20ba59] text-white font-semibold text-xs py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Inquire Next Tour on WhatsApp</span>
+                  </a>
 
-                <a
-                  href={getWhatsAppBookingLink()}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-full bg-[#25D366] hover:bg-[#20ba59] text-white font-semibold text-xs py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Chat on WhatsApp</span>
-                </a>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => navigateTo('trips')}
+                    className="w-full bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-semibold text-xs py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span>Browse Upcoming 2026/2027 Trips</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2.5 pt-2">
+                  <button
+                    onClick={() =>
+                      openWiPayCheckout({
+                        tripId: trip.id,
+                        title: trip.name,
+                        deposit: trip.deposit,
+                        totalPrice: trip.price,
+                        dates: trip.dates,
+                        location: `${trip.destination}, ${trip.country}`,
+                      })
+                    }
+                    className="w-full bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-bold text-sm py-3.5 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    id="package-secure-spot-btn"
+                    title="Book Now (Pay Deposit) with secure WiPay Jamaica checkout"
+                  >
+                    <Sparkles className="w-4 h-4 fill-current" />
+                    <span>Book Now (Pay Deposit)</span>
+                  </button>
+
+                  <button
+                    onClick={() => setSelectedTripForBooking(trip)}
+                    className="w-full bg-[#2E0249] hover:bg-[#3B185F] text-white font-semibold text-xs py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    id="package-ask-trip-btn"
+                  >
+                    <span>Ask About This Trip</span>
+                  </button>
+
+                  <a
+                    href={getWhatsAppBookingLink()}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full bg-[#25D366] hover:bg-[#20ba59] text-white font-semibold text-xs py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Chat on WhatsApp</span>
+                  </a>
+                </div>
+              )}
 
               {/* Inclusions summary list */}
               <div className="pt-4 border-t border-neutral-100 space-y-2 text-xs text-neutral-600">

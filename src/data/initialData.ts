@@ -723,6 +723,113 @@ export const INITIAL_TRIPS: TripPackage[] = [
     seoTitle: 'Medellin Colombia 2027 Group Trip | NH Collection | SMELTRAVELS876',
     metaDescription: 'Medellin Group Trip May 20–25, 2027 with SMELTRAVELS876. NH Collection Medellin Royal, flights, transfers, and 2 paid excursions included.'
   },
+  {
+    id: 'panama-2025-past',
+    slug: 'panama-experience-2025-recap',
+    name: 'Panama Experience 2025 (Flagship Tour)',
+    destination: 'Panama City & Canal',
+    country: 'Panama',
+    countryFlag: '🇵🇦',
+    countryAcronym: 'PAN',
+    year: 2025,
+    dates: 'October 15–20, 2025',
+    hotel: 'InterContinental Miramar Panama (Centrally Located)',
+    price: 145000,
+    currency: 'JMD',
+    deposit: 75000,
+    shortDescription: 'Our flagship 2025 international group adventure to Panama! 32 Jamaican travelers experienced the Panama Canal, San Blas Islands, and historic Casco Viejo.',
+    fullDescription: 'In October 2025, SMELTRAVELS876 hosted 32 Jamaican travelers on our unforgettable Panama tour. We witnessed the engineering wonder of the Panama Canal at Miraflores Locks, navigated the vibrant duty-free zones of Colon, explored the Spanish colonial architecture of Casco Viejo, and relaxed on private tropical catamaran waters. Check out our real traveler photos and video reels below!',
+    packageInclusions: [
+      'Roundtrip flights from Kingston (KIN)',
+      'Hotel accommodation at InterContinental Miramar',
+      'Daily bed & breakfast',
+      'Panama Canal & City Tour excursion',
+      'Duty-free shopping day in Colon',
+      'Exclusive SMELTRAVELS876 travel kit',
+      'Airport meet & greet transfers'
+    ],
+    exclusions: ['Personal spending & shopping', 'Travel insurance'],
+    itinerary: [
+      { day: 1, title: 'Arrival & Welcome Dinner', description: 'Group arrived in Panama City with VIP airport welcome and evening dinner.' },
+      { day: 2, title: 'Panama Canal & Miraflores Locks', description: 'Witnessed mega container vessels crossing the historic canal.' },
+      { day: 3, title: 'San Blas Catamaran Tour', description: 'Private island excursion with turquoise swimming and fresh seafood lunch.' },
+      { day: 4, title: 'Albrook Mall Shopping Spree', description: 'Duty-free shopping deals and evening rooftop cocktails.' },
+      { day: 5, title: 'Casco Viejo & Farewell Gala', description: 'Walking tour through cobblestone streets and celebratory group banquet.' },
+      { day: 6, title: 'Return Flight to Kingston', description: 'Group transfer and safe return to Kingston.' }
+    ],
+    travelRequirements: ['Valid Jamaican passport'],
+    visaRequirements: 'No visa required for short tourist stays for Jamaican passport holders.',
+    excursions: ['Panama Canal Locks Excursion', 'San Blas Catamaran Excursion'],
+    baggageInfo: 'Included Carry-on + Personal item.',
+    paymentPlanInfo: 'Tour concluded. Follow our next edition in 2026/2027.',
+    featuredImage: 'https://images.unsplash.com/photo-1517411032315-54ef2cb783bb?auto=format&fit=crop&w=1200&q=80',
+    gallery: [
+      'https://images.unsplash.com/photo-1517411032315-54ef2cb783bb?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=800&q=80'
+    ],
+    status: 'Past Trip',
+    isPastTrip: true,
+    isFeatured: true,
+    is2026Featured: false,
+    is2027Collection: false,
+    orderIndex: 6,
+    pastTripDateSummary: 'Completed October 2025',
+    pastTripRecap: 'Our 2025 Panama group expedition was truly one for the history books! 32 travelers from across Jamaica came together as family. From cheering at the Panama Canal locks to salsa dancing in Casco Viejo and sailing the crystal blue waters, these are memories to last a lifetime. Browse our photo album and video highlights below!',
+    pastTripMedia: [
+      {
+        id: 'panama-2025-m1',
+        type: 'image',
+        url: 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&w=1000&q=80',
+        title: 'Group Welcome Toast in Panama City',
+        caption: 'First evening celebration kicking off our 6-day adventure!'
+      },
+      {
+        id: 'panama-2025-m2',
+        type: 'image',
+        url: 'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=1000&q=80',
+        title: 'Miraflores Locks — Panama Canal Tour',
+        caption: 'Standing by the legendary canal observation deck as ships pass through.'
+      },
+      {
+        id: 'panama-2025-m3',
+        type: 'video',
+        url: 'https://www.youtube.com/watch?v=1la4iSRIEz8',
+        title: 'Panama Canal & City Highlights Video Reel',
+        caption: 'Watch the official traveler recap video and drone footage of Panama City.'
+      },
+      {
+        id: 'panama-2025-m4',
+        type: 'image',
+        url: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=1000&q=80',
+        title: 'San Blas Islands Catamaran Excursion',
+        caption: 'Crystal-clear waters and private beach lunch with the group.'
+      },
+      {
+        id: 'panama-2025-m5',
+        type: 'image',
+        url: 'https://images.unsplash.com/photo-1517411032315-54ef2cb783bb?auto=format&fit=crop&w=1000&q=80',
+        title: 'Colonial Stroll in Casco Viejo',
+        caption: 'Exploring boutique shops, historical plazas, and colorful architecture.'
+      },
+      {
+        id: 'panama-2025-m6',
+        type: 'video',
+        url: 'https://www.youtube.com/watch?v=kYI9F2J_oQI',
+        title: 'Island Boat Tour & Snorkeling Highlights',
+        caption: 'Full day ocean excursion, reggae vibes, and tropical adventure.'
+      },
+      {
+        id: 'panama-2025-m7',
+        type: 'image',
+        url: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1000&q=80',
+        title: 'Farewell Gala & Celebration Banquet',
+        caption: 'Dressed up in style for our unforgettable final evening banquet.'
+      }
+    ],
+    seoTitle: 'Panama 2025 Past Group Trip Recap & Photos | SMELTRAVELS876',
+    metaDescription: 'Browse photos and video reels from the SMELTRAVELS876 Panama 2025 group trip. Discover traveler memories from Kingston to Panama.'
+  },
 ];
 
 export const INITIAL_DESTINATIONS: Destination[] = [

@@ -44,6 +44,8 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, highlight2026 }) => {
         return 'bg-rose-100 text-rose-800 border-rose-300';
       case 'Closed':
         return 'bg-neutral-200 text-neutral-700 border-neutral-300';
+      case 'Past Trip':
+        return 'bg-purple-900 text-[#FFC72C] border-purple-800 font-black';
       default:
         return 'bg-neutral-100 text-neutral-800 border-neutral-300';
     }
@@ -97,9 +99,20 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, highlight2026 }) => {
               trip.status
             )}`}
           >
-            {trip.status}
+            {trip.status === 'Past Trip' ? '📸 Past Trip' : trip.status}
           </span>
-          {trip.availabilityNote && (
+          {(trip.isPastTrip || trip.status === 'Past Trip') && trip.pastTripMedia && trip.pastTripMedia.length > 0 && (
+            <span className="bg-black/80 backdrop-blur-md text-[#FFC72C] text-[10px] font-black uppercase px-2 py-0.5 rounded-md shadow border border-[#FFC72C]/40 flex items-center gap-1">
+              <Camera className="w-3 h-3" />
+              <span>
+                {trip.pastTripMedia.filter((m) => m.type === 'image').length} Photos
+                {trip.pastTripMedia.some((m) => m.type === 'video')
+                  ? ` • ${trip.pastTripMedia.filter((m) => m.type === 'video').length} Videos`
+                  : ''}
+              </span>
+            </span>
+          )}
+          {trip.availabilityNote && trip.status !== 'Past Trip' && (
             <span className="bg-amber-500 text-neutral-950 text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow">
               {trip.availabilityNote}
             </span>
@@ -253,41 +266,65 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, highlight2026 }) => {
         </div>
 
         {/* Action CTAs */}
-        <div className="pt-2 grid grid-cols-2 gap-2">
-          <button
-            onClick={() => navigateTo('trip-detail', trip.slug)}
-            className="w-full bg-[#2E0249] hover:bg-[#3B185F] text-white font-bold text-xs py-2.5 px-3 rounded-xl transition-colors flex items-center justify-center gap-1 cursor-pointer"
-            id={`view-trip-${trip.id}`}
-            title={`View full details & package inclusions for ${trip.name}`}
-          >
-            <span>View Package</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
+        {trip.status === 'Past Trip' || trip.isPastTrip ? (
+          <div className="pt-2 grid grid-cols-2 gap-2">
+            <button
+              onClick={() => navigateTo('trip-detail', trip.slug)}
+              className="w-full bg-[#2E0249] hover:bg-[#3B185F] text-white font-bold text-xs py-2.5 px-3 rounded-xl transition-colors flex items-center justify-center gap-1 cursor-pointer"
+              id={`view-trip-${trip.id}`}
+              title={`View photos, videos & traveler memories for ${trip.name}`}
+            >
+              <span>View Recap</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
 
-          <button
-            onClick={() =>
-              openWiPayCheckout({
-                tripId: trip.id,
-                title: trip.name,
-                deposit: trip.deposit,
-                totalPrice: trip.price,
-                dates: trip.dates,
-                location: `${trip.destination}, ${trip.country}`,
-              })
-            }
-            disabled={trip.status === 'Sold Out' || trip.status === 'Closed'}
-            className={`w-full font-bold text-xs py-2.5 px-3 rounded-xl transition-colors flex items-center justify-center gap-1 shadow-sm cursor-pointer ${
-              trip.status === 'Sold Out' || trip.status === 'Closed'
-                ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
-                : 'bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249]'
-            }`}
-            id={`book-trip-${trip.id}`}
-            title="Book Now (Pay Deposit) with secure WiPay Jamaica checkout"
-          >
-            <Sparkles className="w-3.5 h-3.5 fill-current" />
-            <span>Book Now (Pay Deposit)</span>
-          </button>
-        </div>
+            <button
+              onClick={() => navigateTo('trip-detail', trip.slug)}
+              className="w-full font-bold text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1 shadow-sm bg-gradient-to-r from-amber-400 to-[#FFC72C] hover:brightness-105 text-[#2E0249] cursor-pointer"
+              id={`memories-trip-${trip.id}`}
+              title="View photos and video highlights"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>Photos & Videos</span>
+            </button>
+          </div>
+        ) : (
+          <div className="pt-2 grid grid-cols-2 gap-2">
+            <button
+              onClick={() => navigateTo('trip-detail', trip.slug)}
+              className="w-full bg-[#2E0249] hover:bg-[#3B185F] text-white font-bold text-xs py-2.5 px-3 rounded-xl transition-colors flex items-center justify-center gap-1 cursor-pointer"
+              id={`view-trip-${trip.id}`}
+              title={`View full details & package inclusions for ${trip.name}`}
+            >
+              <span>View Package</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              onClick={() =>
+                openWiPayCheckout({
+                  tripId: trip.id,
+                  title: trip.name,
+                  deposit: trip.deposit,
+                  totalPrice: trip.price,
+                  dates: trip.dates,
+                  location: `${trip.destination}, ${trip.country}`,
+                })
+              }
+              disabled={trip.status === 'Sold Out' || trip.status === 'Closed'}
+              className={`w-full font-bold text-xs py-2.5 px-3 rounded-xl transition-colors flex items-center justify-center gap-1 shadow-sm cursor-pointer ${
+                trip.status === 'Sold Out' || trip.status === 'Closed'
+                  ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
+                  : 'bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249]'
+              }`}
+              id={`book-trip-${trip.id}`}
+              title="Book Now (Pay Deposit) with secure WiPay Jamaica checkout"
+            >
+              <Sparkles className="w-3.5 h-3.5 fill-current" />
+              <span>Book Now (Pay Deposit)</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

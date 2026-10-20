@@ -1,4 +1,14 @@
-export type TripStatus = 'Available' | 'Limited Availability' | 'Coming Soon' | 'Sold Out' | 'Closed';
+export type TripStatus = 'Available' | 'Limited Availability' | 'Coming Soon' | 'Sold Out' | 'Closed' | 'Past Trip';
+
+export interface PastTripMediaItem {
+  id: string;
+  type: 'image' | 'video';
+  url: string;
+  title?: string;
+  caption?: string;
+  thumbnail?: string;
+  uploadedAt?: string;
+}
 
 export interface DayItineraryItem {
   day: number;
@@ -49,6 +59,11 @@ export interface TripPackage {
   orderIndex: number;
   seoTitle?: string;
   metaDescription?: string;
+  // Past Trip & Traveler Memories
+  isPastTrip?: boolean;
+  pastTripRecap?: string;
+  pastTripMedia?: PastTripMediaItem[];
+  pastTripDateSummary?: string;
 }
 
 export interface Destination {
