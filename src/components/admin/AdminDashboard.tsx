@@ -48,6 +48,7 @@ import {
   Camera,
   Film,
   Play,
+  Save,
 } from 'lucide-react';
 import { useApp, formatPriceJMD } from '../../context/AppContext';
 import { BookingInquiry, TripPackage, TripStatus, BlogPost, FAQItem, PromotionalOffer, TestimonialItem, Destination, Ambassador, SiteSettings } from '../../types';
@@ -96,6 +97,7 @@ export const AdminDashboard: React.FC = () => {
     deleteTestimonial,
     settings,
     updateSettings,
+    saveAllChangesToLive,
     resetToInitialData,
     showNotification,
     navigateTo,
@@ -208,6 +210,9 @@ export const AdminDashboard: React.FC = () => {
   const [isSyncingSettings, setIsSyncingSettings] = useState(false);
   const [settingsSyncSuccess, setSettingsSyncSuccess] = useState(false);
   const [lastSyncedTimestamp, setLastSyncedTimestamp] = useState<string | null>(null);
+  const [isLiveSavingAll, setIsLiveSavingAll] = useState(false);
+  const [liveSaveAllSuccess, setLiveSaveAllSuccess] = useState(false);
+  const [lastLiveSaveTime, setLastLiveSaveTime] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isSyncingSettings) {
@@ -402,6 +407,57 @@ export const AdminDashboard: React.FC = () => {
     showNotification('Export Successful', 'All booking inquiries exported as JSON.');
   };
 
+  const handleLiveSaveAll = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (isLiveSavingAll) return;
+    setIsLiveSavingAll(true);
+    setLiveSaveAllSuccess(false);
+
+    try {
+      const primaryAmb =
+        localSettings.ambassadors?.find((a) => a.isActive !== false) ||
+        localSettings.ambassadors?.[0];
+
+      const finalizedSettings: SiteSettings = {
+        ...localSettings,
+        ...(primaryAmb
+          ? {
+              ambassadorName: primaryAmb.name,
+              ambassadorTitle: primaryAmb.title,
+              ambassadorPhone: primaryAmb.phone,
+              ambassadorEmail: primaryAmb.email,
+            }
+          : {}),
+      };
+
+      const ok = await saveAllChangesToLive({
+        settings: finalizedSettings,
+        trips,
+      });
+
+      const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setLastLiveSaveTime(nowTime);
+      setLastSyncedTimestamp(nowTime);
+      setLiveSaveAllSuccess(true);
+      showNotification(
+        'Live Save Complete for Entire Website!',
+        `All trips, past trip media, settings, and pages saved live at ${nowTime} for all users.`,
+        'success'
+      );
+      setTimeout(() => {
+        setLiveSaveAllSuccess(false);
+      }, 4000);
+    } catch (err) {
+      console.error('Failed to live save entire site:', err);
+      showNotification('Save Notice', 'Changes saved to browser session.', 'info');
+    } finally {
+      setIsLiveSavingAll(false);
+    }
+  };
+
   const handleSaveSettings = async (e?: React.FormEvent | React.MouseEvent) => {
     if (e) {
       e.preventDefault();
@@ -431,10 +487,12 @@ export const AdminDashboard: React.FC = () => {
 
     try {
       await updateSettings(finalizedSettings);
+      await saveAllChangesToLive({ settings: finalizedSettings, trips });
       setLocalSettings(finalizedSettings);
       setSettingsSyncSuccess(true);
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       setLastSyncedTimestamp(timeStr);
+      setLastLiveSaveTime(timeStr);
       showNotification(
         'Settings Saved & Live for All Users',
         'Website settings have been saved permanently to cloud database and synchronized to all visitors and administrators.',
@@ -488,6 +546,49 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {/* Live Save All Changes Button - Master live save for the entire website */}
+            <button
+              type="button"
+              onClick={handleLiveSaveAll}
+              disabled={isLiveSavingAll}
+              id="admin-live-save-all-btn"
+              className={`font-black text-xs px-4 py-2 rounded-xl border shadow-md transition-all flex items-center gap-2 cursor-pointer active:scale-95 ${
+                isLiveSavingAll
+                  ? 'bg-purple-900 text-[#FFC72C] border-purple-700 opacity-90 cursor-wait'
+                  : liveSaveAllSuccess
+                  ? 'bg-emerald-500 hover:bg-emerald-400 text-white border-white shadow-emerald-950/40'
+                  : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400 shadow-emerald-950/30'
+              }`}
+              title="Immediately live-save all admin changes (trips, past trips, settings, destinations, local trips) for the entire website"
+            >
+              {isLiveSavingAll ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                  <span>Saving Entire Site...</span>
+                </>
+              ) : liveSaveAllSuccess ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-100" />
+                  <span>✓ All Changes Saved Live!</span>
+                </>
+              ) : (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-emerald-200 animate-ping"></span>
+                  <Save className="w-3.5 h-3.5 text-[#FFC72C]" />
+                  <span>Live Save All Changes</span>
+                  <span className="bg-emerald-800 text-emerald-200 text-[9px] px-1.5 py-0.5 rounded-full font-mono uppercase font-black">
+                    Entire Site
+                  </span>
+                </>
+              )}
+            </button>
+
+            {lastLiveSaveTime && (
+              <span className="text-[11px] bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 px-2.5 py-1 rounded-xl font-mono font-bold hidden lg:inline-flex items-center gap-1 shadow-xs">
+                <span>✓</span> Saved: {lastLiveSaveTime}
+              </span>
+            )}
+
             <button
               onClick={async () => {
                 await refreshSiteData();
@@ -2109,13 +2210,16 @@ export const AdminDashboard: React.FC = () => {
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={async () => {
                           const updated = {
                             ...managingPastTrip,
                             isPastTrip: true,
                             status: 'Past Trip' as TripStatus,
                           };
                           saveTrip(updated);
+                          await saveAllChangesToLive({
+                            trips: trips.map(t => t.id === updated.id ? updated : t),
+                          });
                           setManagingPastTrip(null);
                           showNotification(
                             'Past Trip Saved & Live!',

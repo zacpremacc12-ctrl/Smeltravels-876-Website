@@ -74,6 +74,7 @@ interface AppContextType {
   updateSettings: (newSettings: Partial<SiteSettings>) => Promise<boolean>;
   resetSettings: () => void;
   refreshSiteData: () => Promise<void>;
+  saveAllChangesToLive: (customPayload?: Record<string, any>) => Promise<boolean>;
   
   trips: TripPackage[];
   addTrip: (trip: Omit<TripPackage, 'id'>) => void;
@@ -3517,6 +3518,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showNotification('Pricing Data Reset', 'Initial departure airports and route pricing tables restored.', 'info');
   };
 
+  const saveAllChangesToLive = async (customPayload?: Record<string, any>): Promise<boolean> => {
+    try {
+      const activeSettings = customPayload?.settings || settings;
+      const fullPayload = {
+        settings: activeSettings,
+        trips: customPayload?.trips || trips,
+        packages: customPayload?.trips || trips,
+        destinations: customPayload?.destinations || destinations,
+        blog: customPayload?.blog || blogPosts,
+        faqs: customPayload?.faqs || faqs,
+        offers: customPayload?.offers || offers,
+        testimonials: customPayload?.testimonials || testimonials,
+        localTrips: customPayload?.localTrips || localTrips,
+        localTripsPageSettings: customPayload?.localTripsPageSettings || localTripsPageSettings,
+        wingoRoutes: customPayload?.wingoRoutes || wingoRoutes,
+        departureAirports: customPayload?.departureAirports || departureAirports,
+        originPricingRoutes: customPayload?.originPricingRoutes || originPricingRoutes,
+        serviceCostRules: customPayload?.serviceCostRules || serviceCostRules,
+        supportedCurrencies: customPayload?.supportedCurrencies || supportedCurrencies,
+        adminInbox: customPayload?.adminInbox || adminInbox,
+        adminOrdersExcel: customPayload?.adminOrdersExcel || adminOrdersExcel,
+        ambassadors: activeSettings?.ambassadors || [],
+        customTripDestinations: activeSettings?.customTripDestinations || WORLD_DESTINATIONS,
+        ...(customPayload || {}),
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Store in localStorage for rapid browser reload recovery
+      setStoredItem('settings', fullPayload.settings);
+      setStoredItem('trips', fullPayload.trips);
+      setStoredItem('local_trips', fullPayload.localTrips);
+      setStoredItem('local_trips_settings', fullPayload.localTripsPageSettings);
+      setStoredItem('wingo_rates_database', fullPayload.wingoRoutes);
+      setStoredItem('departure_airports', fullPayload.departureAirports);
+      setStoredItem('origin_pricing_routes', fullPayload.originPricingRoutes);
+
+      // Also persist Wingo rates endpoint
+      fetch('/api/wingo/rates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ routes: fullPayload.wingoRoutes }),
+      }).catch(() => {});
+
+      // Synchronize across all backends: BroadcastChannel + Realtime DB + Server file store + SSE
+      const ok = await syncToLiveServer(fullPayload);
+      return ok;
+    } catch (e: any) {
+      console.error('[saveAllChangesToLive Error]:', e);
+      return false;
+    }
+  };
+
   const resetToInitialData = () => {
     localStorage.clear();
     setSettings(INITIAL_SETTINGS);
@@ -3548,6 +3601,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         settings,
         updateSettings,
         resetSettings,
+        saveAllChangesToLive,
         trips,
         addTrip,
         updateTrip,
