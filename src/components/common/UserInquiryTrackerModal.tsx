@@ -52,6 +52,7 @@ export const UserInquiryTrackerModal: React.FC = () => {
     adminOrdersExcel,
     bookings,
     currentUser,
+    isAdminLoggedIn,
     updateUserInquiry,
     submitInquiryDeposit,
     showNotification,
@@ -161,7 +162,10 @@ export const UserInquiryTrackerModal: React.FC = () => {
     return Array.from(recordsMap.values());
   }, [adminOrdersExcel, bookings]);
 
-  // User's inquiries matching the logged-in traveler profile
+  // Administrator privilege check: ONLY signed-in admins can access other people's inquiries/payments
+  const isAdmin = Boolean(isAdminLoggedIn || currentUser?.isAdmin);
+
+  // User's personal inquiries matching their logged-in traveler account
   const userInquiries = useMemo(() => {
     if (!currentUser) return [];
     const userEmail = (currentUser.email || '').trim().toLowerCase();
@@ -170,22 +174,33 @@ export const UserInquiryTrackerModal: React.FC = () => {
     const depositRefs = new Set((currentUser.deposits || []).map((d) => (d.bookingRef || '').toUpperCase()));
 
     return consolidatedInquiries.filter((item) => {
-      const matchEmail = Boolean(userEmail && item.email?.toLowerCase() === userEmail);
-      const matchName = Boolean(userName && item.customerName?.toLowerCase() === userName);
+      const matchEmail = Boolean(userEmail && item.email?.trim().toLowerCase() === userEmail);
+      const matchName = Boolean(userName && item.customerName?.trim().toLowerCase() === userName);
       const matchPhone = Boolean(userPhone && item.phone && item.phone.replace(/[^0-9]/g, '') === userPhone);
       const matchDeposit = depositRefs.has(item.orderRef.toUpperCase());
       return matchEmail || matchName || matchPhone || matchDeposit;
     });
   }, [consolidatedInquiries, currentUser]);
 
-  // Matched records based on query (or user inquiries by default)
+  // Accessible Inquiries Dataset:
+  // - Signed-in Administrators: Can see ALL travelers' inquiries and payments.
+  // - Regular Signed-in Travelers: Can ONLY EVER see their OWN inquiries and payments.
+  const accessibleInquiries = useMemo(() => {
+    if (isAdmin) {
+      return consolidatedInquiries;
+    }
+    return userInquiries;
+  }, [isAdmin, consolidatedInquiries, userInquiries]);
+
+  // Matched records: Searches STRICTLY within accessibleInquiries!
+  // Non-admins can NEVER discover or view any other traveler's inquiries or payments.
   const matchingRecords = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) {
-      return userInquiries;
+      return accessibleInquiries;
     }
 
-    return consolidatedInquiries.filter((item) => {
+    return accessibleInquiries.filter((item) => {
       const matchRef = item.orderRef.toLowerCase().includes(q);
       const matchEmail = item.email.toLowerCase().includes(q);
       const matchPhone = item.phone ? item.phone.replace(/[^0-9]/g, '').includes(q.replace(/[^0-9]/g, '')) : false;
@@ -193,9 +208,9 @@ export const UserInquiryTrackerModal: React.FC = () => {
       const matchDest = item.tripOrDestination.toLowerCase().includes(q);
       return matchRef || matchEmail || matchPhone || matchName || matchDest;
     });
-  }, [consolidatedInquiries, searchQuery, userInquiries]);
+  }, [accessibleInquiries, searchQuery]);
 
-  // Selected single inquiry record
+  // Selected single inquiry record: constrained exclusively to matchingRecords
   const selectedRecord = useMemo(() => {
     if (!selectedRecordId) {
       return matchingRecords[0] || null;
@@ -476,14 +491,18 @@ export const UserInquiryTrackerModal: React.FC = () => {
                   setSearchQuery(e.target.value);
                   setSelectedRecordId(null);
                 }}
-                placeholder="Enter Booking Ref (e.g., SMEL-CT-2026-...) or your Email / Phone number"
+                placeholder={
+                  isAdmin
+                    ? "Admin Search: Look up any traveler by name, email, phone, or Booking Ref..."
+                    : "Search your personal inquiries by Booking Ref (e.g., SMEL-...) or destination..."
+                }
                 className="w-full pl-10 pr-4 py-2.5 bg-white border border-neutral-300 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#2E0249] shadow-2xs"
                 id="inquiry-search-input"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 text-xs"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 text-xs font-semibold"
                 >
                   Clear
                 </button>
@@ -491,12 +510,20 @@ export const UserInquiryTrackerModal: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-xs text-neutral-600 font-semibold hidden md:inline">
-                Traveler: <strong className="text-purple-950">{currentUser.name}</strong> ({currentUser.email})
-              </span>
+              {isAdmin ? (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold whitespace-nowrap">
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
+                  <span>Admin Mode (All Travelers: {consolidatedInquiries.length})</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-100 text-purple-900 border border-purple-200 text-xs font-bold whitespace-nowrap">
+                  <Lock className="w-3 h-3 text-purple-700" />
+                  <span>Your Inquiries Only ({userInquiries.length})</span>
+                </span>
+              )}
               {matchingRecords.length > 0 && (
-                <span className="px-2.5 py-1 rounded-lg bg-purple-100 text-purple-900 text-xs font-bold whitespace-nowrap">
-                  {matchingRecords.length} trip{matchingRecords.length > 1 ? 's' : ''} found
+                <span className="px-2.5 py-1 rounded-lg bg-neutral-200 text-neutral-800 text-xs font-bold whitespace-nowrap font-mono">
+                  {matchingRecords.length} {matchingRecords.length === 1 ? 'trip' : 'trips'}
                 </span>
               )}
             </div>
@@ -538,12 +565,18 @@ export const UserInquiryTrackerModal: React.FC = () => {
 
               <div className="space-y-2">
                 <h3 className="text-xl sm:text-2xl font-black text-neutral-900 font-['Outfit',sans-serif]">
-                  {searchQuery ? `No Trip Found for "${searchQuery}"` : `Welcome, ${currentUser.name}! No Active Trips Found Yet`}
+                  {searchQuery
+                    ? `No ${isAdmin ? 'Inquiry' : 'Personal Inquiry'} Found for "${searchQuery}"`
+                    : `Welcome, ${currentUser.name}! No Active Inquiries Found`}
                 </h3>
                 <p className="text-sm text-neutral-600 leading-relaxed max-w-md mx-auto">
                   {searchQuery
-                    ? "We couldn't find any booking or custom trip inquiry matching your search under this account. Try checking your booking reference or clearing the search."
-                    : "You haven't made an inquiry or booking reservation with this account yet. Take a look at our upcoming international packages or let our team design your custom trip!"}
+                    ? isAdmin
+                      ? `No inquiries or payments matching "${searchQuery}" found in the administrative records.`
+                      : `No inquiry matching "${searchQuery}" was found under your traveler account. Regular travelers can only view their own inquiries and payments.`
+                    : isAdmin
+                    ? "No inquiries found in the administrative database."
+                    : "You haven't submitted a trip proposal or reservation under this account yet. Only administrators can view other travelers' bookings. Explore our trips to plan your getaway!"}
                 </p>
               </div>
 
@@ -594,14 +627,58 @@ export const UserInquiryTrackerModal: React.FC = () => {
                   <Clock className="w-3.5 h-3.5" />
                 </div>
                 <div className="leading-relaxed">
-                  <strong className="text-[#2E0249]">Already submitted an inquiry or deposit?</strong><br />
-                  Enter your official Booking Reference Number (e.g., <code className="px-1 py-0.5 bg-white rounded border border-purple-200 font-mono text-[11px] text-purple-950">SMEL-CT-2026-...</code>) or the Email address used when submitting your trip into the search box above to track your proposal status and balance.
+                  <strong className="text-[#2E0249]">
+                    {isAdmin ? 'Looking up a traveler as Administrator?' : 'Submitted an inquiry or deposit under this account?'}
+                  </strong>
+                  <br />
+                  {isAdmin ? (
+                    <span>
+                      As an authenticated administrator, you can search across all travelers by Booking Ref (<code className="px-1 py-0.5 bg-white rounded border border-purple-200 font-mono text-[11px] text-purple-950">SMEL-CT-...</code>), traveler email, customer name, or phone number.
+                    </span>
+                  ) : (
+                    <span>
+                      Enter your official Booking Reference Number (e.g., <code className="px-1 py-0.5 bg-white rounded border border-purple-200 font-mono text-[11px] text-purple-950">SMEL-CT-...</code>) or destination to filter your personal bookings. Inquiries belonging to other travelers cannot be accessed from regular traveler accounts.
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
           ) : (
             /* Inquiry Found: Show Overview, Steps, & Tabs */
             <div className="space-y-6">
+              {/* Role-Based Privacy Notice */}
+              <div
+                className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs ${
+                  isAdmin
+                    ? 'bg-amber-50/90 border-amber-300 text-amber-950 shadow-2xs'
+                    : 'bg-purple-50/70 border-purple-200 text-purple-950 shadow-2xs'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {isAdmin ? (
+                    <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0" />
+                  ) : (
+                    <Lock className="w-4 h-4 text-purple-700 shrink-0" />
+                  )}
+                  <div>
+                    <span className="font-bold">
+                      {isAdmin
+                        ? `Administrator Access: Inspecting inquiry for ${selectedRecord.customerName} (${selectedRecord.email})`
+                        : `Private Traveler Inquiry: Strictly visible only to your account (${currentUser.email})`}
+                    </span>
+                    {!isAdmin && (
+                      <p className="text-[11px] text-neutral-600 mt-0.5">
+                        Your inquiry details, WiPay verified payments, and installment milestones are strictly private.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="text-[11px] font-mono text-neutral-600 shrink-0">
+                  Ref: <strong className="text-neutral-900">{selectedRecord.orderRef}</strong>
+                </div>
+              </div>
+
               {/* Header Hero Banner for the Matched Inquiry */}
               <div className="bg-gradient-to-br from-purple-950 via-[#2E0249] to-[#3B185F] rounded-2xl p-5 text-white shadow-md relative overflow-hidden">
                 <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 w-44 h-44 bg-[#FFC72C]/10 rounded-full blur-2xl pointer-events-none" />

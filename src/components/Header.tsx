@@ -476,12 +476,35 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
             </button>
 
             <button
-              onClick={() => openInquiryTracker()}
+              onClick={() => {
+                if (!currentUser) {
+                  showNotification(
+                    'Traveler Login Required',
+                    'Please log in to track your inquiry, view transaction progress, and pay your next installment.',
+                    'info'
+                  );
+                  openAuthModal('login');
+                } else {
+                  openInquiryTracker();
+                }
+              }}
               className="inline-flex items-center gap-1.5 text-sm font-semibold text-neutral-200 hover:text-[#FFC72C] transition-colors cursor-pointer"
               id="nav-track-inquiry-btn"
-              title="Track your trip proposal or depositing status"
+              title={
+                isAdminLoggedIn || currentUser?.isAdmin
+                  ? 'Track & Manage All Inquiries (Administrator Mode)'
+                  : currentUser
+                  ? 'Track your personal trip inquiry and payment progress'
+                  : 'Log in to track your trip proposal and installment progress'
+              }
             >
-              <Clock className="w-3.5 h-3.5 text-[#FFC72C]" />
+              {isAdminLoggedIn || currentUser?.isAdmin ? (
+                <ShieldCheck className="w-3.5 h-3.5 text-[#FFC72C]" />
+              ) : currentUser ? (
+                <Clock className="w-3.5 h-3.5 text-[#FFC72C]" />
+              ) : (
+                <Lock className="w-3.5 h-3.5 text-[#FFC72C]" />
+              )}
               <span>TRACK INQUIRY</span>
             </button>
 
