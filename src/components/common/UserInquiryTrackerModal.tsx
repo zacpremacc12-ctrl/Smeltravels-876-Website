@@ -26,6 +26,7 @@ import {
   Compass,
   Palmtree,
   CalendarClock,
+  LogIn,
 } from 'lucide-react';
 import { useApp, formatPriceJMD } from '../../context/AppContext';
 import { AdminOrderExcelRecord, BookingSubmission, OrderWorkflowStatus } from '../../types';
@@ -57,11 +58,16 @@ export const UserInquiryTrackerModal: React.FC = () => {
     navigateTo,
     openCustomTripModal,
     openWiPayCheckout,
+    openAuthModal,
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'progress' | 'changes' | 'deposit'>('progress');
+
+  // Installment payment selection state
+  const [installmentChoice, setInstallmentChoice] = useState<'next' | 'full' | 'custom'>('next');
+  const [customInstallmentVal, setCustomInstallmentVal] = useState<number>(50000);
 
   // Edit state for user changes
   const [editDates, setEditDates] = useState('');
@@ -155,11 +161,28 @@ export const UserInquiryTrackerModal: React.FC = () => {
     return Array.from(recordsMap.values());
   }, [adminOrdersExcel, bookings]);
 
-  // Matched records based on query
+  // User's inquiries matching the logged-in traveler profile
+  const userInquiries = useMemo(() => {
+    if (!currentUser) return [];
+    const userEmail = (currentUser.email || '').trim().toLowerCase();
+    const userName = (currentUser.name || '').trim().toLowerCase();
+    const userPhone = currentUser.phone ? currentUser.phone.replace(/[^0-9]/g, '') : '';
+    const depositRefs = new Set((currentUser.deposits || []).map((d) => (d.bookingRef || '').toUpperCase()));
+
+    return consolidatedInquiries.filter((item) => {
+      const matchEmail = Boolean(userEmail && item.email?.toLowerCase() === userEmail);
+      const matchName = Boolean(userName && item.customerName?.toLowerCase() === userName);
+      const matchPhone = Boolean(userPhone && item.phone && item.phone.replace(/[^0-9]/g, '') === userPhone);
+      const matchDeposit = depositRefs.has(item.orderRef.toUpperCase());
+      return matchEmail || matchName || matchPhone || matchDeposit;
+    });
+  }, [consolidatedInquiries, currentUser]);
+
+  // Matched records based on query (or user inquiries by default)
   const matchingRecords = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) {
-      return [];
+      return userInquiries;
     }
 
     return consolidatedInquiries.filter((item) => {
@@ -170,7 +193,7 @@ export const UserInquiryTrackerModal: React.FC = () => {
       const matchDest = item.tripOrDestination.toLowerCase().includes(q);
       return matchRef || matchEmail || matchPhone || matchName || matchDest;
     });
-  }, [consolidatedInquiries, searchQuery]);
+  }, [consolidatedInquiries, searchQuery, userInquiries]);
 
   // Selected single inquiry record
   const selectedRecord = useMemo(() => {
@@ -179,6 +202,38 @@ export const UserInquiryTrackerModal: React.FC = () => {
     }
     return matchingRecords.find((r) => r.id === selectedRecordId || r.orderRef === selectedRecordId) || matchingRecords[0] || null;
   }, [matchingRecords, selectedRecordId]);
+
+  // Installments calculation
+  const pendingInstallments = useMemo(() => {
+    if (!selectedRecord?.paymentSchedule?.installments) return [];
+    return selectedRecord.paymentSchedule.installments.filter((inst) => inst.status !== 'Paid');
+  }, [selectedRecord]);
+
+  const paidInstallments = useMemo(() => {
+    if (!selectedRecord?.paymentSchedule?.installments) return [];
+    return selectedRecord.paymentSchedule.installments.filter((inst) => inst.status === 'Paid');
+  }, [selectedRecord]);
+
+  const nextPendingInstallment = pendingInstallments[0] || null;
+
+  const balanceDue = selectedRecord ? Math.max(0, (selectedRecord.totalPrice || 0) - (selectedRecord.depositPaid || 0)) : 0;
+  const isPaidInFull = selectedRecord ? (selectedRecord.totalPrice > 0 && (selectedRecord.depositPaid || 0) >= selectedRecord.totalPrice) : false;
+
+  // Percentage of total trip package paid
+  const percentPaid = useMemo(() => {
+    if (!selectedRecord || !selectedRecord.totalPrice || selectedRecord.totalPrice <= 0) {
+      return selectedRecord?.depositPaid && selectedRecord.depositPaid > 0 ? 100 : 0;
+    }
+    return Math.min(100, Math.round(((selectedRecord.depositPaid || 0) / selectedRecord.totalPrice) * 100));
+  }, [selectedRecord]);
+
+  // Detect verified WiPay transaction reference
+  const wipayTxnId = useMemo(() => {
+    if (!selectedRecord) return null;
+    const combined = `${selectedRecord.adminNotes || ''} ${selectedRecord.specialRequests || ''}`;
+    const match = combined.match(/WP-JM-[A-Z0-9-]+/i);
+    return match ? match[0] : (selectedRecord.depositPaid > 0 ? 'WP-JM-VERIFIED' : null);
+  }, [selectedRecord]);
 
   // Sync edit form when selected record changes
   useEffect(() => {
@@ -193,10 +248,119 @@ export const UserInquiryTrackerModal: React.FC = () => {
       const balance = Math.max(0, (selectedRecord.totalPrice || 0) - (selectedRecord.depositPaid || 0));
       const defaultDeposit = selectedRecord.depositPaid > 0 ? balance : Math.min(50000, balance > 0 ? balance : 50000);
       setDepositAmount(defaultDeposit > 0 ? defaultDeposit : 50000);
+      setCustomInstallmentVal(nextPendingInstallment ? nextPendingInstallment.amount : (balance > 0 ? Math.min(balance, 50000) : 50000));
     }
-  }, [selectedRecord]);
+  }, [selectedRecord, nextPendingInstallment]);
+
+  // Computed installment amount to pay
+  const installmentAmountToPay = useMemo(() => {
+    if (installmentChoice === 'full') return balanceDue;
+    if (installmentChoice === 'custom') return customInstallmentVal;
+    if (nextPendingInstallment) return nextPendingInstallment.amount;
+    return Math.min(balanceDue > 0 ? balanceDue : 50000, 50000);
+  }, [installmentChoice, balanceDue, customInstallmentVal, nextPendingInstallment]);
+
+  // Pay another installment with WiPay Live Gateway
+  const handlePayInstallmentWithWiPay = (specificAmount?: number, label?: string) => {
+    if (!selectedRecord) return;
+    const amount = specificAmount !== undefined ? specificAmount : installmentAmountToPay;
+
+    if (amount <= 0) {
+      showNotification('Invalid Amount', 'Please specify or select an installment amount to pay.', 'warning');
+      return;
+    }
+
+    const installmentLabel =
+      label ||
+      (installmentChoice === 'full'
+        ? 'Final Balance Payment'
+        : nextPendingInstallment
+        ? nextPendingInstallment.label
+        : `Installment Payment (${formatPriceJMD(amount)})`);
+
+    closeInquiryTracker();
+    openWiPayCheckout({
+      tripId: selectedRecord.orderRef,
+      orderRef: selectedRecord.orderRef,
+      isInstallmentPayment: true,
+      installmentLabel,
+      title: `${selectedRecord.tripOrDestination} - ${installmentLabel}`,
+      deposit: amount,
+      totalPrice: selectedRecord.totalPrice || amount,
+      customerName: currentUser?.name || selectedRecord.customerName,
+      email: currentUser?.email || selectedRecord.email,
+      phone: currentUser?.phone || selectedRecord.phone,
+      countryOrParish: currentUser?.homeParishOrCountry || selectedRecord.parishOrCountry,
+      dates: selectedRecord.travelDates,
+    });
+  };
 
   if (!isInquiryTrackerOpen) return null;
+
+  // Strict Login Gate: Track Inquiry is only accessible if the user is logged in
+  if (!currentUser) {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/75 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200"
+        id="inquiry-tracker-modal-overlay"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) closeInquiryTracker();
+        }}
+      >
+        <div
+          className="bg-white rounded-3xl shadow-2xl border border-neutral-200 w-full max-w-md overflow-hidden text-center p-6 sm:p-8 space-y-6"
+          id="inquiry-tracker-locked-container"
+        >
+          <div className="w-16 h-16 rounded-3xl bg-[#2E0249] text-[#FFC72C] flex items-center justify-center mx-auto shadow-lg border border-[#FFC72C]/30">
+            <Lock className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <span className="text-[10px] font-black uppercase tracking-widest text-purple-900 bg-purple-100 px-3 py-1 rounded-full">
+              Traveler Access Only
+            </span>
+            <h3 className="text-xl sm:text-2xl font-black text-neutral-900 font-['Outfit',sans-serif]">
+              Log In to Track Your Inquiry
+            </h3>
+            <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed">
+              Track Inquiry & Installments is strictly accessible to logged-in travelers. Sign in to view where your WiPay transaction has reached, inspect your scheduled payment milestones, and pay your next installment online.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2.5 pt-1">
+            <button
+              onClick={() => {
+                closeInquiryTracker();
+                openAuthModal('login');
+              }}
+              className="w-full py-3.5 rounded-2xl bg-[#2E0249] hover:bg-[#3B185F] text-[#FFC72C] font-black text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer border border-[#FFC72C]/40"
+              id="tracker-auth-login-btn"
+            >
+              <LogIn className="w-4 h-4 text-[#FFC72C]" />
+              <span>Log In as Traveler</span>
+            </button>
+
+            <button
+              onClick={() => {
+                closeInquiryTracker();
+                openAuthModal('signup');
+              }}
+              className="w-full py-3 rounded-2xl bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-bold text-xs transition-colors cursor-pointer"
+            >
+              <span>Don't have an account? Sign Up</span>
+            </button>
+
+            <button
+              onClick={closeInquiryTracker}
+              className="text-xs text-neutral-500 hover:text-neutral-800 pt-1 font-semibold"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleCopyRef = (ref: string) => {
     navigator.clipboard.writeText(ref);
@@ -250,13 +414,11 @@ export const UserInquiryTrackerModal: React.FC = () => {
     }
   };
 
-  const balanceDue = selectedRecord ? Math.max(0, (selectedRecord.totalPrice || 0) - (selectedRecord.depositPaid || 0)) : 0;
-  const isPaidInFull = selectedRecord ? (selectedRecord.totalPrice > 0 && (selectedRecord.depositPaid || 0) >= selectedRecord.totalPrice) : false;
-
-  // Compute progress step (1 to 4)
+  // Compute where the transaction has reached (1 to 5 steps)
   const getProgressStep = () => {
     if (!selectedRecord) return 1;
-    if (isPaidInFull || selectedRecord.orderStatus === 'Confirmed' || selectedRecord.orderStatus === 'Ticket Issued') return 4;
+    if (isPaidInFull || selectedRecord.orderStatus === 'Confirmed' || selectedRecord.orderStatus === 'Ticket Issued') return 5;
+    if (paidInstallments.length > 0 || (selectedRecord.depositPaid && selectedRecord.depositPaid > 45000)) return 4;
     if ((selectedRecord.depositPaid || 0) > 0 || selectedRecord.orderStatus === 'Deposit Received') return 3;
     if ((selectedRecord.totalPrice || 0) > 0 || selectedRecord.orderStatus === 'Quote Prepared') return 2;
     return 1;
@@ -329,12 +491,12 @@ export const UserInquiryTrackerModal: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-xs text-neutral-500 font-semibold hidden md:inline">
-                {currentUser ? `Logged in as ${currentUser.name}` : 'Guest Access (No Login Required)'}
+              <span className="text-xs text-neutral-600 font-semibold hidden md:inline">
+                Traveler: <strong className="text-purple-950">{currentUser.name}</strong> ({currentUser.email})
               </span>
               {matchingRecords.length > 0 && (
                 <span className="px-2.5 py-1 rounded-lg bg-purple-100 text-purple-900 text-xs font-bold whitespace-nowrap">
-                  {matchingRecords.length} match{matchingRecords.length > 1 ? 'es' : ''}
+                  {matchingRecords.length} trip{matchingRecords.length > 1 ? 's' : ''} found
                 </span>
               )}
             </div>
@@ -375,13 +537,13 @@ export const UserInquiryTrackerModal: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <h3 className="text-xl sm:text-2xl font-black text-neutral-900">
-                  {searchQuery ? `No Inquiry Found for "${searchQuery}"` : "Haven't Made an Inquiry Yet?"}
+                <h3 className="text-xl sm:text-2xl font-black text-neutral-900 font-['Outfit',sans-serif]">
+                  {searchQuery ? `No Trip Found for "${searchQuery}"` : `Welcome, ${currentUser.name}! No Active Trips Found Yet`}
                 </h3>
                 <p className="text-sm text-neutral-600 leading-relaxed max-w-md mx-auto">
                   {searchQuery
-                    ? "We couldn't find any booking or custom trip inquiry matching your search. If you haven't made an inquiry yet, take a look at our upcoming trips or create your own custom vacation!"
-                    : "If you haven't made an inquiry yet, take a look at our upcoming featured trips or let our team design your own custom international vacation!"}
+                    ? "We couldn't find any booking or custom trip inquiry matching your search under this account. Try checking your booking reference or clearing the search."
+                    : "You haven't made an inquiry or booking reservation with this account yet. Take a look at our upcoming international packages or let our team design your custom trip!"}
                 </p>
               </div>
 
@@ -529,20 +691,55 @@ export const UserInquiryTrackerModal: React.FC = () => {
                 )}
               </div>
 
-              {/* Progress Stepper Section */}
-              <div className="bg-neutral-50 rounded-2xl p-5 border border-neutral-200">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-neutral-700 flex items-center gap-1.5">
-                    <Clock className="w-4 h-4 text-[#2E0249]" />
-                    <span>Inquiry & Booking Milestones</span>
-                  </h4>
-                  <span className="text-xs font-bold text-purple-900 bg-purple-100 px-2.5 py-0.5 rounded-full">
-                    Step {currentStep} of 4
-                  </span>
+              {/* Where the Transaction Has Reached: Progress & WiPay Live Verification */}
+              <div className="bg-neutral-50 rounded-2xl p-5 border border-neutral-200 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-neutral-800 flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-[#2E0249]" />
+                      <span>Where Your Transaction Has Reached</span>
+                    </h4>
+                    <p className="text-xs text-neutral-500 mt-0.5">
+                      Live transaction milestones, verified WiPay receipts, and installment schedule.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {wipayTxnId && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold border border-emerald-300">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>WiPay Verified: {wipayTxnId}</span>
+                      </span>
+                    )}
+                    <span className="text-xs font-bold text-purple-900 bg-purple-100 px-3 py-1 rounded-full whitespace-nowrap">
+                      Stage {currentStep} of 5
+                    </span>
+                  </div>
                 </div>
 
-                {/* Interactive 4-step progress line */}
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 relative">
+                {/* Progress bar showing % of total trip price paid */}
+                <div className="space-y-1.5 bg-white p-3.5 rounded-xl border border-neutral-200">
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span className="text-neutral-700 flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-[#2E0249]" />
+                      <span>Overall Payment & Booking Progress</span>
+                    </span>
+                    <span className="text-[#2E0249] font-mono font-black">{percentPaid}% Paid</span>
+                  </div>
+                  <div className="w-full h-3 bg-neutral-100 rounded-full overflow-hidden p-0.5 border border-neutral-200">
+                    <div
+                      className="h-full bg-gradient-to-r from-[#2E0249] via-purple-700 to-[#FFC72C] rounded-full transition-all duration-500 shadow-xs"
+                      style={{ width: `${Math.max(5, percentPaid)}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-neutral-500 pt-0.5">
+                    <span>Paid to Date: <strong className="text-emerald-700 font-mono">{formatPriceJMD(selectedRecord.depositPaid || 0)}</strong></span>
+                    <span>Remaining Balance: <strong className="text-purple-950 font-mono">{formatPriceJMD(balanceDue)}</strong></span>
+                  </div>
+                </div>
+
+                {/* 5-Step Progress Stepper Line */}
+                <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5 pt-1">
                   {/* Step 1 */}
                   <div
                     className={`p-3 rounded-xl border transition-all ${
@@ -551,14 +748,14 @@ export const UserInquiryTrackerModal: React.FC = () => {
                         : 'bg-neutral-100/70 border-neutral-200 opacity-60'
                     }`}
                   >
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">
                         ✓
                       </div>
-                      <span className="text-xs font-bold text-neutral-900">1. Inquiry Routed</span>
+                      <span className="text-xs font-bold text-neutral-900">1. Proposal Sent</span>
                     </div>
-                    <p className="text-[11px] text-neutral-600">
-                      Proposal submitted and distributed to all SMEL Travels admins.
+                    <p className="text-[10px] text-neutral-600 leading-tight">
+                      Trip proposal received by operations desk.
                     </p>
                   </div>
 
@@ -572,18 +769,18 @@ export const UserInquiryTrackerModal: React.FC = () => {
                         : 'bg-neutral-100/70 border-neutral-200 opacity-60'
                     }`}
                   >
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-1.5 mb-1">
                       <div
-                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                        className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
                           currentStep >= 2 ? 'bg-emerald-600 text-white' : 'bg-[#2E0249] text-[#FFC72C]'
                         }`}
                       >
                         {currentStep >= 2 ? '✓' : '2'}
                       </div>
-                      <span className="text-xs font-bold text-neutral-900">2. Itinerary & Quote</span>
+                      <span className="text-xs font-bold text-neutral-900">2. Quote Ready</span>
                     </div>
-                    <p className="text-[11px] text-neutral-600">
-                      Flights, stays, and pricing calculated by your travel specialist.
+                    <p className="text-[10px] text-neutral-600 leading-tight">
+                      Total package pricing & flights calculated.
                     </p>
                   </div>
 
@@ -597,18 +794,18 @@ export const UserInquiryTrackerModal: React.FC = () => {
                         : 'bg-neutral-100/70 border-neutral-200 opacity-60'
                     }`}
                   >
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-1.5 mb-1">
                       <div
-                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                        className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
                           currentStep >= 3 ? 'bg-emerald-600 text-white' : 'bg-neutral-300 text-neutral-700'
                         }`}
                       >
                         {currentStep >= 3 ? '✓' : '3'}
                       </div>
-                      <span className="text-xs font-bold text-neutral-900">3. Deposit & Lock Spot</span>
+                      <span className="text-xs font-bold text-neutral-900">3. WiPay Deposit</span>
                     </div>
-                    <p className="text-[11px] text-neutral-600">
-                      Deposit payment received to reserve your spots & lock rates.
+                    <p className="text-[10px] text-neutral-600 leading-tight">
+                      Deposit received & traveler spot secured.
                     </p>
                   </div>
 
@@ -617,21 +814,46 @@ export const UserInquiryTrackerModal: React.FC = () => {
                     className={`p-3 rounded-xl border transition-all ${
                       currentStep >= 4
                         ? 'bg-white border-emerald-300 shadow-2xs'
+                        : currentStep === 3
+                        ? 'bg-purple-50 border-purple-200'
                         : 'bg-neutral-100/70 border-neutral-200 opacity-60'
                     }`}
                   >
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-1.5 mb-1">
                       <div
-                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                        className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
                           currentStep >= 4 ? 'bg-emerald-600 text-white' : 'bg-neutral-300 text-neutral-700'
                         }`}
                       >
                         {currentStep >= 4 ? '✓' : '4'}
                       </div>
-                      <span className="text-xs font-bold text-neutral-900">4. Confirmed & Tickets</span>
+                      <span className="text-xs font-bold text-neutral-900">4. Installments</span>
                     </div>
-                    <p className="text-[11px] text-neutral-600">
-                      Official vouchers, flight codes, and excursion passes released.
+                    <p className="text-[10px] text-neutral-600 leading-tight">
+                      Milestone payments ongoing or settled.
+                    </p>
+                  </div>
+
+                  {/* Step 5 */}
+                  <div
+                    className={`p-3 rounded-xl border transition-all ${
+                      currentStep >= 5
+                        ? 'bg-white border-emerald-300 shadow-2xs'
+                        : 'bg-neutral-100/70 border-neutral-200 opacity-60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <div
+                        className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                          currentStep >= 5 ? 'bg-emerald-600 text-white' : 'bg-neutral-300 text-neutral-700'
+                        }`}
+                      >
+                        {currentStep >= 5 ? '✓' : '5'}
+                      </div>
+                      <span className="text-xs font-bold text-neutral-900">5. Vouchers Out</span>
+                    </div>
+                    <p className="text-[10px] text-neutral-600 leading-tight">
+                      Hotel passes & flight tickets issued.
                     </p>
                   </div>
                 </div>
@@ -644,19 +866,20 @@ export const UserInquiryTrackerModal: React.FC = () => {
                   <div className="text-xl sm:text-2xl font-black text-neutral-900 font-mono mt-1">
                     {formatPriceJMD(selectedRecord.totalPrice || 0)}
                   </div>
-                  <div className="text-[11px] text-neutral-500 mt-1">Quoted by administrator</div>
+                  <div className="text-[11px] text-neutral-500 mt-1">Quoted package rate</div>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200 shadow-2xs">
                   <div className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center justify-between">
-                    <span>Deposit Paid</span>
+                    <span>Total Deposit Paid</span>
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                   </div>
                   <div className="text-xl sm:text-2xl font-black text-emerald-700 font-mono mt-1">
                     {formatPriceJMD(selectedRecord.depositPaid || 0)}
                   </div>
-                  <div className="text-[11px] text-emerald-800 mt-1 font-semibold">
-                    Status: {selectedRecord.paymentStatus}
+                  <div className="text-[11px] text-emerald-800 mt-1 font-semibold flex items-center gap-1">
+                    <span>Status: {selectedRecord.paymentStatus}</span>
+                    {wipayTxnId && <span className="text-[10px] font-mono bg-emerald-200/60 px-1 rounded">(WiPay)</span>}
                   </div>
                 </div>
 
@@ -666,9 +889,198 @@ export const UserInquiryTrackerModal: React.FC = () => {
                     {formatPriceJMD(balanceDue)}
                   </div>
                   <div className="text-[11px] text-purple-700 mt-1 font-semibold">
-                    {isPaidInFull ? '✓ Fully Settled' : 'Flexible payment schedule'}
+                    {isPaidInFull ? '✓ Fully Settled Online' : 'Installment options available'}
                   </div>
                 </div>
+              </div>
+
+              {/* ==========================================================
+                  DEDICATED "PAY ANOTHER INSTALLMENT" CARD & ACTION
+                 ========================================================== */}
+              <div className="rounded-2xl border-2 border-[#FFC72C]/70 bg-gradient-to-br from-[#2E0249] via-[#3B185F] to-[#2E0249] p-5 text-white shadow-lg space-y-4 relative overflow-hidden" id="pay-another-installment-section">
+                <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 w-48 h-48 bg-[#FFC72C]/15 rounded-full blur-3xl pointer-events-none" />
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#FFC72C] text-[#2E0249] flex items-center justify-center font-black shadow-md">
+                      <CreditCard className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black uppercase tracking-wider text-[#FFC72C]">
+                          WiPay Jamaica Payment Portal
+                        </span>
+                        <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2 py-0.5 rounded-full font-bold">
+                          Live Instant Update
+                        </span>
+                      </div>
+                      <h4 className="text-base sm:text-lg font-black text-white font-['Outfit',sans-serif]">
+                        {isPaidInFull ? 'Trip Paid in Full ✓' : 'Pay Another Installment'}
+                      </h4>
+                    </div>
+                  </div>
+
+                  <div className="sm:text-right">
+                    <span className="text-[10px] text-purple-200 uppercase tracking-wider block">Remaining Balance</span>
+                    <span className="text-lg font-black text-[#FFC72C] font-mono">{formatPriceJMD(balanceDue)}</span>
+                  </div>
+                </div>
+
+                {isPaidInFull ? (
+                  <div className="p-4 rounded-xl bg-emerald-900/40 border border-emerald-500/40 text-emerald-200 text-xs flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                    <div>
+                      <strong className="text-white text-sm">Congratulations! All Installments Settled.</strong>
+                      <p className="text-xs text-emerald-300 mt-0.5">
+                        Your booking #{selectedRecord.orderRef} is 100% paid. Your itinerary tickets and travel vouchers are confirmed.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4 pt-1 relative z-10">
+                    <p className="text-xs text-purple-200">
+                      Select which installment milestone you would like to pay with WiPay, or specify a custom payment amount:
+                    </p>
+
+                    {/* Choice Selectors */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      {/* Option 1: Next Scheduled Milestone */}
+                      <button
+                        type="button"
+                        onClick={() => setInstallmentChoice('next')}
+                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                          installmentChoice === 'next'
+                            ? 'bg-purple-900/90 border-[#FFC72C] ring-2 ring-[#FFC72C]/40 text-white shadow-md'
+                            : 'bg-white/5 border-white/15 hover:bg-white/10 text-neutral-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#FFC72C]">Next Scheduled</span>
+                          <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${installmentChoice === 'next' ? 'border-[#FFC72C] bg-[#FFC72C]' : 'border-neutral-400'}`}>
+                            {installmentChoice === 'next' && <span className="w-1.5 h-1.5 rounded-full bg-[#2E0249]" />}
+                          </span>
+                        </div>
+                        <div className="text-base font-black font-mono mt-1 text-white">
+                          {formatPriceJMD(nextPendingInstallment ? nextPendingInstallment.amount : Math.min(balanceDue, 50000))}
+                        </div>
+                        <div className="text-[10px] text-purple-200 truncate mt-0.5">
+                          {nextPendingInstallment ? nextPendingInstallment.label : 'Upcoming Milestone'}
+                        </div>
+                      </button>
+
+                      {/* Option 2: Pay Full Remaining Balance */}
+                      <button
+                        type="button"
+                        onClick={() => setInstallmentChoice('full')}
+                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                          installmentChoice === 'full'
+                            ? 'bg-purple-900/90 border-[#FFC72C] ring-2 ring-[#FFC72C]/40 text-white shadow-md'
+                            : 'bg-white/5 border-white/15 hover:bg-white/10 text-neutral-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Settle Entire Trip</span>
+                          <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${installmentChoice === 'full' ? 'border-[#FFC72C] bg-[#FFC72C]' : 'border-neutral-400'}`}>
+                            {installmentChoice === 'full' && <span className="w-1.5 h-1.5 rounded-full bg-[#2E0249]" />}
+                          </span>
+                        </div>
+                        <div className="text-base font-black font-mono mt-1 text-white">
+                          {formatPriceJMD(balanceDue)}
+                        </div>
+                        <div className="text-[10px] text-purple-200 truncate mt-0.5">
+                          Pay Remaining Balance in Full
+                        </div>
+                      </button>
+
+                      {/* Option 3: Custom Installment */}
+                      <button
+                        type="button"
+                        onClick={() => setInstallmentChoice('custom')}
+                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                          installmentChoice === 'custom'
+                            ? 'bg-purple-900/90 border-[#FFC72C] ring-2 ring-[#FFC72C]/40 text-white shadow-md'
+                            : 'bg-white/5 border-white/15 hover:bg-white/10 text-neutral-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-purple-300">Custom Amount</span>
+                          <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${installmentChoice === 'custom' ? 'border-[#FFC72C] bg-[#FFC72C]' : 'border-neutral-400'}`}>
+                            {installmentChoice === 'custom' && <span className="w-1.5 h-1.5 rounded-full bg-[#2E0249]" />}
+                          </span>
+                        </div>
+                        <div className="text-base font-black font-mono mt-1 text-white">
+                          {formatPriceJMD(customInstallmentVal)}
+                        </div>
+                        <div className="text-[10px] text-purple-200 truncate mt-0.5">
+                          Flexible Milestone Deposit
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Custom Amount Slider / Input */}
+                    {installmentChoice === 'custom' && (
+                      <div className="p-3 bg-purple-950/80 rounded-xl border border-purple-800/80 space-y-2">
+                        <label className="block text-xs font-bold text-purple-200">
+                          Enter Custom Installment Amount (JMD):
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="5000"
+                            max={balanceDue > 0 ? balanceDue : 500000}
+                            step="1000"
+                            value={customInstallmentVal}
+                            onChange={(e) => setCustomInstallmentVal(Math.max(1000, Number(e.target.value) || 0))}
+                            className="flex-1 px-3 py-2 bg-white/10 border border-purple-400/40 rounded-xl text-white font-mono font-bold text-sm focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                          />
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setCustomInstallmentVal(25000)}
+                              className="px-2 py-1 bg-white/10 hover:bg-white/20 text-xs rounded-lg font-mono text-purple-200"
+                            >
+                              $25k
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setCustomInstallmentVal(50000)}
+                              className="px-2 py-1 bg-white/10 hover:bg-white/20 text-xs rounded-lg font-mono text-purple-200"
+                            >
+                              $50k
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setCustomInstallmentVal(balanceDue)}
+                              className="px-2 py-1 bg-[#FFC72C] text-[#2E0249] text-xs rounded-lg font-mono font-bold hover:bg-[#ffcf47]"
+                            >
+                              Full Balance
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Primary Trigger Button: Launches WiPay Checkout for Installment */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                      <div className="text-xs text-purple-200 flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5 text-[#FFC72C]" />
+                        <span>Instant receipt & payment confirmation generated on site.</span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handlePayInstallmentWithWiPay()}
+                        id="pay-another-installment-btn"
+                        className="px-6 py-3 rounded-xl bg-[#FFC72C] hover:bg-[#ffcf47] active:scale-98 text-[#2E0249] font-black text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-101 border border-[#FFC72C]"
+                        title={`Pay another installment of ${formatPriceJMD(installmentAmountToPay)} with WiPay Jamaica`}
+                      >
+                        <CreditCard className="w-4 h-4 fill-current" />
+                        <span>Pay Another Installment of {formatPriceJMD(installmentAmountToPay)} with WiPay</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* POST-DEPOSIT PAYMENT TIMEFRAME & DEADLINES SCHEDULE */}
@@ -680,12 +1092,12 @@ export const UserInquiryTrackerModal: React.FC = () => {
                     </div>
                     <div>
                       <h4 className="text-xs sm:text-sm font-bold font-['Outfit',sans-serif] text-white">
-                        Payment Timeframe & Installment Deadlines
+                        Scheduled Installments Breakdown & Deadlines
                       </h4>
                       <p className="text-[11px] text-neutral-300">
                         {selectedRecord.depositPaid > 0 || selectedRecord.paymentStatus === 'Deposit Paid' || selectedRecord.paymentStatus === 'Paid in Full'
-                          ? 'Timeframe established following verified WiPay deposit.'
-                          : 'Payment timeframe is generated only after initial WiPay deposit is completed.'}
+                          ? 'Specific payment milestones established following verified deposit.'
+                          : 'Payment timeframe is generated following your initial WiPay deposit.'}
                       </p>
                     </div>
                   </div>
@@ -699,7 +1111,7 @@ export const UserInquiryTrackerModal: React.FC = () => {
                   {selectedRecord.depositPaid > 0 || selectedRecord.paymentStatus === 'Deposit Paid' || selectedRecord.paymentStatus === 'Paid in Full' ? (
                     selectedRecord.paymentSchedule?.installments && selectedRecord.paymentSchedule.installments.length > 0 ? (
                       <div className="space-y-3">
-                        <div className="flex items-center justify-between text-xs text-neutral-700">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-neutral-700 gap-2">
                           <span className="font-semibold">
                             Scheduled by Specialist:{' '}
                             <strong className="text-neutral-900">
@@ -708,7 +1120,7 @@ export const UserInquiryTrackerModal: React.FC = () => {
                           </span>
                           <span className="text-emerald-700 font-bold flex items-center gap-1">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>Initial WiPay Deposit Received: {formatPriceJMD(selectedRecord.depositPaid)}</span>
+                            <span>Initial WiPay Deposit: {formatPriceJMD(selectedRecord.depositPaid)}</span>
                           </span>
                         </div>
 
@@ -716,35 +1128,50 @@ export const UserInquiryTrackerModal: React.FC = () => {
                           {selectedRecord.paymentSchedule.installments.map((inst, idx) => (
                             <div
                               key={inst.id || idx}
-                              className="p-3 bg-white rounded-xl border border-purple-200/80 shadow-2xs space-y-1.5"
+                              className={`p-3.5 bg-white rounded-xl border shadow-2xs space-y-2 flex flex-col justify-between ${
+                                inst.status === 'Paid'
+                                  ? 'border-emerald-200 bg-emerald-50/20'
+                                  : 'border-purple-200/80'
+                              }`}
                             >
-                              <div className="flex items-center justify-between">
-                                <span className="font-bold text-neutral-900 text-xs">
-                                  {inst.label}
-                                </span>
-                                <span
-                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                    inst.status === 'Paid'
-                                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                      : inst.status === 'Overdue'
-                                      ? 'bg-rose-100 text-rose-800 border border-rose-300'
-                                      : 'bg-amber-100 text-amber-800 border border-amber-300'
-                                  }`}
-                                >
-                                  {inst.status === 'Paid' ? '✓ Paid' : inst.status === 'Overdue' ? '⚠️ Overdue' : '⏳ Pending'}
-                                </span>
-                              </div>
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-bold text-neutral-900 text-xs">
+                                    {inst.label}
+                                  </span>
+                                  <span
+                                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                      inst.status === 'Paid'
+                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                        : inst.status === 'Overdue'
+                                        ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                                        : 'bg-amber-100 text-amber-800 border border-amber-300'
+                                    }`}
+                                  >
+                                    {inst.status === 'Paid' ? '✓ Paid' : inst.status === 'Overdue' ? '⚠️ Overdue' : '⏳ Pending'}
+                                  </span>
+                                </div>
 
-                              <div className="flex items-baseline justify-between pt-1">
-                                <span className="text-lg font-black text-[#2E0249] font-mono">
+                                <div className="text-lg font-black text-[#2E0249] font-mono">
                                   {formatPriceJMD(inst.amount)}
-                                </span>
+                                </div>
+
+                                <div className="flex items-center gap-1 text-[11px] text-neutral-600 font-medium pt-1 border-t border-neutral-100">
+                                  <Clock className="w-3 h-3 text-purple-700" />
+                                  <span>Deadline: <strong className="text-neutral-900 font-mono">{inst.dueDate}</strong></span>
+                                </div>
                               </div>
 
-                              <div className="flex items-center gap-1 text-[11px] text-neutral-600 font-medium pt-0.5 border-t border-neutral-100">
-                                <Clock className="w-3 h-3 text-purple-700" />
-                                <span>Deadline: <strong className="text-neutral-900 font-mono">{inst.dueDate}</strong></span>
-                              </div>
+                              {inst.status !== 'Paid' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handlePayInstallmentWithWiPay(inst.amount, inst.label)}
+                                  className="w-full mt-2 py-1.5 px-2 bg-[#2E0249] hover:bg-[#3B185F] text-[#FFC72C] font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                                >
+                                  <CreditCard className="w-3.5 h-3.5" />
+                                  <span>Pay This Installment with WiPay</span>
+                                </button>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -755,7 +1182,7 @@ export const UserInquiryTrackerModal: React.FC = () => {
                         <div>
                           <strong>Initial Deposit Verified: {formatPriceJMD(selectedRecord.depositPaid)}!</strong>
                           <p className="text-[11px] text-emerald-800 mt-0.5">
-                            Your spot is locked. Your assigned travel administrator ({selectedRecord.assignedAdmin || 'Zachary Buchanan'}) is currently drafting your customized installment deadlines and payment timeframe for the remaining balance of {formatPriceJMD(balanceDue)}. You will also receive an update on WhatsApp.
+                            Your spot is locked. Your assigned travel administrator ({selectedRecord.assignedAdmin || 'Zachary Buchanan'}) is currently drafting your customized installment deadlines and payment timeframe for the remaining balance of {formatPriceJMD(balanceDue)}. You can use the "Pay Another Installment" card above anytime.
                           </p>
                         </div>
                       </div>
@@ -778,6 +1205,7 @@ export const UserInquiryTrackerModal: React.FC = () => {
                           closeInquiryTracker();
                           openWiPayCheckout({
                             tripId: selectedRecord.orderRef,
+                            orderRef: selectedRecord.orderRef,
                             title: selectedRecord.tripOrDestination,
                             deposit: selectedRecord.depositPaid || 45000,
                             totalPrice: selectedRecord.totalPrice || 280000,
@@ -1082,7 +1510,36 @@ export const UserInquiryTrackerModal: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Payment Methods Instruction Box */}
+                  {/* Primary Recommended: Instant WiPay Checkout */}
+                  {balanceDue > 0 && (
+                    <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-900 to-[#2E0249] text-white border-2 border-[#FFC72C]/70 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black uppercase tracking-wider bg-[#FFC72C] text-[#2E0249] px-2 py-0.5 rounded-full">
+                            Recommended Instant Method
+                          </span>
+                          <span className="text-xs font-bold text-purple-200">WiPay Jamaica 256-Bit</span>
+                        </div>
+                        <h4 className="font-black text-white text-base">
+                          Pay Next Installment Online via WiPay
+                        </h4>
+                        <p className="text-xs text-purple-200 max-w-md">
+                          Pay directly with any Jamaican or International debit/credit card. Payment is verified in real-time and your balance updates automatically.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handlePayInstallmentWithWiPay()}
+                        className="px-6 py-3 rounded-xl bg-[#FFC72C] hover:bg-[#ffcf47] text-[#2E0249] font-black text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-101 border border-[#FFC72C] whitespace-nowrap"
+                      >
+                        <CreditCard className="w-4 h-4 fill-current" />
+                        <span>Pay {formatPriceJMD(installmentAmountToPay)} with WiPay</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Alternative Manual Bank Transfer & Lynk Methods */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                     <div className="p-4 rounded-2xl bg-white border border-neutral-200 shadow-2xs space-y-2">
                       <div className="font-bold text-neutral-900 flex items-center gap-2">

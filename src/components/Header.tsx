@@ -47,6 +47,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
     isSavedTripsDrawerOpen,
     openCustomTripModal,
     openInquiryTracker,
+    showNotification,
   } = useApp();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -95,15 +96,39 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
               </a>
               <span className="hidden sm:inline text-neutral-600">|</span>
 
-              {/* Inquiry & Deposit Tracker Button (Logged in or Guests) */}
+              {/* Inquiry & Deposit Tracker Button (Only Accessible if Logged In) */}
               <button
-                onClick={() => openInquiryTracker()}
+                onClick={() => {
+                  if (!currentUser) {
+                    showNotification(
+                      'Traveler Login Required',
+                      'Please log in to track your inquiry, view transaction progress, and pay your next installment.',
+                      'info'
+                    );
+                    openAuthModal('login');
+                  } else {
+                    openInquiryTracker();
+                  }
+                }}
                 className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-900/80 hover:bg-purple-800 text-[#FFC72C] border border-[#FFC72C]/40 text-xs font-bold transition-all cursor-pointer shadow-2xs"
-                title="Track your trip proposal, manage travel details, and check your deposit balance anytime"
+                title={
+                  currentUser
+                    ? 'Track your trip proposal, manage travel details, and check your deposit balance anytime'
+                    : 'Log in to track your inquiry progress and pay installments'
+                }
                 id="topbar-track-inquiry-btn"
               >
-                <Clock className="w-3 h-3 text-[#FFC72C]" />
+                {currentUser ? (
+                  <Clock className="w-3 h-3 text-[#FFC72C]" />
+                ) : (
+                  <Lock className="w-3 h-3 text-[#FFC72C]" />
+                )}
                 <span>Track Inquiry / Deposit</span>
+                {!currentUser && (
+                  <span className="text-[9px] bg-purple-950 text-[#FFC72C] border border-[#FFC72C]/30 px-1 py-0.2 rounded font-semibold ml-0.5">
+                    Login Required
+                  </span>
+                )}
               </button>
 
               <span className="hidden sm:inline text-neutral-600">|</span>
@@ -682,21 +707,34 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
               CONTACT
             </button>
 
-            {/* Mobile Track Inquiry Button */}
+            {/* Mobile Track Inquiry Button (Only Accessible if Logged In) */}
             <button
               onClick={() => {
                 setIsMobileMenuOpen(false);
-                openInquiryTracker();
+                if (!currentUser) {
+                  showNotification(
+                    'Traveler Login Required',
+                    'Please log in to track your inquiry, view transaction progress, and pay your next installment.',
+                    'info'
+                  );
+                  openAuthModal('login');
+                } else {
+                  openInquiryTracker();
+                }
               }}
               className="w-full text-left px-3 py-2.5 rounded-lg text-base font-bold bg-purple-900/60 text-[#FFC72C] hover:bg-purple-900 border border-[#FFC72C]/40 flex items-center justify-between"
               id="mobile-nav-track-inquiry-btn"
             >
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-[#FFC72C]" />
+                {currentUser ? (
+                  <Clock className="w-4 h-4 text-[#FFC72C]" />
+                ) : (
+                  <Lock className="w-4 h-4 text-[#FFC72C]" />
+                )}
                 <span>TRACK INQUIRY & DEPOSIT</span>
               </div>
               <span className="text-[10px] bg-[#FFC72C] text-[#2E0249] px-2 py-0.5 rounded font-black">
-                STATUS
+                {currentUser ? 'STATUS' : 'LOGIN REQ.'}
               </span>
             </button>
 

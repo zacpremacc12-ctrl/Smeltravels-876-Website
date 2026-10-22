@@ -23,7 +23,15 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ onOpenLegal, onOpenAdmin }) => {
-  const { settings, subscribeNewsletter, navigateTo, showNotification, openInquiryTracker } = useApp();
+  const {
+    settings,
+    subscribeNewsletter,
+    navigateTo,
+    showNotification,
+    openInquiryTracker,
+    currentUser,
+    openAuthModal,
+  } = useApp();
   const [newsletterName, setNewsletterName] = useState('');
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [hasConsented, setHasConsented] = useState(true);
@@ -170,9 +178,21 @@ export const Footer: React.FC<FooterProps> = ({ onOpenLegal, onOpenAdmin }) => {
               </li>
               <li>
                 <button
-                  onClick={() => openInquiryTracker()}
+                  onClick={() => {
+                    if (!currentUser) {
+                      showNotification(
+                        'Traveler Login Required',
+                        'Please log in to track your inquiry, view transaction progress, and pay your next installment.',
+                        'info'
+                      );
+                      openAuthModal('login');
+                    } else {
+                      openInquiryTracker();
+                    }
+                  }}
                   className="text-[#FFC72C] hover:text-white font-bold transition-colors flex items-center gap-1.5"
                 >
+                  <Lock className="w-3 h-3 text-[#FFC72C]" />
                   <span>Track Inquiry & Deposit</span>
                 </button>
               </li>

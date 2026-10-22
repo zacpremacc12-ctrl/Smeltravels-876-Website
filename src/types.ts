@@ -343,6 +343,9 @@ export interface WiPayCheckoutPayload {
   ambassadorName?: string;
   preferredContactMethod?: string;
   specialRequests?: string;
+  isInstallmentPayment?: boolean;
+  orderRef?: string;
+  installmentLabel?: string;
 }
 
 export interface BookingConfirmationDetails {

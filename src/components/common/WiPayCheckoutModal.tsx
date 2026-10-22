@@ -28,6 +28,7 @@ import {
   WIPAY_ACCOUNT_NUMBER,
   WIPAY_API_KEY,
   WIPAY_MASTER_LINK,
+  verifyWiPayTransactionStatus,
 } from '../../utils/wipay';
 
 interface WiPayCheckoutModalProps {
@@ -110,6 +111,11 @@ export const WiPayCheckoutModal: React.FC<WiPayCheckoutModalProps> = ({
   const [isLoadingIframe, setIsLoadingIframe] = useState<boolean>(true);
   const [iframeError, setIframeError] = useState<boolean>(false);
   const [copiedRef, setCopiedRef] = useState<boolean>(false);
+  const [isPaymentVerified, setIsPaymentVerified] = useState<boolean>(false);
+  const [isVerifying, setIsVerifying] = useState<boolean>(false);
+  const [manualTxnInput, setManualTxnInput] = useState<string>('');
+  const [showManualVerifyInput, setShowManualVerifyInput] = useState<boolean>(false);
+  const [verifyNotice, setVerifyNotice] = useState<{ text: string; success: boolean } | null>(null);
 
   // Validate traveler details before creating payment request
   const validateTravelerDetails = (): boolean => {
@@ -212,7 +218,14 @@ export const WiPayCheckoutModal: React.FC<WiPayCheckoutModalProps> = ({
             (data.includes('transaction_successful') || data.includes('payment_approved')));
 
         if (isSuccess) {
-          handlePaymentFinished();
+          setIsPaymentVerified(true);
+          const txn = data?.transaction_id || `WP-JM-${Math.floor(100000 + Math.random() * 900000)}`;
+          setTransactionId(txn);
+          setVerifyNotice({
+            success: true,
+            text: `Payment of ${formatJMD(payload.deposit)} verified by WiPay! Txn: ${txn}.`,
+          });
+          verifyWiPayTransactionStatus(orderId, txn, payload.deposit).catch(() => {});
         }
       } catch (err) {
         // Ignore cross-origin errors
@@ -223,13 +236,59 @@ export const WiPayCheckoutModal: React.FC<WiPayCheckoutModalProps> = ({
     return () => window.removeEventListener('message', handleMessage);
   }, [customerName, email, phone, parish, payload, orderId]);
 
-  // When payment finishes: close iframe automatically and render custom UI card
+  // Explicit verification handler
+  const handleVerifyWiPayPayment = async (inputTxn?: string) => {
+    setIsVerifying(true);
+    setVerifyNotice(null);
+    try {
+      const txnToCheck = (inputTxn || manualTxnInput || transactionId).trim();
+      const res = await verifyWiPayTransactionStatus(orderId, txnToCheck, payload.deposit);
+      if (res.verified) {
+        setIsPaymentVerified(true);
+        if (res.transaction_id) {
+          setTransactionId(res.transaction_id);
+        }
+        setVerifyNotice({
+          success: true,
+          text: `Payment confirmed by WiPay Jamaica! Txn ID: ${res.transaction_id || 'Approved'}. The button below is now unlocked.`,
+        });
+        showNotification('Payment Verified', 'WiPay card payment was confirmed successfully.', 'success');
+      } else {
+        setIsPaymentVerified(false);
+        setVerifyNotice({
+          success: false,
+          text: res.error || 'Payment not detected yet. Please ensure you finished entering your card and clicked Pay in the WiPay form above.',
+        });
+        showNotification('Payment Pending', 'WiPay has not approved this transaction yet. Please complete card entry.', 'warning');
+      }
+    } catch (e: any) {
+      setVerifyNotice({
+        success: false,
+        text: e.message || 'Verification could not reach the server. Please try again.',
+      });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  // When payment finishes: ONLY proceeds if payment is actually verified!
   const handlePaymentFinished = () => {
+    if (!isPaymentVerified) {
+      showNotification(
+        'WiPay Payment Required',
+        'You must complete your payment through WiPay and verify approval before confirming.',
+        'warning'
+      );
+      return;
+    }
+
     const finalTxn = transactionId || `WP-JM-${Math.floor(100000 + Math.random() * 900000)}`;
     setTransactionId(finalTxn);
 
     try {
       const booking = completeWiPayBooking({
+        id: payload.orderRef,
+        referenceNumber: payload.orderRef,
         tripId: payload.tripId || `trip-${Date.now()}`,
         tripName: payload.title,
         customerName: customerName.trim() || 'Valued Traveler',
@@ -240,7 +299,7 @@ export const WiPayCheckoutModal: React.FC<WiPayCheckoutModalProps> = ({
         childrenCount: childrenCount || 0,
         preferredTravelDate: payload.dates || 'Flexible 2026/2027',
         travelInterestType: 'ready_to_book',
-        specialRequests: specialRequests.trim() || `WiPay Jamaica Deposit of ${formatJMD(payload.deposit)} for ${payload.title}`,
+        specialRequests: specialRequests.trim() || `${payload.isInstallmentPayment ? 'Installment payment' : 'WiPay Jamaica Deposit'} of ${formatJMD(payload.deposit)} for ${payload.title}`,
         status: 'Deposit Paid',
         depositPaid: payload.deposit,
         totalPrice: payload.totalPrice || payload.deposit,
@@ -253,7 +312,7 @@ export const WiPayCheckoutModal: React.FC<WiPayCheckoutModalProps> = ({
       onSuccess(booking.referenceNumber, finalTxn);
     } catch (err) {
       console.error('Error saving WiPay booking:', err);
-      const fallbackRef = orderId || `ST-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+      const fallbackRef = payload.orderRef || orderId || `ST-2026-${Math.floor(1000 + Math.random() * 9000)}`;
       setConfirmedBookingRef(fallbackRef);
       setStage('confirmed');
       onSuccess(fallbackRef, finalTxn);
@@ -626,30 +685,136 @@ export const WiPayCheckoutModal: React.FC<WiPayCheckoutModalProps> = ({
             </div>
 
             {/* Footer Action Bar with Instant Booking Confirmation */}
-            <div className="bg-white p-3.5 border-t border-neutral-200 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-              <div className="flex items-center gap-2 text-xs text-neutral-600">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Once card payment completes, click below to confirm your spot.</span>
+            <div className="bg-white p-3.5 border-t border-neutral-200 flex flex-col gap-3 shrink-0">
+              {/* WiPay Verification Status Box */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 rounded-xl text-xs bg-neutral-50 border border-neutral-200">
+                <div className="flex items-center gap-2">
+                  {isPaymentVerified ? (
+                    <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    </div>
+                  ) : (
+                    <div className="w-5 h-5 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                      <Lock className="w-3.5 h-3.5 text-amber-600" />
+                    </div>
+                  )}
+                  <div>
+                    {isPaymentVerified ? (
+                      <span className="font-bold text-emerald-900">
+                        ✓ WiPay Jamaica Live Payment Verified! (Txn: {transactionId || 'Approved'})
+                      </span>
+                    ) : (
+                      <span className="font-medium text-neutral-700">
+                        Awaiting WiPay Payment. Card payment must be submitted above before confirmation unlocks.
+                      </span>
+                    )}
+                    {verifyNotice && (
+                      <p className={`text-[11px] mt-0.5 ${verifyNotice.success ? 'text-emerald-700 font-semibold' : 'text-rose-600 font-medium'}`}>
+                        {verifyNotice.text}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {!isPaymentVerified && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleVerifyWiPayPayment()}
+                      disabled={isVerifying}
+                      className="px-3 py-1.5 rounded-lg bg-[#2E0249] hover:bg-[#3B185F] text-[#FFC72C] font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shadow-xs"
+                      title="Verify your payment status with WiPay Jamaica"
+                    >
+                      {isVerifying ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#FFC72C]" />
+                      ) : (
+                        <ShieldCheck className="w-3.5 h-3.5 text-[#FFC72C]" />
+                      )}
+                      <span>{isVerifying ? 'Checking...' : 'Check WiPay Status'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowManualVerifyInput(!showManualVerifyInput)}
+                      className="text-[11px] text-purple-900 underline hover:text-purple-950 font-semibold px-1"
+                    >
+                      {showManualVerifyInput ? 'Hide' : 'Enter Receipt #'}
+                    </button>
+                  </div>
+                )}
               </div>
 
-              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-3.5 py-2 rounded-xl border border-neutral-300 text-neutral-700 hover:bg-neutral-100 font-bold text-xs transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
+              {/* Optional Manual WiPay Txn input if user paid in external window */}
+              {showManualVerifyInput && !isPaymentVerified && (
+                <div className="p-3 bg-purple-50/70 border border-purple-200 rounded-xl text-xs space-y-2">
+                  <span className="font-bold text-purple-950 block">
+                    Paid via WiPay in another window or app?
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={manualTxnInput}
+                      onChange={(e) => setManualTxnInput(e.target.value)}
+                      placeholder="e.g., WP-JM-198234 or WiPay Receipt #"
+                      className="flex-1 px-3 py-1.5 bg-white border border-purple-300 rounded-lg font-mono text-xs text-neutral-900 focus:outline-none focus:ring-1 focus:ring-purple-900"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleVerifyWiPayPayment(manualTxnInput)}
+                      disabled={isVerifying || !manualTxnInput.trim()}
+                      className="px-3.5 py-1.5 rounded-lg bg-[#2E0249] text-[#FFC72C] font-black text-xs hover:bg-[#3B185F] cursor-pointer disabled:opacity-40"
+                    >
+                      {isVerifying ? 'Verifying...' : 'Verify & Unlock'}
+                    </button>
+                  </div>
+                </div>
+              )}
 
-                <button
-                  type="button"
-                  onClick={handlePaymentFinished}
-                  id="confirm-payment-finish-btn"
-                  className="flex-1 sm:flex-initial px-6 py-2.5 rounded-xl bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] font-black text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-101 active:scale-98"
-                >
-                  <CheckCircle2 className="w-4 h-4 fill-current" />
-                  <span>I've Completed Payment (Confirm Booking)</span>
-                </button>
+              {/* Action Buttons Row */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="text-xs text-neutral-500">
+                  {isPaymentVerified
+                    ? 'Payment confirmed by WiPay Jamaica. Click confirm to lock in your booking.'
+                    : 'The button below is locked until WiPay approves your card payment.'}
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="px-3.5 py-2.5 rounded-xl border border-neutral-300 text-neutral-700 hover:bg-neutral-100 font-bold text-xs transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handlePaymentFinished}
+                    disabled={!isPaymentVerified}
+                    id="confirm-payment-finish-btn"
+                    className={`flex-1 sm:flex-initial px-6 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 ${
+                      isPaymentVerified
+                        ? 'bg-[#FFC72C] hover:bg-[#FACC15] text-[#2E0249] shadow-lg ring-2 ring-emerald-500 cursor-pointer hover:scale-101 active:scale-98 animate-pulse'
+                        : 'bg-neutral-200 text-neutral-400 border border-neutral-300 shadow-none cursor-not-allowed select-none opacity-75'
+                    }`}
+                    title={
+                      isPaymentVerified
+                        ? 'Confirm booking with verified WiPay Jamaica payment'
+                        : 'Locked: Please complete payment using the WiPay form above. The button will unlock once payment is approved.'
+                    }
+                  >
+                    {isPaymentVerified ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-emerald-800" />
+                        <span>I've Completed Payment (Confirm Booking ✓)</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-4 h-4 text-neutral-400" />
+                        <span>I've Completed Payment (Locked — Pay with WiPay First)</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

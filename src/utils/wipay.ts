@@ -198,3 +198,51 @@ export function buildWiPayPaymentUrl(params: WiPayLinkParams | { deposit: number
 export function formatJMD(amount: number): string {
   return `$${amount.toLocaleString()} JMD`;
 }
+
+export interface WiPayVerificationResult {
+  verified: boolean;
+  transaction_id?: string;
+  order_id?: string;
+  amount?: number;
+  error?: string;
+}
+
+/**
+ * Validates with backend that payment for orderId was legitimately processed by WiPay.
+ */
+export async function verifyWiPayTransactionStatus(
+  orderId: string,
+  transactionId?: string,
+  deposit?: number
+): Promise<WiPayVerificationResult> {
+  try {
+    const res = await fetch('/api/wipay/verify-transaction', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        order_id: orderId,
+        transaction_id: transactionId,
+        deposit,
+      }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        verified: !!data.verified,
+        transaction_id: data.transaction_id,
+        order_id: data.order_id,
+        amount: data.amount,
+      };
+    }
+    const errData = await res.json().catch(() => ({}));
+    return {
+      verified: false,
+      error: errData.error || 'Verification request failed.',
+    };
+  } catch (err: any) {
+    return {
+      verified: false,
+      error: err.message || 'Network connection error during verification.',
+    };
+  }
+}

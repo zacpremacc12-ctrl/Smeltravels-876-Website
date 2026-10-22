@@ -507,8 +507,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [inquiryTrackerInitialQuery, setInquiryTrackerInitialQuery] = useState<string | null>(null);
 
   const openInquiryTracker = (refOrEmail?: string) => {
+    if (!currentUser) {
+      showNotification(
+        'Traveler Login Required',
+        'Please log in to track your inquiry, view transaction progress, and pay your next installment.',
+        'info'
+      );
+      openAuthModal('login');
+      return;
+    }
     if (refOrEmail) {
       setInquiryTrackerInitialQuery(refOrEmail);
+    } else if (currentUser?.email) {
+      setInquiryTrackerInitialQuery(currentUser.email);
     }
     setIsInquiryTrackerOpen(true);
   };
@@ -2223,18 +2234,151 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return ref;
   };
 
-  // Complete WiPay booking & payment automatically
+  // Complete WiPay booking & payment automatically (or credit installment on existing order)
   const completeWiPayBooking = (bookingData: Partial<BookingSubmission>): BookingSubmission => {
     const now = new Date();
     const yearPrefix = now.getFullYear();
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-    const ref = `ST-${yearPrefix}-${randomSuffix}`;
-    const generatedTxn = `WP-JM-${Math.floor(100000 + Math.random() * 900000)}`;
+    const ref = bookingData.referenceNumber || (bookingData as any).orderRef || `ST-${yearPrefix}-${randomSuffix}`;
+    const generatedTxn = (bookingData as any).transactionId || `WP-JM-${Math.floor(100000 + Math.random() * 900000)}`;
 
     const depositAmount = bookingData.depositPaid || 0;
     const tripTitle = bookingData.tripName || 'Jamaican Tour & Travel';
     const totalPkgPrice = bookingData.totalPrice || depositAmount;
     const remainingBalance = Math.max(0, totalPkgPrice - depositAmount);
+
+    // Check if this payment is for an existing booking / inquiry installment
+    const targetRef = bookingData.referenceNumber || (bookingData as any).orderRef;
+    const existingBooking = targetRef ? bookings.find(b => b.referenceNumber === targetRef || b.id === targetRef) : null;
+    const existingOrder = targetRef ? adminOrdersExcel.find(o => o.orderRef === targetRef || o.id === targetRef) : null;
+
+    if (existingBooking || existingOrder) {
+      const currentDepositPaid = (existingBooking?.depositPaid || existingOrder?.depositPaid || 0) + depositAmount;
+      const total = existingBooking?.totalPrice || existingOrder?.totalPrice || totalPkgPrice;
+      const newRemaining = Math.max(0, total - currentDepositPaid);
+      const isNowPaidInFull = total > 0 && currentDepositPaid >= total;
+
+      // Update payment schedule
+      let updatedSchedule: PaymentSchedule | undefined = existingOrder?.paymentSchedule || existingBooking?.paymentSchedule;
+      if (updatedSchedule && updatedSchedule.installments) {
+        let installmentMarked = false;
+        const updatedInstallments = updatedSchedule.installments.map(inst => {
+          if (!installmentMarked && inst.status !== 'Paid') {
+            installmentMarked = true;
+            return {
+              ...inst,
+              status: 'Paid' as const,
+              paidAt: now.toISOString(),
+              transactionRef: generatedTxn,
+              paymentMethod: 'WiPay Jamaica Live',
+            };
+          }
+          return inst;
+        });
+
+        updatedSchedule = {
+          ...updatedSchedule,
+          depositPaid: currentDepositPaid,
+          remainingBalance: newRemaining,
+          installments: updatedInstallments,
+          lastConfiguredAt: now.toISOString(),
+        };
+      }
+
+      // Update existing booking
+      let returnedBooking: BookingSubmission = existingBooking ? {
+        ...existingBooking,
+        depositPaid: currentDepositPaid,
+        status: isNowPaidInFull ? 'Confirmed' : 'Deposit Paid',
+        paymentSchedule: updatedSchedule,
+        internalNotes: [
+          ...(existingBooking.internalNotes || []),
+          `WiPay installment payment of $${depositAmount.toLocaleString()} JMD verified on ${now.toLocaleString()}. Txn: ${generatedTxn}. New total paid: $${currentDepositPaid.toLocaleString()} JMD.`,
+        ],
+        updatedAt: now.toISOString(),
+      } : {
+        id: `booking-${Date.now()}`,
+        referenceNumber: targetRef,
+        tripId: existingOrder?.tripOrDestination || 'trip',
+        tripName: existingOrder?.tripOrDestination || tripTitle,
+        customerName: existingOrder?.customerName || bookingData.customerName || 'Valued Traveler',
+        email: existingOrder?.email || bookingData.email || 'traveler@smeltravels876.com',
+        phone: existingOrder?.phone || bookingData.phone || '(876) 834-1537',
+        countryOrParish: existingOrder?.parishOrCountry || 'Jamaica',
+        adultsCount: existingOrder?.adultsCount || 1,
+        childrenCount: existingOrder?.childrenCount || 0,
+        preferredTravelDate: existingOrder?.travelDates || 'Flexible',
+        travelInterestType: 'ready_to_book',
+        status: isNowPaidInFull ? 'Confirmed' : 'Deposit Paid',
+        depositPaid: currentDepositPaid,
+        totalPrice: total,
+        currency: 'JMD',
+        paymentSchedule: updatedSchedule,
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+      };
+
+      setBookings(prev => {
+        const idx = prev.findIndex(b => b.referenceNumber === targetRef || b.id === targetRef);
+        const updated = idx >= 0 ? prev.map((b, i) => i === idx ? returnedBooking : b) : [returnedBooking, ...prev];
+        syncToLiveServer({ bookings: updated });
+        return updated;
+      });
+
+      // Update Excel orders
+      if (existingOrder) {
+        setAdminOrdersExcel(prev => {
+          const updated = prev.map(o => o.id === existingOrder.id ? {
+            ...o,
+            depositPaid: currentDepositPaid,
+            paymentStatus: isNowPaidInFull ? 'Paid in Full' : 'Deposit Paid',
+            orderStatus: isNowPaidInFull ? 'Confirmed' : o.orderStatus,
+            paymentSchedule: updatedSchedule,
+            adminNotes: `${o.adminNotes || ''} | Installment of $${depositAmount.toLocaleString()} JMD paid via WiPay on ${now.toLocaleString()} (Txn: ${generatedTxn}).`,
+            lastUpdated: now.toISOString(),
+          } : o);
+          syncToLiveServer({ adminOrdersExcel: updated });
+          return updated;
+        });
+      }
+
+      // Record deposit for traveler
+      const depositRecord: TravelerDepositRecord = {
+        id: `dep-${Date.now()}`,
+        tripId: returnedBooking.tripId,
+        tripName: returnedBooking.tripName,
+        amount: depositAmount,
+        currency: 'JMD',
+        date: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        bookingRef: targetRef,
+        paymentMethod: 'WiPay Jamaica Live Gateway',
+        transactionId: generatedTxn,
+        status: 'Confirmed',
+      };
+      if (currentUser) {
+        recordUserDeposit(depositRecord, currentUser.email);
+      } else if (returnedBooking.email) {
+        recordUserDeposit(depositRecord, returnedBooking.email);
+      }
+
+      // Admin inbox alert
+      addInboxItem({
+        type: 'deposit',
+        title: `🟢 [WiPay Installment Received] $${depositAmount.toLocaleString()} JMD for ${tripTitle}`,
+        senderName: returnedBooking.customerName,
+        senderEmail: returnedBooking.email,
+        senderPhone: returnedBooking.phone,
+        summary: `Traveler ${returnedBooking.customerName} paid installment of $${depositAmount.toLocaleString()} JMD via WiPay for ${tripTitle}. Ref: ${targetRef}. Total Paid: $${currentDepositPaid.toLocaleString()} JMD. Txn: ${generatedTxn}.`,
+        details: `WIPAY INSTALLMENT DETAILS:\nReference: ${targetRef}\nInstallment Paid: $${depositAmount.toLocaleString()} JMD\nTotal Package: $${total.toLocaleString()} JMD\nTotal Paid to Date: $${currentDepositPaid.toLocaleString()} JMD\nBalance Remaining: $${newRemaining.toLocaleString()} JMD\nStatus: ${isNowPaidInFull ? 'Paid in Full' : 'Deposit Paid'}\nTxn: ${generatedTxn}`,
+        tripName: tripTitle,
+        referenceNumber: targetRef,
+        adminRecipients: ['Elvoy Bennett', 'Zachary Buchanan'],
+        recipientEmails: ['zbuchanan.smeltravels@gmail.com', 'smeltravels876@gmail.com'],
+        emailStatus: 'Delivered',
+      });
+
+      return returnedBooking;
+    }
 
     // Initial Installment Time Frame - created ONLY after the initial deposit is made!
     let initialSchedule: PaymentSchedule | undefined = undefined;
