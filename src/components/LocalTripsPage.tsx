@@ -493,12 +493,12 @@ export const LocalTripsPage: React.FC = () => {
 
             <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 w-full md:w-auto">
               <button
-                onClick={() => openCustomTripModal()}
-                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-[#FFC72C] text-[#2E0249] text-xs sm:text-sm font-black hover:bg-amber-300 transition-all shadow-lg flex items-center justify-center gap-2"
+                onClick={() => openCustomTripModal('Jamaica')}
+                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-[#FFC72C] text-[#2E0249] text-xs sm:text-sm font-black hover:bg-amber-300 transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
                 id="cta-custom-local-trip-btn"
               >
                 <Sparkles className="w-4 h-4 text-[#2E0249]" />
-                <span>Request Custom Trip</span>
+                <span>Request Custom Local Trip (Select Dates)</span>
               </button>
 
               <a

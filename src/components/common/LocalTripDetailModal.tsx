@@ -27,7 +27,7 @@ export const LocalTripDetailModal: React.FC<LocalTripDetailModalProps> = ({
   trip,
   onClose,
 }) => {
-  const { settings, openWiPayCheckout } = useApp();
+  const { settings, openWiPayCheckout, openCustomTripModal } = useApp();
 
   const handleBookTrip = () => {
     onClose();
@@ -172,8 +172,23 @@ export const LocalTripDetailModal: React.FC<LocalTripDetailModalProps> = ({
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  openCustomTripModal(trip.location || 'Jamaica');
+                }}
+                className="px-4 py-3 rounded-xl text-xs sm:text-sm font-bold bg-neutral-700 hover:bg-neutral-600 text-[#FFC72C] border border-[#FFC72C]/40 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                title="Select custom arrival and departure dates on the mini calendar"
+                id="modal-custom-dates-btn"
+              >
+                <Calendar className="w-4 h-4 text-[#FFC72C]" />
+                <span>Custom Dates (Mini Calendar)</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={handleBookTrip}
                 disabled={trip.status === 'Sold Out'}
                 className={`px-6 py-3 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 shadow-lg cursor-pointer ${

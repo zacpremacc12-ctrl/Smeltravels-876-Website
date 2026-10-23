@@ -40,6 +40,7 @@ import {
 import { CustomTripRequestInput } from '../../types';
 import { calculateTripBudget } from '../../lib/pricingEngine';
 import { CheapestDateFinder } from './CheapestDateFinder';
+import { MiniDateRangeCalendar } from './MiniDateRangeCalendar';
 
 export const CustomTripModal: React.FC = () => {
   const {
@@ -81,10 +82,16 @@ export const CustomTripModal: React.FC = () => {
   const [activePhotoIndex, setActivePhotoIndex] = useState<number>(0);
 
   // Step 2: Dates, Group & Origin / Departure Location
-  const [travelDatesType, setTravelDatesType] = useState<'specific' | 'flexible'>('flexible');
+  const [travelDatesType, setTravelDatesType] = useState<'specific' | 'flexible'>('specific');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showCheapestDateFinder, setShowCheapestDateFinder] = useState<boolean>(false);
+
+  // Check if active custom trip is local (Jamaica) vs abroad
+  const isLocalTrip = useMemo(() => {
+    const dest = (customDestinationName || selectedCountryInfo?.name || selectedCountryInfo?.country || '').toLowerCase();
+    return dest.includes('jamaica');
+  }, [customDestinationName, selectedCountryInfo]);
   const [flexibleSeason, setFlexibleSeason] = useState('Summer 2026 (June - August)');
   const [durationDays, setDurationDays] = useState<number>(7);
   const [adultsCount, setAdultsCount] = useState<number>(2);
@@ -951,10 +958,16 @@ export const CustomTripModal: React.FC = () => {
               <div>
                 <h3 className="text-base sm:text-lg font-bold text-neutral-900 flex items-center gap-2">
                   <Calendar className="w-5 h-5 text-[#2E0249]" />
-                  <span>Whenever You Want to Go</span>
+                  <span>
+                    {isLocalTrip
+                      ? 'When is Your Jamaican Getaway / Island Excursion?'
+                      : 'When Would You Like to Travel Abroad?'}
+                  </span>
                 </h3>
                 <p className="text-xs sm:text-sm text-neutral-600 mt-1">
-                  You can set exact flight dates or let our administrators know your preferred travel season.
+                  {isLocalTrip
+                    ? 'Select your arrival (check-in) and departure (check-out) dates on the mini calendar below, or choose a flexible travel season.'
+                    : 'Select your exact arrival & departure dates on the mini calendar below, or choose a flexible travel season.'}
                 </p>
               </div>
 
@@ -962,33 +975,72 @@ export const CustomTripModal: React.FC = () => {
               <div className="grid grid-cols-2 gap-3 p-1 bg-neutral-100 rounded-xl">
                 <button
                   type="button"
-                  onClick={() => setTravelDatesType('flexible')}
-                  className={`py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all ${
-                    travelDatesType === 'flexible'
-                      ? 'bg-white text-[#2E0249] shadow-sm'
-                      : 'text-neutral-600 hover:text-neutral-900'
-                  }`}
-                  id="tab-flexible-dates"
-                >
-                  Flexible / Ideal Season
-                </button>
-                <button
-                  type="button"
                   onClick={() => setTravelDatesType('specific')}
-                  className={`py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all ${
+                  className={`py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all cursor-pointer ${
                     travelDatesType === 'specific'
-                      ? 'bg-white text-[#2E0249] shadow-sm'
+                      ? 'bg-white text-[#2E0249] shadow-sm ring-1 ring-neutral-200'
                       : 'text-neutral-600 hover:text-neutral-900'
                   }`}
                   id="tab-specific-dates"
                 >
-                  Exact Dates
+                  📅 Exact Dates (Mini Calendar)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTravelDatesType('flexible')}
+                  className={`py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all cursor-pointer ${
+                    travelDatesType === 'flexible'
+                      ? 'bg-white text-[#2E0249] shadow-sm ring-1 ring-neutral-200'
+                      : 'text-neutral-600 hover:text-neutral-900'
+                  }`}
+                  id="tab-flexible-dates"
+                >
+                  🌴 Flexible / Ideal Season
                 </button>
               </div>
 
-              {/* Flexible Season Selection */}
-              {travelDatesType === 'flexible' ? (
+              {/* Date Selection: Mini Calendar vs Flexible Season */}
+              {travelDatesType === 'specific' ? (
+                /* Specific Dates with Mini Date Range Calendar */
+                <div className="space-y-3">
+                  <MiniDateRangeCalendar
+                    startDate={startDate}
+                    endDate={endDate}
+                    onChange={(newStart, newEnd, nights, days) => {
+                      setStartDate(newStart);
+                      setEndDate(newEnd);
+                      if (days > 0) {
+                        setDurationDays(days);
+                      }
+                    }}
+                    isLocalTrip={isLocalTrip}
+                    destinationName={
+                      customDestinationName.trim() ||
+                      selectedCountryInfo?.name ||
+                      (isLocalTrip ? 'Jamaica' : 'International Custom Destination')
+                    }
+                  />
+                </div>
+              ) : (
+                /* Flexible Season Selection */
                 <div className="space-y-4">
+                  {/* Quick Switch to Mini Calendar helper banner */}
+                  <div className="p-3 bg-purple-50/80 rounded-xl border border-purple-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-[#2E0249] shrink-0" />
+                      <span className="text-xs font-semibold text-neutral-800">
+                        Already know your arrival and departure dates?
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setTravelDatesType('specific')}
+                      className="px-3.5 py-1.5 rounded-lg bg-[#2E0249] hover:bg-[#3B185F] text-[#FFC72C] text-xs font-bold transition-all shadow-xs cursor-pointer self-start sm:self-auto shrink-0"
+                    >
+                      Open Mini Calendar
+                    </button>
+                  </div>
+
                   <label className="block text-xs font-bold uppercase tracking-wider text-neutral-600">
                     Select Your Preferred Season or Month:
                   </label>
@@ -1089,35 +1141,6 @@ export const CustomTripModal: React.FC = () => {
                         </button>
                       ))}
                     </div>
-                  </div>
-                </div>
-              ) : (
-                /* Specific Dates Inputs */
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-700 mb-1.5">
-                      Departure Date (Fly Out):
-                    </label>
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="w-full px-3.5 py-2.5 text-sm border border-neutral-300 rounded-xl focus:ring-2 focus:ring-[#2E0249] outline-none"
-                      id="custom-trip-start-date"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-700 mb-1.5">
-                      Return Date (Fly Home):
-                    </label>
-                    <input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="w-full px-3.5 py-2.5 text-sm border border-neutral-300 rounded-xl focus:ring-2 focus:ring-[#2E0249] outline-none"
-                      id="custom-trip-end-date"
-                    />
                   </div>
                 </div>
               )}
