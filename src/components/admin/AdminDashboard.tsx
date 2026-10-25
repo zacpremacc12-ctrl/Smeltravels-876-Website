@@ -1001,7 +1001,13 @@ export const AdminDashboard: React.FC = () => {
                     <div className="pt-2 border-t border-neutral-100">
                       <span className="font-bold block text-neutral-500">Trip & Schedule</span>
                       <p className="font-semibold text-neutral-900">{selectedInquiry.tripName}</p>
-                      <p>Date: {selectedInquiry.preferredTravelDate}</p>
+                      {selectedInquiry.arrivalDate && selectedInquiry.departureDate ? (
+                        <p className="font-semibold text-purple-950">
+                          Dates: {selectedInquiry.arrivalDate} to {selectedInquiry.departureDate}
+                        </p>
+                      ) : (
+                        <p>Date: {selectedInquiry.preferredTravelDate}</p>
+                      )}
                       <p>Party: {selectedInquiry.adultsCount} Adults, {selectedInquiry.childrenCount} Children</p>
                     </div>
 

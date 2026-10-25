@@ -110,6 +110,8 @@ export interface BookingSubmission {
   adultsCount: number;
   childrenCount: number;
   preferredTravelDate: string;
+  arrivalDate?: string;
+  departureDate?: string;
   travelInterestType: TravelInterestType;
   specialRequests: string;
   preferredContactMethod: 'phone' | 'email' | 'whatsapp';
@@ -508,6 +510,8 @@ export interface CustomTripRequest {
   travelDatesType: 'specific' | 'flexible';
   startDate?: string;
   endDate?: string;
+  arrivalDate?: string;
+  departureDate?: string;
   flexibleSeason?: string;
   durationDays?: number;
   adultsCount: number;
@@ -571,6 +575,13 @@ export interface AdminInboxItem {
   adminRecipients?: string[];
   recipientEmails?: string[];
   emailStatus?: 'Sent' | 'Delivered' | 'Pending';
+  arrivalDate?: string;
+  departureDate?: string;
+  travelDates?: string;
+  travelersCount?: string | number;
+  location?: string;
+  preferredContact?: string;
+  customerMessage?: string;
 }
 
 export type OrderTypeCategory = 'Booking Inquiry' | 'Custom Trip' | 'Deposit Record' | 'Contact Order' | 'Direct Order';
@@ -588,6 +599,8 @@ export interface AdminOrderExcelRecord {
   parishOrCountry: string;
   tripOrDestination: string;
   travelDates: string;
+  arrivalDate?: string;
+  departureDate?: string;
   adultsCount: number;
   childrenCount: number;
   budget?: string;

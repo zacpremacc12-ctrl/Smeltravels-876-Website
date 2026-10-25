@@ -1,0 +1,47 @@
+# ==============================================================================
+# SMELTRAVELS876 - Hostinger Apache / LiteSpeed Web Server Configuration
+# ==============================================================================
+# Domain: smeltravels876.com
+# Purpose: Protect API routes from being intercepted by SPA HTML fallback,
+#          enable Node.js reverse proxying, and enforce security headers.
+# ==============================================================================
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # 1. Hostinger Reverse Proxy (if Apache proxy module is enabled on Hostinger VPS/Cloud)
+  # Uncomment the following line if your Hostinger Apache proxies directly to Node.js on port 3000:
+  # RewriteRule ^api/(.*)$ http://127.0.0.1:3000/api/$1 [P,L]
+
+  # 2. DO NOT REWRITE /api/ REQUESTS TO index.html UNDER ANY CIRCUMSTANCES!
+  # If a request to /api/* reaches Apache without being handled by the Node.js application,
+  # stop rewriting immediately. This prevents Hostinger from returning an HTML webpage (index.html)
+  # which breaks JSON parsers in the browser with "Unexpected token '<'".
+  RewriteCond %{REQUEST_URI} ^/api/ [NC]
+  RewriteRule ^api/ - [L]
+
+  # 3. Standard Static Files
+  # If the requested file or directory physically exists on disk, serve it directly
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # 4. Single Page Application (SPA) Client Routing
+  # All remaining client routes (e.g. /admin, /destinations, /trips) are served index.html
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# Security Headers & MIME Types
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+  Header set X-XSS-Protection "1; mode=block"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+<IfModule mod_mime.c>
+  AddType application/json .json
+  AddType text/javascript .js .mjs
+  AddType text/css .css
+</IfModule>

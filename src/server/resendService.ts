@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import { Resend } from 'resend';
 
 export const RESEND_SENDERS = {
@@ -799,11 +802,14 @@ export async function sendResendEmail(options: SendEmailOptions): Promise<{
     });
 
     if (error) {
-      console.error('[Resend Engine Error]:', error);
+      const errorMsg = typeof error === 'string'
+        ? error
+        : (error.message || (error as any).name || 'Resend API provider rejected the request');
+      console.error(`[Resend Provider Notice]: Failed to dispatch to ${recipients.join(', ')} - ${errorMsg}`);
       return {
         success: false,
         status: 'Failed',
-        error: error.message || JSON.stringify(error),
+        error: errorMsg,
         htmlContent: rendered.html,
         subject,
         sender,
@@ -820,11 +826,12 @@ export async function sendResendEmail(options: SendEmailOptions): Promise<{
       sender,
     };
   } catch (err: any) {
-    console.error('[Resend Engine Exception]:', err);
+    const errorMsg = err?.message || 'Unknown Resend dispatch failure';
+    console.error(`[Resend Engine Exception]: ${errorMsg}`);
     return {
       success: false,
       status: 'Failed',
-      error: err.message || 'Unknown Resend dispatch failure',
+      error: errorMsg,
       htmlContent: rendered.html,
       subject,
       sender,

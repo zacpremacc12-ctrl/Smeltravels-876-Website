@@ -36,6 +36,95 @@ export interface EmailLogItem {
   customerName?: string;
 }
 
+export interface SafeApiResponse<T = any> {
+  ok: boolean;
+  status: number;
+  statusText: string;
+  isHtml: boolean;
+  contentType: string;
+  data: T | null;
+  rawText?: string;
+  error?: string;
+}
+
+// Resilient API caller that safely inspects HTTP status and Content-Type before parsing JSON
+async function safeApiCall<T = any>(
+  input: RequestInfo | URL,
+  init?: RequestInit
+): Promise<SafeApiResponse<T>> {
+  try {
+    const res = await fetch(input, init);
+    const contentType = (res.headers.get('content-type') || '').toLowerCase();
+    const isHtml = contentType.includes('text/html');
+
+    if (isHtml) {
+      const htmlText = await res.text();
+      let diagnostic = `The web server returned an HTML webpage (HTTP ${res.status} ${res.statusText || ''}) instead of JSON.`;
+      if (res.status === 404) {
+        diagnostic = `Backend route not reachable (HTTP 404 HTML). On Hostinger, this indicates Apache/LiteSpeed is serving a fallback page instead of forwarding API requests to your Node.js Express server.`;
+      } else if (res.status === 502 || res.status === 503 || res.status === 504) {
+        diagnostic = `Hostinger Gateway Error (HTTP ${res.status}). The Node.js application process is currently stopped or unreachable by Hostinger's reverse proxy.`;
+      } else if (htmlText.includes('<!DOCTYPE') || htmlText.includes('<html')) {
+        diagnostic = `Hostinger served the Single Page Application index.html page for an API call. Verify that your .htaccess file has the /api/ rewrite exclusion.`;
+      }
+
+      console.warn('[SMELTRAVELS876 Resend Diagnostic]: HTML response received from API', {
+        status: res.status,
+        url: typeof input === 'string' ? input : (input as any).url,
+        preview: htmlText.slice(0, 150),
+      });
+
+      return {
+        ok: false,
+        status: res.status,
+        statusText: res.statusText,
+        isHtml: true,
+        contentType,
+        data: null,
+        rawText: htmlText.slice(0, 200),
+        error: diagnostic,
+      };
+    }
+
+    // Try parsing JSON safely
+    try {
+      const data = await res.json();
+      return {
+        ok: res.ok,
+        status: res.status,
+        statusText: res.statusText,
+        isHtml: false,
+        contentType,
+        data,
+        error: !res.ok ? (data?.error || `HTTP ${res.status}: Request failed`) : undefined,
+      };
+    } catch (parseErr: any) {
+      const text = await res.text().catch(() => '');
+      return {
+        ok: false,
+        status: res.status,
+        statusText: res.statusText,
+        isHtml: false,
+        contentType,
+        data: null,
+        rawText: text.slice(0, 200),
+        error: `Invalid JSON response from server (HTTP ${res.status}). ${parseErr?.message || ''}`,
+      };
+    }
+  } catch (netErr: any) {
+    console.error('[SMELTRAVELS876 Network Diagnostic]:', netErr);
+    return {
+      ok: false,
+      status: 0,
+      statusText: 'Network Error',
+      isHtml: false,
+      contentType: '',
+      data: null,
+      error: `Network connection failed: ${netErr?.message || 'Unable to reach the SMELTRAVELS876 server'}.`,
+    };
+  }
+}
+
 export const AdminEmailNotificationsView: React.FC = () => {
   const { adminEmail, showNotification } = useApp();
 
@@ -66,14 +155,22 @@ export const AdminEmailNotificationsView: React.FC = () => {
     messageId?: string;
     error?: string;
     subject?: string;
+    httpStatus?: number;
+    isHtmlFallback?: boolean;
+    channel?: string;
   } | null>(null);
 
-  // Fetch status and logs
+  // Fetch status and logs safely with admin headers
   const fetchStatus = async () => {
     try {
-      const res = await fetch('/api/resend/status');
-      const data = await res.json();
-      setIsConfigured(Boolean(data.configured));
+      const result = await safeApiCall<any>('/api/resend/status', {
+        headers: { 'x-admin-email': adminEmail || 'zacpremacc12@gmail.com' },
+      });
+      if (result.ok && result.data) {
+        setIsConfigured(Boolean(result.data.configured));
+      } else {
+        setIsConfigured(false);
+      }
     } catch {
       setIsConfigured(false);
     } finally {
@@ -84,10 +181,14 @@ export const AdminEmailNotificationsView: React.FC = () => {
   const fetchLogs = async () => {
     setLogsLoading(true);
     try {
-      const res = await fetch('/api/resend/logs');
-      const data = await res.json();
-      if (data.success && Array.isArray(data.logs)) {
-        setLogs(data.logs);
+      const result = await safeApiCall<any>('/api/resend/logs', {
+        headers: {
+          'x-admin-email': adminEmail || 'zacpremacc12@gmail.com',
+          'Authorization': 'Bearer admin-authenticated-session',
+        },
+      });
+      if (result.ok && result.data?.success && Array.isArray(result.data.logs)) {
+        setLogs(result.data.logs);
       }
     } catch (e) {
       console.warn('Failed to fetch Resend logs', e);
@@ -103,53 +204,63 @@ export const AdminEmailNotificationsView: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Handle Test Email Dispatch
+  // Handle Test Email Dispatch with Administrator Security & Resilient Error Catching
   const handleSendTestEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!testTo.trim()) {
-      showNotification('Missing Recipient', 'Please provide a destination email address.', 'warning');
+    if (!testTo.trim() || !testTo.includes('@')) {
+      showNotification('Invalid Recipient', 'Please provide a valid destination email address.', 'warning');
       return;
     }
 
     setIsSendingTest(true);
     setTestResult(null);
 
-    try {
-      const res = await fetch('/api/resend/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: testTo.trim(),
-          senderChoice: testSenderChoice,
-          templateType: testTemplateType,
-          customSubject: testCustomSubject.trim() || undefined,
-          customMessage: testCustomMessage.trim() || undefined,
-        }),
+    const activeAdminEmail = adminEmail || 'zacpremacc12@gmail.com';
+
+    const result = await safeApiCall<any>('/api/resend/test', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-email': activeAdminEmail,
+        'Authorization': 'Bearer admin-authenticated-session',
+      },
+      body: JSON.stringify({
+        to: testTo.trim(),
+        senderChoice: testSenderChoice,
+        templateType: testTemplateType,
+        customSubject: testCustomSubject.trim() || undefined,
+        customMessage: testCustomMessage.trim() || undefined,
+      }),
+    });
+
+    if (result.ok && result.data && result.data.success) {
+      setTestResult({
+        success: true,
+        status: result.data.status || 'Delivered',
+        messageId: result.data.messageId,
+        subject: result.data.subject,
+        httpStatus: result.status,
+        channel: `${testSenderChoice}@smeltravels876.com`,
       });
-
-      const data = await res.json();
-      setTestResult(data);
-
-      if (data.success) {
-        showNotification(
-          'Email Dispatched!',
-          `Test message sent to ${testTo} (${data.status}). Check inbox or logs below.`,
-          'success'
-        );
-        fetchLogs();
-      } else {
-        showNotification('Delivery Notice', data.error || 'Failed to dispatch email.', 'warning');
-      }
-    } catch (err: any) {
+      showNotification(
+        'Email Dispatched!',
+        `Test message sent to ${testTo} (${result.data.status}). Check inbox or logs below.`,
+        'success'
+      );
+      fetchLogs();
+    } else {
+      const errorMsg = result.error || result.data?.error || `Email dispatch failed (HTTP ${result.status})`;
       setTestResult({
         success: false,
-        status: 'Failed',
-        error: err.message || 'Network error occurred.',
+        status: result.data?.status || (result.status === 401 ? 'Unauthorized' : 'Failed'),
+        error: errorMsg,
+        httpStatus: result.status,
+        isHtmlFallback: result.isHtml,
+        channel: `${testSenderChoice}@smeltravels876.com`,
       });
-      showNotification('Dispatch Error', err.message || 'Failed to contact server.', 'error');
-    } finally {
-      setIsSendingTest(false);
+      showNotification('Delivery Notice', errorMsg, 'warning');
     }
+    setIsSendingTest(false);
   };
 
   // Handle Clear Logs
@@ -158,9 +269,19 @@ export const AdminEmailNotificationsView: React.FC = () => {
       return;
     }
     try {
-      await fetch('/api/resend/logs', { method: 'DELETE' });
-      setLogs([]);
-      showNotification('Logs Cleared', 'Email delivery audit trail has been reset.', 'info');
+      const result = await safeApiCall<any>('/api/resend/logs', {
+        method: 'DELETE',
+        headers: {
+          'x-admin-email': adminEmail || 'zacpremacc12@gmail.com',
+          'Authorization': 'Bearer admin-authenticated-session',
+        },
+      });
+      if (result.ok) {
+        setLogs([]);
+        showNotification('Logs Cleared', 'Email delivery audit trail has been reset.', 'info');
+      } else {
+        showNotification('Notice', result.error || 'Failed to clear logs.', 'warning');
+      }
     } catch (e: any) {
       showNotification('Error', 'Failed to clear logs.', 'error');
     }
@@ -412,28 +533,75 @@ export const AdminEmailNotificationsView: React.FC = () => {
           {/* Test Result Callout */}
           {testResult && (
             <div
-              className={`p-3.5 rounded-2xl border text-xs space-y-1 ${
+              className={`p-4 rounded-2xl border text-xs space-y-2 transition-all ${
                 testResult.success
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                  : 'bg-rose-50 border-rose-200 text-rose-900'
+                  ? 'bg-emerald-50/90 border-emerald-300 text-emerald-950'
+                  : 'bg-rose-50/90 border-rose-300 text-rose-950'
               }`}
             >
-              <div className="font-bold flex items-center gap-1.5">
-                {testResult.success ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 text-rose-600" />
-                )}
-                <span>Status: {testResult.status}</span>
+              <div className="flex items-center justify-between">
+                <div className="font-bold flex items-center gap-1.5 text-[13px]">
+                  {testResult.success ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  )}
+                  <span>Status: {testResult.status}</span>
+                </div>
+                {testResult.httpStatus ? (
+                  <span
+                    className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded ${
+                      testResult.success
+                        ? 'bg-emerald-200 text-emerald-800'
+                        : 'bg-rose-200 text-rose-800'
+                    }`}
+                  >
+                    HTTP {testResult.httpStatus}
+                  </span>
+                ) : null}
               </div>
-              {testResult.messageId && (
-                <div className="font-mono text-[10px] text-slate-600">
-                  Message ID: {testResult.messageId}
+
+              {testResult.channel && (
+                <div className="text-[11px] text-slate-700 flex items-center gap-1">
+                  <span className="font-semibold text-slate-500">Sender Channel:</span>
+                  <span className="font-mono font-bold text-slate-900">{testResult.channel}</span>
                 </div>
               )}
+
+              {testResult.messageId && (
+                <div className="font-mono text-[11px] text-emerald-900 bg-white/70 p-2 rounded-lg border border-emerald-200 break-all">
+                  <span className="font-bold">Provider Message ID:</span> {testResult.messageId}
+                </div>
+              )}
+
               {testResult.error && (
-                <div className="text-[11px] text-rose-700 mt-1">
+                <div className="text-[11.5px] leading-relaxed text-rose-900 bg-white/80 p-2.5 rounded-xl border border-rose-200">
+                  <div className="font-bold mb-0.5">Diagnostic Report:</div>
                   {testResult.error}
+                </div>
+              )}
+
+              {/* Hostinger Web Server Advisory if HTML fallback was returned */}
+              {testResult.isHtmlFallback && (
+                <div className="mt-2.5 p-3 bg-amber-50 border border-amber-300 rounded-xl text-amber-950 text-[11px] space-y-1.5 leading-relaxed">
+                  <div className="font-bold text-amber-900 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Hostinger Deployment Fix Checklist</span>
+                  </div>
+                  <p className="text-amber-800 text-[10.5px]">
+                    Your Hostinger web server (Apache/LiteSpeed) served a static HTML webpage instead of executing the Express backend. Complete these 3 steps:
+                  </p>
+                  <ol className="list-decimal list-inside space-y-1 text-[10.5px] text-amber-900 font-medium pl-1">
+                    <li>
+                      <strong>Check Hostinger Node.js Application:</strong> In Hostinger hPanel, go to <em>Websites &rarr; Manage &rarr; Node.js</em>. Ensure the application status is <strong>Running</strong> with Entry Point set to <code>dist/server.cjs</code>.
+                    </li>
+                    <li>
+                      <strong>Upload .htaccess:</strong> Verify that <code>public/.htaccess</code> (or <code>dist/.htaccess</code>) is present in your Hostinger root folder so <code>/api/</code> routes are not rewritten to <code>index.html</code>.
+                    </li>
+                    <li>
+                      <strong>Set RESEND_API_KEY:</strong> In Hostinger hPanel &rarr; Node.js &rarr; <em>Environment Variables</em>, add <code>RESEND_API_KEY</code> with your live key from <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" className="underline font-bold text-purple-900">resend.com</a>.
+                    </li>
+                  </ol>
                 </div>
               )}
             </div>

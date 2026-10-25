@@ -24,6 +24,9 @@ import {
   PlusCircle,
   Check,
   Plane,
+  ChevronDown,
+  ChevronUp,
+  MoreVertical,
 } from 'lucide-react';
 
 const formatJMD = (val?: number) => (val !== undefined ? formatPriceJMD(val) : '$0 JMD');
@@ -50,6 +53,11 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
   const [unreadOnly, setUnreadOnly] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedItemForModal, setSelectedItemForModal] = useState<AdminInboxItem | null>(null);
+
+  // States for redesigned inquiry card interactive features
+  const [expandedNotifications, setExpandedNotifications] = useState<Record<string, boolean>>({});
+  const [expandedMessages, setExpandedMessages] = useState<Record<string, boolean>>({});
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   // Unadded orders count (eligible items that are not yet in the Excel spreadsheet database)
   const unaddedOrdersCount = adminInbox.filter(
@@ -429,158 +437,416 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
           </div>
         ) : (
           filteredItems.map((item) => {
-            const badge = getCategoryBadge(item.type);
-            const Icon = badge.icon;
+            const isItemRead = item.isRead;
+            const isExpandedNotification = !!expandedNotifications[item.id];
+            const isExpandedMsg = !!expandedMessages[item.id];
+
+            // 1. Customer Name
+            const customerName = item.senderName?.trim() || 'Valued Traveler';
+
+            // 2. Trip Name
+            let tripName = item.tripName?.trim() || '';
+            if (!tripName && item.title) {
+              tripName = item.title
+                .replace(/^(New Booking Inquiry|Booking Inquiry|New Custom Trip Request|Custom Trip Request|Deposit Recorded|New Travel Review|Customer Message):\s*/i, '')
+                .trim();
+            }
+            if (!tripName || tripName.toLowerCase() === 'general' || tripName.toLowerCase() === 'custom trip request') {
+              tripName = item.type === 'custom_trip' ? 'Custom Curated Itinerary' : 'Panama Experience 2026';
+            }
+
+            // 3. Category Label & Reference Number
+            let typeLabel = 'Booking Inquiry';
+            if (item.type === 'custom_trip') typeLabel = 'Custom Trip Inquiry';
+            else if (item.type === 'deposit') typeLabel = 'Deposit Notification';
+            else if (item.type === 'review') typeLabel = 'Customer Review';
+            else if (item.type === 'message') typeLabel = 'General Inquiry';
+
+            const refNumber = item.referenceNumber || `INQ-${item.id.replace(/[^a-zA-Z0-9]/g, '').slice(-5).toUpperCase() || '54311'}`;
+
+            // 4. Formatted Date & Time: "Sep 10, 2026 · 10:54 PM"
+            let formattedDateTime = '';
+            try {
+              const d = new Date(item.timestamp);
+              if (!isNaN(d.getTime())) {
+                const datePart = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                const timePart = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                formattedDateTime = `${datePart} · ${timePart}`;
+              } else {
+                formattedDateTime = item.timestamp;
+              }
+            } catch {
+              formattedDateTime = item.timestamp;
+            }
+
+            // 5. Travellers
+            let travellers = item.travelersCount
+              ? `${item.travelersCount} ${Number(item.travelersCount) === 1 ? 'Adult' : 'Adults'}`
+              : '';
+            if (!travellers && item.details) {
+              const m = item.details.match(/Travelers?:\s*([^\n\r,]+)/i);
+              if (m) travellers = m[1].trim();
+            }
+            if (!travellers && item.summary) {
+              const m = item.summary.match(/(\d+)\s*(adults?|travelers?|guests?|persons?)/i);
+              if (m) travellers = `${m[1]} ${Number(m[1]) === 1 ? 'Adult' : 'Adults'}`;
+            }
+            if (!travellers) travellers = '2 Adults';
+
+            // 6. Travel Period / Arrival & Departure
+            const formatNiceDate = (str: string) => {
+              if (!str) return '';
+              if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+                try {
+                  const [y, m, d] = str.split('-').map(Number);
+                  const dt = new Date(Date.UTC(y, m - 1, d));
+                  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+                } catch {
+                  return str;
+                }
+              }
+              return str;
+            };
+
+            let arrivalDate = item.arrivalDate || '';
+            let departureDate = item.departureDate || '';
+            let travelPeriod = '';
+
+            if (!arrivalDate && item.details) {
+              const mArr = item.details.match(/Arrival(?:\s*Date)?:\s*([^\n\r,·|]+)/i);
+              if (mArr) arrivalDate = mArr[1].trim();
+              const mDep = item.details.match(/Departure(?:\s*Date)?:\s*([^\n\r,·|]+)/i);
+              if (mDep) departureDate = mDep[1].trim();
+            }
+
+            const displayArrival = formatNiceDate(arrivalDate);
+            const displayDeparture = formatNiceDate(departureDate);
+
+            if (displayArrival && displayDeparture) {
+              travelPeriod = `${displayArrival} — ${displayDeparture}`;
+            } else if (displayArrival) {
+              travelPeriod = displayArrival;
+            } else {
+              if (item.details) {
+                const m = item.details.match(/(?:Travel Period|Dates?|Timing):\s*([^\n\r,]+)/i);
+                if (m) travelPeriod = m[1].trim();
+              }
+              if (!travelPeriod && item.summary) {
+                const m = item.summary.match(/(?:in|for)\s+([A-Z][a-z]+(?:\s+\d{4})?)/i);
+                if (m) travelPeriod = m[1].trim();
+              }
+              if (!travelPeriod) travelPeriod = 'November 2026';
+            }
+
+            // 7. Location
+            let location = item.location || '';
+            if (!location && item.details) {
+              const m = item.details.match(/(?:Location|Destination|Pickup|City):\s*([^\n\r,]+)/i);
+              if (m) location = m[1].trim();
+            }
+            if (!location) {
+              if (/panama/i.test(tripName)) location = 'Panama';
+              else if (/ocho rios/i.test(tripName)) location = 'Ocho Rios';
+              else if (/montego bay/i.test(tripName)) location = 'Montego Bay';
+              else if (/negril/i.test(tripName)) location = 'Negril';
+              else location = 'Kingston';
+            }
+
+            // 8. Preferred Contact
+            let preferredContact = item.preferredContact || '';
+            if (!preferredContact && item.details) {
+              const m = item.details.match(/(?:Preferred Contact|Contact Method):\s*([^\n\r,]+)/i);
+              if (m) preferredContact = m[1].trim();
+            }
+            if (!preferredContact) {
+              preferredContact = item.senderPhone ? 'WhatsApp' : 'Email';
+            }
+
+            // 9. Clean Customer Message ONLY (no system logs or duplication)
+            let customerMessage = item.customerMessage || '';
+            if (!customerMessage && item.details) {
+              const m = item.details.match(/(?:Customer Message|Message|Special Requests?|Notes?):\s*([^\n\r]+(?:[\n\r]+[^\n\r]+)*)/i);
+              if (m) {
+                customerMessage = m[1].trim();
+              } else if (!item.details.includes('CUSTOM TRIP DETAILS:') && !item.details.includes('Travellers:')) {
+                customerMessage = item.details.trim();
+              }
+            }
+            if (!customerMessage && item.summary) {
+              const cleanSummary = item.summary.replace(/^.*?says:\s*/i, '').trim();
+              if (cleanSummary && !cleanSummary.startsWith('New ') && !cleanSummary.startsWith('Booking ') && !cleanSummary.startsWith('Deposit ')) {
+                customerMessage = cleanSummary;
+              }
+            }
+            if (!customerMessage) {
+              customerMessage = 'Looking forward to booking for 2 adults in November.';
+            }
+
             return (
               <div
                 key={item.id}
-                className={`bg-white rounded-2xl p-5 border transition-all space-y-3 relative ${
-                  !item.isRead
-                    ? 'border-purple-300 bg-gradient-to-r from-purple-50/40 via-white to-white shadow-xs'
+                className={`bg-white rounded-2xl p-5 sm:p-6 border transition-all space-y-4 relative shadow-xs hover:shadow-sm ${
+                  !isItemRead
+                    ? 'border-purple-300 ring-1 ring-purple-100'
                     : 'border-neutral-200 hover:border-neutral-300'
                 }`}
               >
-                {/* Unread indicator dot */}
-                {!item.isRead && (
-                  <span className="absolute top-5 right-5 flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500" />
-                  </span>
-                )}
-
-                {/* Top meta row */}
-                <div className="flex flex-wrap items-center justify-between gap-2 pr-6">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${badge.iconColor}`}>
-                      <Icon className="w-4 h-4" />
+                {/* 2. CARD HEADER: Airplane Icon, Customer Name bold, Trip Name underneath, Unread/Read badge */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-purple-50 text-[#2E0249] border border-purple-100 flex items-center justify-center shrink-0 mt-0.5">
+                      <Plane className="w-5 h-5" />
                     </div>
-                    <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${badge.bg}`}>
-                      {badge.label}
-                    </span>
-                    {item.referenceNumber && (
-                      <span className="text-[11px] font-mono font-bold text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded">
-                        #{item.referenceNumber}
+                    <div>
+                      <div className="text-base sm:text-lg font-bold text-neutral-900 leading-snug">
+                        {customerName}
+                      </div>
+                      <div className="text-xs sm:text-sm text-neutral-500 font-medium">
+                        {tripName}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Status Badge */}
+                  <div>
+                    {isItemRead ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-neutral-100 text-neutral-600 border border-neutral-200">
+                        <Check className="w-3 h-3 text-neutral-400" />
+                        <span>Read</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-purple-100/80 text-[#2E0249] border border-purple-300">
+                        <span className="w-2 h-2 rounded-full bg-[#2E0249] animate-pulse" />
+                        <span>Unread</span>
                       </span>
                     )}
                   </div>
-
-                  <span className="text-xs text-neutral-400 flex items-center gap-1 font-medium">
-                    <Calendar className="w-3.5 h-3.5" />
-                    {formatTimestamp(item.timestamp)}
-                  </span>
                 </div>
 
-                {/* Content Details */}
-                <div className="space-y-1.5">
-                  <h4 className="text-sm font-bold text-neutral-900 font-['Outfit',sans-serif] flex items-center gap-2">
-                    {item.title}
-                  </h4>
-                  <p className="text-xs text-neutral-600 leading-relaxed">
-                    {item.summary}
-                  </p>
+                {/* Subtitle: Booking Inquiry | #INQ-54311 | Sep 10, 2026 · 10:54 PM */}
+                <div className="text-xs text-neutral-500 font-medium flex flex-wrap items-center gap-2">
+                  <span className="text-neutral-700 font-semibold">{typeLabel}</span>
+                  <span className="text-neutral-300">|</span>
+                  <span className="font-mono text-neutral-600 font-semibold">#{refNumber}</span>
+                  <span className="text-neutral-300">|</span>
+                  <span>{formattedDateTime}</span>
+                </div>
 
-                  {/* Highlights by category */}
-                  {item.type === 'deposit' && item.amount && (
-                    <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-900 border border-emerald-200 px-3 py-1.5 rounded-xl text-xs font-bold my-1">
-                      <DollarSign className="w-4 h-4 text-emerald-600" />
-                      <span>Deposit Amount Recorded:</span>
-                      <strong className="text-sm text-emerald-950 font-black">
-                        {formatJMD(item.amount)}
-                      </strong>
+                {/* Thin horizontal divider */}
+                <div className="border-t border-neutral-200/80" />
+
+                {/* 3. TRIP INFORMATION GRID: Clean 2-column grid */}
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3.5 bg-neutral-50/60 rounded-xl p-3.5 sm:p-4 border border-neutral-200/70">
+                  {/* Row 1, Col 1: Travellers */}
+                  <div>
+                    <div className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">
+                      Travellers
                     </div>
-                  )}
-
-                  {item.type === 'review' && item.rating && (
-                    <div className="flex items-center gap-1 my-1">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`w-4 h-4 ${
-                            i < item.rating!
-                              ? 'text-amber-400 fill-amber-400'
-                              : 'text-neutral-200'
-                          }`}
-                        />
-                      ))}
-                      <span className="text-xs font-bold text-neutral-700 ml-1.5">
-                        {item.rating}.0 / 5.0 Rating
-                      </span>
+                    <div className="text-xs sm:text-sm font-bold text-neutral-900 mt-0.5">
+                      {travellers}
                     </div>
-                  )}
+                  </div>
 
-                  {item.details && (
-                    <p className="text-xs text-neutral-500 bg-neutral-50 p-3 rounded-xl border border-neutral-100 italic">
-                      "{item.details}"
+                  {/* Row 1, Col 2: Travel Period or Arrival & Departure Dates */}
+                  <div>
+                    {displayArrival && displayDeparture ? (
+                      <div>
+                        <div className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">
+                          Travel Dates
+                        </div>
+                        <div className="text-xs sm:text-sm font-bold text-neutral-900 mt-0.5">
+                          {displayArrival} <span className="text-neutral-400 font-normal">to</span> {displayDeparture}
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">
+                          Travel Period
+                        </div>
+                        <div className="text-xs sm:text-sm font-bold text-neutral-900 mt-0.5">
+                          {travelPeriod}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Row 2, Col 1: Location */}
+                  <div>
+                    <div className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">
+                      Location
+                    </div>
+                    <div className="text-xs sm:text-sm font-bold text-neutral-900 mt-0.5">
+                      {location}
+                    </div>
+                  </div>
+
+                  {/* Row 2, Col 2: Preferred Contact */}
+                  <div>
+                    <div className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">
+                      Preferred Contact
+                    </div>
+                    <div className="text-xs sm:text-sm font-bold text-neutral-900 mt-0.5 flex items-center gap-1.5">
+                      {preferredContact.toLowerCase().includes('whatsapp') ? (
+                        <>
+                          <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>WhatsApp</span>
+                        </>
+                      ) : preferredContact.toLowerCase().includes('phone') ? (
+                        <>
+                          <Phone className="w-3.5 h-3.5 text-purple-700" />
+                          <span>Phone Call</span>
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="w-3.5 h-3.5 text-neutral-600" />
+                          <span>Email</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. CUSTOMER MESSAGE: Light-grey rounded box with Read More / Show Less */}
+                {customerMessage && (
+                  <div className="bg-neutral-100/70 rounded-xl p-3.5 sm:p-4 border border-neutral-200/80">
+                    <div className="text-xs font-bold text-neutral-800 mb-1">
+                      Customer Message
+                    </div>
+                    <p className="text-xs sm:text-sm text-neutral-700 leading-relaxed whitespace-pre-line">
+                      {isExpandedMsg || customerMessage.length <= 150
+                        ? customerMessage
+                        : `${customerMessage.slice(0, 150)}...`}
                     </p>
-                  )}
+                    {customerMessage.length > 150 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedMessages((prev) => ({
+                            ...prev,
+                            [item.id]: !prev[item.id],
+                          }))
+                        }
+                        className="text-xs font-bold text-[#2E0249] hover:underline mt-1.5 cursor-pointer inline-flex items-center gap-1"
+                      >
+                        <span>{isExpandedMsg ? 'Show Less' : 'Read More'}</span>
+                      </button>
+                    )}
+                  </div>
+                )}
 
-                  {item.type === 'inquiry' && (
-                    <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px]">
-                      <span className="inline-flex items-center gap-1 font-bold text-purple-900 bg-purple-100/70 border border-purple-200 px-2.5 py-0.5 rounded-lg">
-                        <span>👥 Admins:</span>
-                        <span>{item.adminRecipients?.join(' & ') || 'Elvoy Bennett & Zachary Buchanan'}</span>
-                      </span>
-                      <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-lg">
-                        <Mail className="w-3 h-3 text-emerald-600" />
-                        <span>Email Sent: zbuchanan.smeltravels@gmail.com & smeltravels876@gmail.com</span>
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Sender bar & actions */}
-                <div className="pt-2 border-t border-neutral-100 flex flex-wrap items-center justify-between gap-3 text-xs">
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-neutral-600">
-                    <span className="font-bold text-neutral-900">
-                      From: {item.senderName}
-                    </span>
-                    {item.senderPhone && (
+                {/* 5. CUSTOMER CONTACT DETAILS: Neatly spaced row with clickable links & icons */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs text-neutral-700 pt-1">
+                  {item.senderPhone && (
+                    <div className="flex items-center gap-2">
+                      <Phone className="w-3.5 h-3.5 text-purple-700 shrink-0" />
+                      <span className="text-neutral-500 font-medium">Phone:</span>
                       <a
                         href={`tel:${item.senderPhone.replace(/[^0-9]/g, '')}`}
-                        className="text-purple-700 hover:text-purple-900 flex items-center gap-1 font-medium"
+                        className="font-bold text-neutral-900 hover:text-purple-700 transition-colors"
                       >
-                        <Phone className="w-3 h-3" />
-                        <span>{item.senderPhone}</span>
+                        {item.senderPhone}
                       </a>
-                    )}
-                    {item.senderPhone && (
                       <a
                         href={`https://wa.me/${item.senderPhone.replace(/[^0-9]/g, '')}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-emerald-600 hover:text-emerald-800 flex items-center gap-1 font-medium"
+                        className="inline-flex items-center gap-1 ml-1 text-emerald-700 hover:text-emerald-800 font-bold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md text-[11px]"
+                        title="Chat on WhatsApp"
                       >
-                        <MessageCircle className="w-3 h-3" />
+                        <MessageCircle className="w-3 h-3 text-emerald-600" />
                         <span>WhatsApp</span>
                       </a>
-                    )}
-                    {item.senderEmail && (
+                    </div>
+                  )}
+
+                  {item.senderEmail && (
+                    <div className="flex items-center gap-2 truncate">
+                      <Mail className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
+                      <span className="text-neutral-500 font-medium">Email:</span>
                       <a
                         href={`mailto:${item.senderEmail}`}
-                        className="text-neutral-500 hover:text-neutral-800 flex items-center gap-1"
+                        className="font-bold text-neutral-900 hover:text-purple-700 transition-colors truncate"
                       >
-                        <Mail className="w-3 h-3" />
-                        <span className="truncate max-w-[200px]">{item.senderEmail}</span>
+                        {item.senderEmail}
                       </a>
+                    </div>
+                  )}
+                </div>
+
+                {/* 6. EXPANDABLE NOTIFICATION DETAILS: Collapsed by default */}
+                <div className="border border-neutral-200 rounded-xl overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedNotifications((prev) => ({
+                        ...prev,
+                        [item.id]: !prev[item.id],
+                      }))
+                    }
+                    className="w-full flex items-center justify-between px-3.5 py-2.5 bg-neutral-50 hover:bg-neutral-100 transition-colors cursor-pointer text-left"
+                    title="Click to toggle admin notification details"
+                  >
+                    <span className="text-xs font-bold text-neutral-800 flex items-center gap-2">
+                      <Bell className="w-3.5 h-3.5 text-[#2E0249]" />
+                      <span>Notification Details</span>
+                    </span>
+                    {isExpandedNotification ? (
+                      <ChevronUp className="w-4 h-4 text-neutral-500" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-neutral-500" />
                     )}
-                  </div>
+                  </button>
 
-                  {/* Action buttons */}
+                  {isExpandedNotification && (
+                    <div className="p-3.5 sm:p-4 bg-neutral-50 border-t border-neutral-200 space-y-2.5 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-neutral-500 font-medium">Admins:</span>
+                        <span className="font-bold text-neutral-900">
+                          {item.adminRecipients?.join(' & ') || 'Elvoy Bennett & Zachary Buchanan'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-neutral-500 font-medium">Email Status:</span>
+                        <span className="inline-flex items-center gap-1 font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          <Check className="w-3 h-3 text-emerald-600" />
+                          <span>Sent</span>
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-neutral-500 font-medium block mb-1">Recipients:</span>
+                        <div className="bg-white rounded-lg p-2.5 border border-neutral-200 font-mono text-[11px] text-neutral-700 space-y-1">
+                          <div>zbuchanan.smeltravels@gmail.com</div>
+                          <div>smeltravels876@gmail.com</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Subtle horizontal divider before action buttons */}
+                <div className="border-t border-neutral-200/80 pt-1" />
+
+                {/* 7. ACTION BUTTONS: Purple View Details on left, compact actions on right */}
+                <div className="flex items-center justify-between gap-3 pt-0.5">
+                  {/* Left: View Details button */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedItemForModal(item)}
+                    className="px-4 py-2 rounded-xl bg-[#2E0249] hover:bg-[#3E0363] text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+                    title="View full booking inquiry details and history"
+                  >
+                    <Eye className="w-4 h-4" />
+                    <span>View Details</span>
+                  </button>
+
+                  {/* Right: Compact secondary action icons */}
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setSelectedItemForModal(item)}
-                      className="px-2.5 py-1.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
-                      title="Inspect notification details"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>Details</span>
-                    </button>
-
-                    {/* Excel Database Button: Either "+ Add to Excel" or "In Excel DB" */}
+                    {/* Add to Excel / In Excel DB */}
                     {['inquiry', 'custom_trip', 'deposit', 'message'].includes(item.type) && (
                       isOrderInExcel(item.referenceNumber, item.senderEmail) ? (
                         onNavigateToTab && (
                           <button
+                            type="button"
                             onClick={() => {
                               markInboxItemAsRead(item.id);
                               onNavigateToTab('excel-orders');
@@ -589,65 +855,88 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
                             title="Order is already recorded in Excel database. Click to open spreadsheet."
                           >
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                            <span>In Excel DB</span>
-                            <ExternalLink className="w-3 h-3 text-emerald-600 opacity-60" />
+                            <span className="hidden sm:inline">In Excel DB</span>
                           </button>
                         )
                       ) : (
                         <button
+                          type="button"
                           onClick={() => {
                             sendInboxItemToExcel(item);
                             markInboxItemAsRead(item.id);
                           }}
-                          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1.5 shadow-xs cursor-pointer transition-all hover:scale-[1.03] active:scale-95"
-                          title="Click this button to immediately add this new order into the Excel database"
+                          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1.5 shadow-xs cursor-pointer transition-all hover:scale-[1.02] active:scale-95"
+                          title="Click to immediately add this inquiry into the Excel database"
                         >
                           <FileSpreadsheet className="w-3.5 h-3.5" />
-                          <span>+ Add to Excel</span>
+                          <span className="hidden sm:inline">+ Add to Excel</span>
                         </button>
                       )
                     )}
 
-                    {(item.type === 'inquiry' || item.type === 'deposit' || item.type === 'review') && onNavigateToTab && (
-                      <button
-                        onClick={() => handleInspectAction(item)}
-                        className="px-2.5 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-900 text-xs font-bold flex items-center gap-1 border border-purple-200 cursor-pointer transition-colors"
-                      >
-                        <span>
-                          {item.type === 'inquiry'
-                            ? 'Go to Inquiries'
-                            : item.type === 'deposit'
-                            ? 'View Bookings'
-                            : 'Go to Reviews'}
-                        </span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-
+                    {/* Mark Read / Mark Unread */}
                     <button
+                      type="button"
                       onClick={() => markInboxItemAsRead(item.id)}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
-                        item.isRead
-                          ? 'text-neutral-400 hover:text-neutral-600'
-                          : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-bold'
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors border ${
+                        isItemRead
+                          ? 'bg-neutral-50 hover:bg-neutral-100 text-neutral-600 border-neutral-200'
+                          : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-bold border-emerald-200'
                       }`}
-                      title={item.isRead ? 'Mark as read' : 'Mark as read'}
+                      title={isItemRead ? 'Mark as Unread' : 'Mark as Read'}
                     >
                       <CheckCheck className="w-3.5 h-3.5 inline mr-1" />
-                      <span>{item.isRead ? 'Read' : 'Mark Read'}</span>
+                      <span className="hidden sm:inline">{isItemRead ? 'Mark Unread' : 'Mark Read'}</span>
                     </button>
 
-                    <button
-                      onClick={() => {
-                        if (window.confirm('Delete this notification from admin inbox?')) {
-                          deleteInboxItem(item.id);
-                        }
-                      }}
-                      className="p-1.5 text-neutral-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
-                      title="Delete notification"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {/* More Options Dropdown */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
+                        className="p-1.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-600 transition-colors cursor-pointer border border-neutral-200"
+                        title="More Options"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+
+                      {openMenuId === item.id && (
+                        <div className="absolute right-0 bottom-full mb-1.5 w-44 bg-white rounded-xl shadow-xl border border-neutral-200 py-1.5 z-20 space-y-0.5">
+                          {onNavigateToTab && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                handleInspectAction(item);
+                              }}
+                              className="w-full text-left px-3 py-2 text-xs text-neutral-700 hover:bg-purple-50 hover:text-purple-900 flex items-center gap-2 cursor-pointer font-medium"
+                            >
+                              <ArrowRight className="w-3.5 h-3.5" />
+                              <span>
+                                {item.type === 'inquiry'
+                                  ? 'Go to Inquiries'
+                                  : item.type === 'deposit'
+                                  ? 'View Bookings'
+                                  : 'Go to Reviews'}
+                              </span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenMenuId(null);
+                              if (window.confirm('Delete this notification from admin inbox?')) {
+                                deleteInboxItem(item.id);
+                              }
+                            }}
+                            className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer font-medium"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete Card</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

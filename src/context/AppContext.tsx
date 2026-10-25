@@ -1955,9 +1955,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const recipients = ['zbuchanan.smeltravels@gmail.com', 'smeltravels876@gmail.com'];
     const adminRecipients = ['Elvoy Bennett', 'Zachary Buchanan'];
 
-    const datesSummary = data.travelDatesType === 'specific' && data.startDate
-      ? `${data.startDate}${data.endDate ? ` to ${data.endDate}` : ''}`
-      : data.flexibleSeason || 'Flexible 2026/2027';
+    const arrivalDateVal = (data.startDate || data.arrivalDate || '').trim();
+    const departureDateVal = (data.endDate || data.departureDate || '').trim();
+
+    const formatReadable = (isoDate: string) => {
+      try {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+          const [y, m, d] = isoDate.split('-').map(Number);
+          const dt = new Date(Date.UTC(y, m - 1, d));
+          return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+        }
+      } catch {}
+      return isoDate;
+    };
+
+    const formattedArrival = arrivalDateVal ? formatReadable(arrivalDateVal) : '';
+    const formattedDeparture = departureDateVal ? formatReadable(departureDateVal) : '';
+    const datesSummary = formattedArrival && formattedDeparture
+      ? `Arrival: ${formattedArrival} · Departure: ${formattedDeparture}`
+      : (data.travelDatesType === 'specific' && data.startDate ? `${data.startDate}${data.endDate ? ` to ${data.endDate}` : ''}` : (data.flexibleSeason || 'Flexible 2026/2027'));
 
     const durationStr = data.durationDays ? `${data.durationDays} Days` : 'Flexible';
     const travelersStr = `${data.adultsCount || 1} Adult(s)${data.childrenCount ? `, ${data.childrenCount} Children` : ''}`;
@@ -1975,8 +1991,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       senderName: data.customerName,
       senderEmail: data.email,
       senderPhone: data.phone || 'N/A',
+      arrivalDate: arrivalDateVal,
+      departureDate: departureDateVal,
+      travelDates: datesSummary,
+      travelersCount: travelersStr,
+      location: data.countryOrParish || originStr || 'Jamaica',
+      preferredContact: data.preferredContactMethod || 'WhatsApp',
+      customerMessage: data.specialRequests || `Custom vacation request to ${data.destination}.`,
       summary: `Custom trip to ${data.destination} from ${originStr} (${datesSummary}, ${travelersStr}). Flight Status: ${flightStatus}. Dispatched to Elvoy Bennett & Zachary Buchanan (${recipients.join(' & ')}).`,
-      details: `CUSTOM TRIP DETAILS:\nOrigin / Departure: ${originStr}\nDestination: ${data.destination} (${data.country})\nTravel Dates: ${datesSummary} (${durationStr})\nTravelers: ${travelersStr}\nStyle: ${data.travelStyle}\nRoom: ${data.roomOccupancy || 'Double'}\nCabin Class: ${data.cabinClass || 'Economy'}\nFlight Pricing Status: ${flightStatus}\nVibe: ${data.tripVibe}\nBudget: ${data.budgetPerPerson || 'Flexible'}\nInclusions: ${(data.mustHaveInclusions || []).join(', ')}\nSpecial Notes: ${data.specialRequests || 'None'}\n\nTRAVELER:\nName: ${data.customerName}\nEmail: ${data.email}\nPhone: ${data.phone || 'N/A'}\nParish/Region: ${data.countryOrParish || 'Jamaica'}\nPreferred Contact: ${data.preferredContactMethod || 'WhatsApp'}\nAmbassador: ${data.preferredAmbassador || 'Executive Operations Desk'}\nDispatched to: ${recipients.join(', ')}`,
+      details: `CUSTOM TRIP DETAILS:\nOrigin / Departure: ${originStr}\nDestination: ${data.destination} (${data.country})\nArrival Date: ${formattedArrival || arrivalDateVal}\nDeparture Date: ${formattedDeparture || departureDateVal}\nDuration: ${durationStr}\nTravelers: ${travelersStr}\nStyle: ${data.travelStyle}\nRoom: ${data.roomOccupancy || 'Double'}\nCabin Class: ${data.cabinClass || 'Economy'}\nFlight Pricing Status: ${flightStatus}\nVibe: ${data.tripVibe}\nBudget: ${data.budgetPerPerson || 'Flexible'}\nInclusions: ${(data.mustHaveInclusions || []).join(', ')}\nSpecial Notes: ${data.specialRequests || 'None'}\n\nTRAVELER:\nName: ${data.customerName}\nEmail: ${data.email}\nPhone: ${data.phone || 'N/A'}\nParish/Region: ${data.countryOrParish || 'Jamaica'}\nPreferred Contact: ${data.preferredContactMethod || 'WhatsApp'}\nAmbassador: ${data.preferredAmbassador || 'Executive Operations Desk'}\nDispatched to: ${recipients.join(', ')}`,
       tripName: `Custom: ${data.destination}`,
       referenceNumber: ref,
       timestamp: now,
@@ -2006,8 +2029,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       adultsCount: Number(data.adultsCount) || 1,
       childrenCount: Number(data.childrenCount) || 0,
       preferredTravelDate: datesSummary,
+      arrivalDate: arrivalDateVal,
+      departureDate: departureDateVal,
       travelInterestType: 'ready_to_book',
-      specialRequests: `[Custom Trip Request]\nOrigin: ${originStr}\nDestination: ${data.destination} (${data.country})\nDates: ${datesSummary} (${durationStr})\nTravelers: ${travelersStr}\nStyle: ${data.travelStyle}\nRoom: ${data.roomOccupancy || 'Double'}\nCabin: ${data.cabinClass || 'Economy'}\nFlight Status: ${flightStatus}\nBudget: ${numericalBudgetValue > 0 ? `${numericalBudgetValue} ${data.budgetCurrency || 'USD'}` : (data.budgetPerPerson || 'Flexible')}\nInclusions: ${(data.mustHaveInclusions || []).join(', ')}\nNotes: ${data.specialRequests || 'None'}`,
+      specialRequests: `[Custom Trip Request]\nOrigin: ${originStr}\nDestination: ${data.destination} (${data.country})\nArrival Date: ${formattedArrival || arrivalDateVal}\nDeparture Date: ${formattedDeparture || departureDateVal} (${durationStr})\nTravelers: ${travelersStr}\nStyle: ${data.travelStyle}\nRoom: ${data.roomOccupancy || 'Double'}\nCabin: ${data.cabinClass || 'Economy'}\nFlight Status: ${flightStatus}\nBudget: ${numericalBudgetValue > 0 ? `${numericalBudgetValue} ${data.budgetCurrency || 'USD'}` : (data.budgetPerPerson || 'Flexible')}\nInclusions: ${(data.mustHaveInclusions || []).join(', ')}\nNotes: ${data.specialRequests || 'None'}`,
       preferredContactMethod: data.preferredContactMethod || 'whatsapp',
       status: 'Custom Trip Request' as any,
       depositPaid: 0,
@@ -2016,7 +2041,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       budget: numericalBudgetValue > 0 ? String(numericalBudgetValue) : (data.budgetAmount || data.budgetPerPerson || 'Flexible'),
       numericalBudget: numericalBudgetValue,
       ambassadorName: data.preferredAmbassador,
-      internalNotes: [`Custom trip submitted on ${now} departing from ${originStr}. Flight Pricing: ${flightStatus}. Dispatched to Elvoy Bennett & Zachary Buchanan.`],
+      internalNotes: [`Custom trip submitted on ${now} departing from ${originStr} with arrival ${formattedArrival} and departure ${formattedDeparture}. Flight Pricing: ${flightStatus}. Dispatched to Elvoy Bennett & Zachary Buchanan.`],
       createdAt: now,
       updatedAt: now,
     };
@@ -2039,6 +2064,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       parishOrCountry: data.countryOrParish || 'Jamaica',
       tripOrDestination: `${data.destination} (${data.country})`,
       travelDates: datesSummary,
+      arrivalDate: arrivalDateVal,
+      departureDate: departureDateVal,
       adultsCount: Number(data.adultsCount) || 1,
       childrenCount: Number(data.childrenCount) || 0,
       budget: numericalBudgetValue > 0 ? String(numericalBudgetValue) : (data.budgetAmount || data.budgetPerPerson || 'Flexible'),

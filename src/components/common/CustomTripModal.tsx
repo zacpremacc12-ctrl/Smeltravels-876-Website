@@ -81,10 +81,12 @@ export const CustomTripModal: React.FC = () => {
   const [customDestinationName, setCustomDestinationName] = useState('');
   const [activePhotoIndex, setActivePhotoIndex] = useState<number>(0);
 
-  // Step 2: Dates, Group & Origin / Departure Location
+  // Step 2: Dates, Group & Origin / Departure Location (Arrival & Departure Dates Mandatory)
   const [travelDatesType, setTravelDatesType] = useState<'specific' | 'flexible'>('specific');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [arrivalDateError, setArrivalDateError] = useState<string>('');
+  const [departureDateError, setDepartureDateError] = useState<string>('');
   const [showCheapestDateFinder, setShowCheapestDateFinder] = useState<boolean>(false);
 
   // Check if active custom trip is local (Jamaica) vs abroad
@@ -484,6 +486,43 @@ export const CustomTripModal: React.FC = () => {
 
   // Step advancement with validation
   const handleNextStep = () => {
+    // TASK 2: Mandatory Arrival & Departure Date validation when leaving Step 2
+    if (currentStep === 2) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      let hasDateError = false;
+
+      if (!startDate || !startDate.trim()) {
+        setArrivalDateError('Please select your arrival date.');
+        hasDateError = true;
+      } else if (startDate < todayStr) {
+        setArrivalDateError('Arrival date cannot be in the past.');
+        hasDateError = true;
+      } else {
+        setArrivalDateError('');
+      }
+
+      if (!endDate || !endDate.trim()) {
+        setDepartureDateError('Please select your departure date.');
+        hasDateError = true;
+      } else if (startDate && endDate <= startDate) {
+        setDepartureDateError('Departure date must be after the arrival date.');
+        hasDateError = true;
+      } else {
+        setDepartureDateError('');
+      }
+
+      if (hasDateError) {
+        showNotification(
+          'Travel Dates Required',
+          'Both arrival and departure dates are mandatory for custom trip inquiries. Please select your dates to proceed.',
+          'warning'
+        );
+        const el = document.getElementById('custom-trip-travel-dates-section');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+    }
+
     if (currentStep === 3 && budgetValidation.isBelowMinimum) {
       showNotification(
         'Minimum Budget Required',
@@ -503,6 +542,28 @@ export const CustomTripModal: React.FC = () => {
   // Handle Submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // TASK 2: Strict submission validation on arrival and departure dates
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (!startDate || !startDate.trim()) {
+      setArrivalDateError('Please select your arrival date.');
+      showNotification('Arrival Date Required', 'Please select your arrival date.', 'warning');
+      setCurrentStep(2);
+      return;
+    }
+    if (!endDate || !endDate.trim()) {
+      setDepartureDateError('Please select your departure date.');
+      showNotification('Departure Date Required', 'Please select your departure date.', 'warning');
+      setCurrentStep(2);
+      return;
+    }
+    if (endDate <= startDate) {
+      setDepartureDateError('Departure date must be after the arrival date.');
+      showNotification('Invalid Dates', 'Departure date must be after the arrival date.', 'warning');
+      setCurrentStep(2);
+      return;
+    }
+
     if (!customerName.trim() || !email.trim()) {
       showNotification('Contact Information Required', 'Please provide your name and email address so our admins can send your itinerary.', 'warning');
       return;
@@ -971,38 +1032,144 @@ export const CustomTripModal: React.FC = () => {
                 </p>
               </div>
 
-              {/* Timing Mode Toggle */}
-              <div className="grid grid-cols-2 gap-3 p-1 bg-neutral-100 rounded-xl">
-                <button
-                  type="button"
-                  onClick={() => setTravelDatesType('specific')}
-                  className={`py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all cursor-pointer ${
-                    travelDatesType === 'specific'
-                      ? 'bg-white text-[#2E0249] shadow-sm ring-1 ring-neutral-200'
-                      : 'text-neutral-600 hover:text-neutral-900'
-                  }`}
-                  id="tab-specific-dates"
-                >
-                  📅 Exact Dates (Mini Calendar)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTravelDatesType('flexible')}
-                  className={`py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all cursor-pointer ${
-                    travelDatesType === 'flexible'
-                      ? 'bg-white text-[#2E0249] shadow-sm ring-1 ring-neutral-200'
-                      : 'text-neutral-600 hover:text-neutral-900'
-                  }`}
-                  id="tab-flexible-dates"
-                >
-                  🌴 Flexible / Ideal Season
-                </button>
-              </div>
+              {/* Dedicated Travel Dates Section (TASK 2) */}
+              <div
+                id="custom-trip-travel-dates-section"
+                className="bg-white rounded-2xl border-2 border-purple-100 p-4 sm:p-5 shadow-xs space-y-4"
+              >
+                <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-[#2E0249]" />
+                    <span className="text-sm font-bold text-neutral-900">Travel Dates</span>
+                    <span className="text-xs font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+                      Required
+                    </span>
+                  </div>
+                  {startDate && endDate && startDate < endDate && (
+                    <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" />
+                      {durationDays} {durationDays === 1 ? 'Day' : 'Days'} / {Math.max(1, durationDays - 1)} Nights
+                    </span>
+                  )}
+                </div>
 
-              {/* Date Selection: Mini Calendar vs Flexible Season */}
-              {travelDatesType === 'specific' ? (
-                /* Specific Dates with Mini Date Range Calendar */
-                <div className="space-y-3">
+                <p className="text-xs text-neutral-600">
+                  Please select your arrival and departure dates so we can prepare your custom travel quotation.
+                </p>
+
+                {/* 2-Column Date Input Fields */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Arrival Date */}
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="custom-trip-arrival-date"
+                      className="block text-xs font-bold uppercase tracking-wider text-neutral-700"
+                    >
+                      Arrival Date <span className="text-red-500 font-black">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="custom-trip-arrival-date"
+                        type="date"
+                        required
+                        min={new Date().toISOString().split('T')[0]}
+                        value={startDate}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setStartDate(val);
+                          if (!val) {
+                            setArrivalDateError('Please select your arrival date.');
+                          } else {
+                            const today = new Date().toISOString().split('T')[0];
+                            if (val < today) {
+                              setArrivalDateError('Arrival date cannot be in the past.');
+                            } else {
+                              setArrivalDateError('');
+                            }
+                          }
+                          if (endDate && val && endDate <= val) {
+                            setDepartureDateError('Departure date must be after the arrival date.');
+                          } else if (endDate) {
+                            setDepartureDateError('');
+                            const d1 = new Date(val);
+                            const d2 = new Date(endDate);
+                            const diffDays = Math.max(1, Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)));
+                            setDurationDays(diffDays);
+                          }
+                        }}
+                        className={`w-full px-3.5 py-2.5 text-sm font-semibold rounded-xl border bg-white outline-none transition-all ${
+                          arrivalDateError
+                            ? 'border-red-500 ring-2 ring-red-100 text-red-900'
+                            : 'border-neutral-300 focus:border-[#2E0249] focus:ring-2 focus:ring-purple-100 text-neutral-900'
+                        }`}
+                      />
+                    </div>
+                    {arrivalDateError ? (
+                      <p className="text-xs font-medium text-red-600 mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{arrivalDateError}</span>
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-neutral-500">Check-in / start date</p>
+                    )}
+                  </div>
+
+                  {/* Departure Date */}
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="custom-trip-departure-date"
+                      className="block text-xs font-bold uppercase tracking-wider text-neutral-700"
+                    >
+                      Departure Date <span className="text-red-500 font-black">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="custom-trip-departure-date"
+                        type="date"
+                        required
+                        min={startDate || new Date().toISOString().split('T')[0]}
+                        value={endDate}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEndDate(val);
+                          if (!val) {
+                            setDepartureDateError('Please select your departure date.');
+                          } else if (startDate && val <= startDate) {
+                            setDepartureDateError('Departure date must be after the arrival date.');
+                          } else {
+                            setDepartureDateError('');
+                            if (startDate) {
+                              const d1 = new Date(startDate);
+                              const d2 = new Date(val);
+                              const diffDays = Math.max(1, Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)));
+                              setDurationDays(diffDays);
+                            }
+                          }
+                        }}
+                        className={`w-full px-3.5 py-2.5 text-sm font-semibold rounded-xl border bg-white outline-none transition-all ${
+                          departureDateError
+                            ? 'border-red-500 ring-2 ring-red-100 text-red-900'
+                            : 'border-neutral-300 focus:border-[#2E0249] focus:ring-2 focus:ring-purple-100 text-neutral-900'
+                        }`}
+                      />
+                    </div>
+                    {departureDateError ? (
+                      <p className="text-xs font-medium text-red-600 mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{departureDateError}</span>
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-neutral-500">Check-out / return flight date</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Mini Date Range Calendar View */}
+                <div className="pt-2">
+                  <div className="text-xs font-bold text-neutral-700 mb-2 flex items-center gap-1.5">
+                    <span>Interactive Calendar Selection</span>
+                    <span className="text-[11px] font-normal text-neutral-500">(click start and return dates)</span>
+                  </div>
                   <MiniDateRangeCalendar
                     startDate={startDate}
                     endDate={endDate}
@@ -1012,6 +1179,8 @@ export const CustomTripModal: React.FC = () => {
                       if (days > 0) {
                         setDurationDays(days);
                       }
+                      if (newStart) setArrivalDateError('');
+                      if (newEnd && newStart && newEnd > newStart) setDepartureDateError('');
                     }}
                     isLocalTrip={isLocalTrip}
                     destinationName={
@@ -1021,129 +1190,7 @@ export const CustomTripModal: React.FC = () => {
                     }
                   />
                 </div>
-              ) : (
-                /* Flexible Season Selection */
-                <div className="space-y-4">
-                  {/* Quick Switch to Mini Calendar helper banner */}
-                  <div className="p-3 bg-purple-50/80 rounded-xl border border-purple-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-[#2E0249] shrink-0" />
-                      <span className="text-xs font-semibold text-neutral-800">
-                        Already know your arrival and departure dates?
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setTravelDatesType('specific')}
-                      className="px-3.5 py-1.5 rounded-lg bg-[#2E0249] hover:bg-[#3B185F] text-[#FFC72C] text-xs font-bold transition-all shadow-xs cursor-pointer self-start sm:self-auto shrink-0"
-                    >
-                      Open Mini Calendar
-                    </button>
-                  </div>
-
-                  <label className="block text-xs font-bold uppercase tracking-wider text-neutral-600">
-                    Select Your Preferred Season or Month:
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                    {[
-                      'Summer 2026 (June - August)',
-                      'Fall / Autumn 2026 (Sept - Nov)',
-                      'December Festive 2026 (Holidays)',
-                      'Winter / New Year 2027 (Jan - Feb)',
-                      'Spring 2027 (March - May)',
-                      'Anytime / Open to Best Rates',
-                    ].map((season) => (
-                      <button
-                        key={season}
-                        type="button"
-                        onClick={() => setFlexibleSeason(season)}
-                        className={`p-3 rounded-xl border text-xs font-semibold text-left transition-all ${
-                          flexibleSeason === season
-                            ? 'bg-[#2E0249] text-white border-[#2E0249] shadow-sm'
-                            : 'bg-white hover:bg-neutral-50 text-neutral-700 border-neutral-200'
-                        }`}
-                      >
-                        {season}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Ideal Trip Length (+ / - Counter Box for Nights & Days) */}
-                  <div className="bg-neutral-50 p-3.5 sm:p-4 rounded-xl border border-neutral-200" id="ideal-trip-length-container">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <div className="text-sm font-bold text-neutral-900 flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-[#2E0249]" />
-                          <span>Ideal Trip Length</span>
-                        </div>
-                        <div className="text-[11px] text-neutral-500 mt-0.5">
-                          Use the + or − buttons to set duration in days and nights
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2.5 self-start sm:self-auto">
-                        <button
-                          type="button"
-                          onClick={() => setDurationDays((prev) => Math.max(1, prev - 1))}
-                          disabled={durationDays <= 1}
-                          className="w-9 h-9 rounded-xl bg-white border border-neutral-300 flex items-center justify-center text-neutral-700 font-bold hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-xs active:scale-95 cursor-pointer"
-                          aria-label="Decrease trip length by 1 day"
-                          id="decrease-trip-length-btn"
-                        >
-                          <Minus className="w-4 h-4" />
-                        </button>
-
-                        <div className="min-w-[130px] px-3.5 py-1.5 bg-white border border-neutral-300 rounded-xl text-center shadow-xs">
-                          <div className="text-sm sm:text-base font-extrabold text-[#2E0249] leading-tight">
-                            {durationDays} {durationDays === 1 ? 'Day' : 'Days'}
-                          </div>
-                          <div className="text-[11px] font-semibold text-neutral-500">
-                            {Math.max(0, durationDays - 1)} {durationDays - 1 === 1 ? 'Night' : 'Nights'}
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => setDurationDays((prev) => Math.min(60, prev + 1))}
-                          disabled={durationDays >= 60}
-                          className="w-9 h-9 rounded-xl bg-white border border-neutral-300 flex items-center justify-center text-neutral-700 font-bold hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-xs active:scale-95 cursor-pointer"
-                          aria-label="Increase trip length by 1 day"
-                          id="increase-trip-length-btn"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Quick presets for convenience */}
-                    <div className="flex flex-wrap items-center gap-1.5 pt-3 mt-3 border-t border-neutral-200/70">
-                      <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider mr-1">
-                        Popular:
-                      </span>
-                      {[
-                        { days: 3, label: '3 Days / 2 Nights (Weekend)' },
-                        { days: 5, label: '5 Days / 4 Nights' },
-                        { days: 7, label: '7 Days / 6 Nights (1 Week)' },
-                        { days: 10, label: '10 Days / 9 Nights' },
-                        { days: 14, label: '14 Days / 13 Nights (2 Weeks)' },
-                      ].map(({ days, label }) => (
-                        <button
-                          key={days}
-                          type="button"
-                          onClick={() => setDurationDays(days)}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                            durationDays === days
-                              ? 'bg-[#2E0249] text-white shadow-xs'
-                              : 'bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100 hover:border-neutral-300'
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
+              </div>
 
               {/* Cheapest Date Finder Action Bar & Component (Sections 22-35) */}
               <div className="pt-2">

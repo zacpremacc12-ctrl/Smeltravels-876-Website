@@ -1,6 +1,6 @@
 {
   "testKey": "broadcast_verified",
-  "lastUpdated": "2026-10-25T01:23:56.565Z",
+  "lastUpdated": "2026-10-25T18:49:00.926Z",
   "settings": {
     "siteName": "SMELTRAVELS876",
     "tagline": "Travel More. Worry Less.",
@@ -1066,6 +1066,58 @@
   ],
   "bookings": [
     {
+      "id": "booking-custom-1792954140939",
+      "referenceNumber": "CUSTOM-14782",
+      "tripId": "custom-panama",
+      "tripName": "Custom Trip: Panama Experience 2026",
+      "customerName": "Shanice Campbell",
+      "email": "shanice.c@example.com",
+      "phone": "876-555-0144",
+      "countryOrParish": "Kingston",
+      "adultsCount": 2,
+      "childrenCount": 0,
+      "preferredTravelDate": "Arrival: 15 November 2026 · Departure: 22 November 2026",
+      "arrivalDate": "2026-11-15",
+      "departureDate": "2026-11-22",
+      "travelInterestType": "ready_to_book",
+      "specialRequests": "[Custom Trip Request]\nDestination: Panama Experience 2026 (Panama)\nArrival Date: 15 November 2026\nDeparture Date: 22 November 2026 (Flexible duration)\nVibe: undefined\nStyle: undefined\nBudget: undefined\nInclusions: \nNotes: Looking forward to booking for 2 adults in November.",
+      "preferredContactMethod": "whatsapp",
+      "status": "Custom Trip Request",
+      "depositPaid": 0,
+      "totalPrice": 0,
+      "currency": "JMD",
+      "internalNotes": [
+        "Custom trip submitted by traveler on 2026-10-25T18:49:00.926Z with arrival 15 November 2026 and departure 22 November 2026. Dispatched to Elvoy Bennett & Zachary Buchanan."
+      ],
+      "createdAt": "2026-10-25T18:49:00.926Z",
+      "updatedAt": "2026-10-25T18:49:00.926Z"
+    },
+    {
+      "id": "booking-custom-1792954111592",
+      "referenceNumber": "CUSTOM-26186",
+      "tripId": "custom-panama",
+      "tripName": "Custom Trip: Panama",
+      "customerName": "Test Traveler",
+      "email": "test@example.com",
+      "phone": "",
+      "countryOrParish": "Jamaica",
+      "adultsCount": 1,
+      "childrenCount": 0,
+      "preferredTravelDate": "Flexible 2026/2027",
+      "travelInterestType": "ready_to_book",
+      "specialRequests": "[Custom Trip Request]\nDestination: Panama (undefined)\nDates: Flexible 2026/2027 (Flexible duration)\nVibe: undefined\nStyle: undefined\nBudget: undefined\nInclusions: \nNotes: None",
+      "preferredContactMethod": "whatsapp",
+      "status": "Custom Trip Request",
+      "depositPaid": 0,
+      "totalPrice": 0,
+      "currency": "JMD",
+      "internalNotes": [
+        "Custom trip submitted by traveler on 2026-10-25T18:48:31.579Z. Dispatched to Elvoy Bennett & Zachary Buchanan."
+      ],
+      "createdAt": "2026-10-25T18:48:31.579Z",
+      "updatedAt": "2026-10-25T18:48:31.579Z"
+    },
+    {
       "id": "book-1",
       "referenceNumber": "ST-2026-8812",
       "tripId": "panama-2026",
@@ -1118,6 +1170,59 @@
   ],
   "adminInbox": [
     {
+      "id": "inbox-custom-1792954140939-190",
+      "type": "custom_trip",
+      "title": "Custom Trip Request: Panama Experience 2026 (Shanice Campbell)",
+      "senderName": "Shanice Campbell",
+      "senderEmail": "shanice.c@example.com",
+      "senderPhone": "876-555-0144",
+      "arrivalDate": "2026-11-15",
+      "departureDate": "2026-11-22",
+      "travelDates": "Arrival: 15 November 2026 · Departure: 22 November 2026",
+      "travelersCount": "2 Adult(s)",
+      "location": "Kingston",
+      "preferredContact": "whatsapp",
+      "customerMessage": "Looking forward to booking for 2 adults in November.",
+      "summary": "Custom trip to Panama Experience 2026 (Arrival: 15 November 2026 · Departure: 22 November 2026, 2 Adult(s)). Style: Comfort. Sent to Elvoy Bennett & Zachary Buchanan.",
+      "details": "CUSTOM TRIP DETAILS:\nDestination: Panama Experience 2026 (Panama)\nArrival Date: 15 November 2026\nDeparture Date: 22 November 2026\nDuration: Flexible duration\nTravelers: 2 Adult(s)\nStyle: Comfort\nVibe: Vacation\nBudget: Flexible\nInclusions: \nSpecial Notes: Looking forward to booking for 2 adults in November.\n\nTRAVELER:\nName: Shanice Campbell\nEmail: shanice.c@example.com\nPhone: 876-555-0144\nParish/Region: Kingston\nPreferred Contact: whatsapp\nAmbassador: Executive Desk\nDispatched to: zbuchanan.smeltravels@gmail.com, smeltravels876@gmail.com",
+      "tripName": "Custom: Panama Experience 2026",
+      "referenceNumber": "CUSTOM-14782",
+      "timestamp": "2026-10-25T18:49:00.926Z",
+      "isRead": false,
+      "adminRecipients": [
+        "Elvoy Bennett",
+        "Zachary Buchanan"
+      ],
+      "recipientEmails": [
+        "zbuchanan.smeltravels@gmail.com",
+        "smeltravels876@gmail.com"
+      ],
+      "emailStatus": "Delivered"
+    },
+    {
+      "id": "inbox-custom-1792954111592-893",
+      "type": "custom_trip",
+      "title": "Custom Trip Request: Panama (Test Traveler)",
+      "senderName": "Test Traveler",
+      "senderEmail": "test@example.com",
+      "senderPhone": "N/A",
+      "summary": "Custom trip to Panama (Flexible 2026/2027, 1 Adult(s)). Style: Comfort. Sent to Elvoy Bennett & Zachary Buchanan.",
+      "details": "CUSTOM TRIP DETAILS:\nDestination: Panama (Panama)\nTravel Dates: Flexible 2026/2027 (Flexible duration)\nTravelers: 1 Adult(s)\nStyle: Comfort\nVibe: Vacation\nBudget: Flexible\nInclusions: \nSpecial Notes: None\n\nTRAVELER:\nName: Test Traveler\nEmail: test@example.com\nPhone: N/A\nParish/Region: Jamaica\nPreferred Contact: WhatsApp\nAmbassador: Executive Desk\nDispatched to: zbuchanan.smeltravels@gmail.com, smeltravels876@gmail.com",
+      "tripName": "Custom: Panama",
+      "referenceNumber": "CUSTOM-26186",
+      "timestamp": "2026-10-25T18:48:31.579Z",
+      "isRead": false,
+      "adminRecipients": [
+        "Elvoy Bennett",
+        "Zachary Buchanan"
+      ],
+      "recipientEmails": [
+        "zbuchanan.smeltravels@gmail.com",
+        "smeltravels876@gmail.com"
+      ],
+      "emailStatus": "Delivered"
+    },
+    {
       "id": "inbox-inq-1789098895950-865",
       "type": "inquiry",
       "title": "Trip Inquiry: Panama Experience 2026 (Trip Inquiry)",
@@ -1159,6 +1264,48 @@
     }
   ],
   "dispatchedEmails": [
+    {
+      "templateType": "custom_trip_admin",
+      "sender": "SMELTRAVELS876 Bookings <bookings@smeltravels876.com>",
+      "recipient": [
+        "zbuchanan.smeltravels@gmail.com",
+        "smeltravels876@gmail.com"
+      ],
+      "subject": "[ADMIN ALERT] New Custom Trip Request: Panama — Test Traveler (#CUSTOM-26186)",
+      "status": "Delivered",
+      "messageId": "01a17464-96e6-79d3-bbb1-c7eb0381741f",
+      "htmlContent": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>[ADMIN ALERT] New Custom Trip Request: Panama — Test Traveler (#CUSTOM-26186)</title>\n  <style>\n    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FAF9F6; margin: 0; padding: 20px; color: #1E293B; }\n    .wrapper { max-width: 620px; margin: 0 auto; background: #FFFFFF; border-radius: 18px; overflow: hidden; border: 1px solid #E2E8F0; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); }\n    .header { background: linear-gradient(135deg, #2E0249 0%, #190028 100%); padding: 32px 28px; text-align: center; color: #FFFFFF; position: relative; }\n    .logo-badge { display: inline-block; background: rgba(255, 199, 44, 0.15); border: 1px solid rgba(255, 199, 44, 0.4); color: #FFC72C; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; padding: 4px 14px; border-radius: 9999px; margin-bottom: 12px; }\n    .brand-title { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: 0.5px; color: #FFC72C; }\n    .brand-tagline { margin: 8px 0 0 0; font-size: 13px; color: #E2E8F0; font-weight: 500; }\n    .sender-ribbon { background-color: #F1F5F9; padding: 10px 24px; border-bottom: 1px solid #E2E8F0; font-size: 11px; font-weight: 600; color: #475569; display: flex; justify-content: space-between; }\n    .content { padding: 32px 28px; }\n    .card { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 14px; padding: 20px; margin: 20px 0; }\n    .table-details { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }\n    .table-details td { padding: 8px 0; border-bottom: 1px dashed #E2E8F0; }\n    .table-details td:last-child { text-align: right; font-weight: 700; color: #1E293B; }\n    .table-details td:first-child { color: #64748B; }\n    .btn { display: inline-block; background: #2E0249; color: #FFC72C !important; font-size: 14px; font-weight: 800; text-decoration: none; padding: 14px 28px; border-radius: 12px; margin: 16px 0; text-align: center; letter-spacing: 0.3px; border: 1px solid rgba(255,199,44,0.3); }\n    .footer { background-color: #0F172A; padding: 26px 24px; text-align: center; font-size: 12px; color: #94A3B8; line-height: 1.6; }\n    .footer a { color: #FFC72C; text-decoration: none; }\n  </style>\n</head>\n<body>\n  <!-- Preheader text for inbox preview -->\n  <div style=\"display:none;font-size:1px;color:#333333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;\">\n    Custom itinerary request for Panama from Test Traveler.\n  </div>\n\n  <div class=\"wrapper\">\n    <!-- Header -->\n    <div class=\"header\">\n      <div class=\"logo-badge\">Official Transactional Notification</div>\n      <h1 class=\"brand-title\">SMELTRAVELS876</h1>\n      <p class=\"brand-tagline\">Luxury Group Travel & Curated Jamaican Experiences</p>\n    </div>\n\n    <!-- Sender Channel Ribbon -->\n    <div class=\"sender-ribbon\">\n      <span>Official Sender: <strong>bookings@smeltravels876.com</strong></span>\n      <span>Verified Domain: <strong>smeltravels876.com</strong></span>\n    </div>\n\n    <!-- Main Content Body -->\n    <div class=\"content\">\n      \n        <div style=\"display: inline-block; background-color: #EDE9FE; color: #5B21B6; font-size: 11px; font-weight: bold; padding: 4px 12px; border-radius: 9999px; margin-bottom: 12px;\">\n          Custom Trip Alert • Ref #CUSTOM-26186\n        </div>\n        <h2 style=\"margin: 0 0 10px 0; font-size: 20px; color: #2E0249; font-weight: 800;\">\n          New Custom Itinerary Request\n        </h2>\n        <p style=\"font-size: 13px; color: #64748B; margin: 0 0 16px 0;\">\n          A customer has designed a custom trip proposal. Review specifications below:\n        </p>\n\n        <div class=\"card\">\n          <table class=\"table-details\">\n            <tr><td>Reference:</td><td><strong>#CUSTOM-26186</strong></td></tr>\n            <tr><td>Customer:</td><td>Test Traveler</td></tr>\n            <tr><td>Email:</td><td><a href=\"mailto:test@example.com\">test@example.com</a></td></tr>\n            <tr><td>Phone / WhatsApp:</td><td><a href=\"https://wa.me/\">N/A</a></td></tr>\n            <tr><td>Destination:</td><td>Panama (Panama)</td></tr>\n            <tr><td>Travel Dates:</td><td>Flexible 2026/2027</td></tr>\n            <tr><td>Party Size:</td><td>1 Adult(s)</td></tr>\n            <tr><td>Travel Style:</td><td>Comfortable</td></tr>\n            <tr><td>Trip Vibe:</td><td>Vacation</td></tr>\n            <tr><td>Budget:</td><td>Flexible</td></tr>\n          </table>\n        </div>\n\n        \n\n        <div style=\"text-align: center;\">\n          <a href=\"https://smeltravels876.com\" class=\"btn\">Configure in Admin Portal &rarr;</a>\n        </div>\n      \n    </div>\n\n    <!-- Footer -->\n    <div class=\"footer\">\n      <p style=\"margin: 0 0 8px 0; color: #F1F5F9; font-weight: 700;\">\n        SMELTRAVELS876 LIMITED • Kingston, Jamaica\n      </p>\n      <p style=\"margin: 0 0 12px 0;\">\n        Direct Assistance: <a href=\"tel:(876) 834-1537\">(876) 834-1537</a> | \n        WhatsApp Concierge: <a href=\"https://wa.me/18768341537\">Chat on WhatsApp</a> | \n        Web: <a href=\"https://smeltravels876.com\">smeltravels876.com</a>\n      </p>\n      <p style=\"margin: 0; font-size: 11px; color: #64748B;\">\n        This automated transactional notification was delivered by the official Resend API on behalf of SMELTRAVELS876.<br/>\n        &copy; 2026 SMELTRAVELS876. All rights reserved.\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
+      "referenceNumber": "CUSTOM-26186",
+      "customerName": "Test Traveler",
+      "id": "email-1792954111797-373",
+      "timestamp": "2026-10-25T18:48:31.797Z"
+    },
+    {
+      "templateType": "custom_trip_customer",
+      "sender": "SMELTRAVELS876 Bookings <bookings@smeltravels876.com>",
+      "recipient": "test@example.com",
+      "subject": "Custom Trip Request Received: Panama (Ref: #CUSTOM-26186) — SMELTRAVELS876",
+      "status": "Failed",
+      "error": "Invalid `to` field. Please use our testing email address instead of domains like `example.com`. See our documentation for more information.",
+      "htmlContent": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>Custom Trip Request Received: Panama (Ref: #CUSTOM-26186) — SMELTRAVELS876</title>\n  <style>\n    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FAF9F6; margin: 0; padding: 20px; color: #1E293B; }\n    .wrapper { max-width: 620px; margin: 0 auto; background: #FFFFFF; border-radius: 18px; overflow: hidden; border: 1px solid #E2E8F0; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); }\n    .header { background: linear-gradient(135deg, #2E0249 0%, #190028 100%); padding: 32px 28px; text-align: center; color: #FFFFFF; position: relative; }\n    .logo-badge { display: inline-block; background: rgba(255, 199, 44, 0.15); border: 1px solid rgba(255, 199, 44, 0.4); color: #FFC72C; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; padding: 4px 14px; border-radius: 9999px; margin-bottom: 12px; }\n    .brand-title { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: 0.5px; color: #FFC72C; }\n    .brand-tagline { margin: 8px 0 0 0; font-size: 13px; color: #E2E8F0; font-weight: 500; }\n    .sender-ribbon { background-color: #F1F5F9; padding: 10px 24px; border-bottom: 1px solid #E2E8F0; font-size: 11px; font-weight: 600; color: #475569; display: flex; justify-content: space-between; }\n    .content { padding: 32px 28px; }\n    .card { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 14px; padding: 20px; margin: 20px 0; }\n    .table-details { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }\n    .table-details td { padding: 8px 0; border-bottom: 1px dashed #E2E8F0; }\n    .table-details td:last-child { text-align: right; font-weight: 700; color: #1E293B; }\n    .table-details td:first-child { color: #64748B; }\n    .btn { display: inline-block; background: #2E0249; color: #FFC72C !important; font-size: 14px; font-weight: 800; text-decoration: none; padding: 14px 28px; border-radius: 12px; margin: 16px 0; text-align: center; letter-spacing: 0.3px; border: 1px solid rgba(255,199,44,0.3); }\n    .footer { background-color: #0F172A; padding: 26px 24px; text-align: center; font-size: 12px; color: #94A3B8; line-height: 1.6; }\n    .footer a { color: #FFC72C; text-decoration: none; }\n  </style>\n</head>\n<body>\n  <!-- Preheader text for inbox preview -->\n  <div style=\"display:none;font-size:1px;color:#333333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;\">\n    We received your custom itinerary request #CUSTOM-26186 for Panama.\n  </div>\n\n  <div class=\"wrapper\">\n    <!-- Header -->\n    <div class=\"header\">\n      <div class=\"logo-badge\">Official Transactional Notification</div>\n      <h1 class=\"brand-title\">SMELTRAVELS876</h1>\n      <p class=\"brand-tagline\">Luxury Group Travel & Curated Jamaican Experiences</p>\n    </div>\n\n    <!-- Sender Channel Ribbon -->\n    <div class=\"sender-ribbon\">\n      <span>Official Sender: <strong>bookings@smeltravels876.com</strong></span>\n      <span>Verified Domain: <strong>smeltravels876.com</strong></span>\n    </div>\n\n    <!-- Main Content Body -->\n    <div class=\"content\">\n      \n        <div style=\"display: inline-block; background-color: #FEF3C7; color: #92400E; font-size: 11px; font-weight: bold; padding: 4px 12px; border-radius: 9999px; margin-bottom: 12px;\">\n          Custom Itinerary Request • Ref #CUSTOM-26186\n        </div>\n        <h2 style=\"margin: 0 0 10px 0; font-size: 22px; color: #2E0249; font-weight: 800;\">\n          Dream Trip Received, Test Traveler!\n        </h2>\n        <p style=\"font-size: 14px; line-height: 1.6; color: #1E293B; margin: 0 0 16px 0;\">\n          Thank you for trusting SMELTRAVELS876 to design your personalized itinerary to <strong>Panama</strong>. Our senior itinerary planners are preparing flight routes and hotel options.\n        </p>\n\n        <div class=\"card\">\n          <div style=\"font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #64748B; margin-bottom: 8px;\">\n            Requested Specifications\n          </div>\n          <table class=\"table-details\">\n            <tr><td>Reference:</td><td>#CUSTOM-26186</td></tr>\n            <tr><td>Destination:</td><td>Panama (Panama)</td></tr>\n            <tr><td>Travel Dates:</td><td>Flexible 2026/2027</td></tr>\n            <tr><td>Duration:</td><td>Flexible duration</td></tr>\n            <tr><td>Travelers:</td><td>1 Adult(s)</td></tr>\n            <tr><td>Vibe & Style:</td><td>Vacation • Comfortable</td></tr>\n            <tr><td>Budget Preference:</td><td>Standard / Flexible</td></tr>\n          </table>\n        </div>\n\n        <div style=\"text-align: center;\">\n          <a href=\"https://smeltravels876.com\" class=\"btn\">View Website Concierge &rarr;</a>\n        </div>\n      \n    </div>\n\n    <!-- Footer -->\n    <div class=\"footer\">\n      <p style=\"margin: 0 0 8px 0; color: #F1F5F9; font-weight: 700;\">\n        SMELTRAVELS876 LIMITED • Kingston, Jamaica\n      </p>\n      <p style=\"margin: 0 0 12px 0;\">\n        Direct Assistance: <a href=\"tel:(876) 834-1537\">(876) 834-1537</a> | \n        WhatsApp Concierge: <a href=\"https://wa.me/18768341537\">Chat on WhatsApp</a> | \n        Web: <a href=\"https://smeltravels876.com\">smeltravels876.com</a>\n      </p>\n      <p style=\"margin: 0; font-size: 11px; color: #64748B;\">\n        This automated transactional notification was delivered by the official Resend API on behalf of SMELTRAVELS876.<br/>\n        &copy; 2026 SMELTRAVELS876. All rights reserved.\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
+      "referenceNumber": "CUSTOM-26186",
+      "customerName": "Test Traveler",
+      "id": "email-1792954111735-128",
+      "timestamp": "2026-10-25T18:48:31.736Z"
+    },
+    {
+      "templateType": "test_email",
+      "sender": "SMELTRAVELS876 Bookings <bookings@smeltravels876.com>",
+      "recipient": "zacpremacc12@gmail.com",
+      "subject": "Resend Integration Test (bookings@smeltravels876.com) — 6:32:12 PM",
+      "status": "Delivered",
+      "messageId": "01a17455-a51d-7688-a23a-3212db629125",
+      "htmlContent": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>Resend Integration Test (bookings@smeltravels876.com) — 6:32:12 PM</title>\n  <style>\n    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FAF9F6; margin: 0; padding: 20px; color: #1E293B; }\n    .wrapper { max-width: 620px; margin: 0 auto; background: #FFFFFF; border-radius: 18px; overflow: hidden; border: 1px solid #E2E8F0; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); }\n    .header { background: linear-gradient(135deg, #2E0249 0%, #190028 100%); padding: 32px 28px; text-align: center; color: #FFFFFF; position: relative; }\n    .logo-badge { display: inline-block; background: rgba(255, 199, 44, 0.15); border: 1px solid rgba(255, 199, 44, 0.4); color: #FFC72C; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; padding: 4px 14px; border-radius: 9999px; margin-bottom: 12px; }\n    .brand-title { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: 0.5px; color: #FFC72C; }\n    .brand-tagline { margin: 8px 0 0 0; font-size: 13px; color: #E2E8F0; font-weight: 500; }\n    .sender-ribbon { background-color: #F1F5F9; padding: 10px 24px; border-bottom: 1px solid #E2E8F0; font-size: 11px; font-weight: 600; color: #475569; display: flex; justify-content: space-between; }\n    .content { padding: 32px 28px; }\n    .card { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 14px; padding: 20px; margin: 20px 0; }\n    .table-details { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }\n    .table-details td { padding: 8px 0; border-bottom: 1px dashed #E2E8F0; }\n    .table-details td:last-child { text-align: right; font-weight: 700; color: #1E293B; }\n    .table-details td:first-child { color: #64748B; }\n    .btn { display: inline-block; background: #2E0249; color: #FFC72C !important; font-size: 14px; font-weight: 800; text-decoration: none; padding: 14px 28px; border-radius: 12px; margin: 16px 0; text-align: center; letter-spacing: 0.3px; border: 1px solid rgba(255,199,44,0.3); }\n    .footer { background-color: #0F172A; padding: 26px 24px; text-align: center; font-size: 12px; color: #94A3B8; line-height: 1.6; }\n    .footer a { color: #FFC72C; text-decoration: none; }\n  </style>\n</head>\n<body>\n  <!-- Preheader text for inbox preview -->\n  <div style=\"display:none;font-size:1px;color:#333333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;\">\n    Live test email dispatched from verified domain smeltravels876.com via Resend.\n  </div>\n\n  <div class=\"wrapper\">\n    <!-- Header -->\n    <div class=\"header\">\n      <div class=\"logo-badge\">Official Transactional Notification</div>\n      <h1 class=\"brand-title\">SMELTRAVELS876</h1>\n      <p class=\"brand-tagline\">Luxury Group Travel & Curated Jamaican Experiences</p>\n    </div>\n\n    <!-- Sender Channel Ribbon -->\n    <div class=\"sender-ribbon\">\n      <span>Official Sender: <strong>bookings@smeltravels876.com</strong></span>\n      <span>Verified Domain: <strong>smeltravels876.com</strong></span>\n    </div>\n\n    <!-- Main Content Body -->\n    <div class=\"content\">\n      \n        <div style=\"display: inline-block; background-color: #DCFCE7; color: #166534; font-size: 11px; font-weight: bold; padding: 4px 12px; border-radius: 9999px; margin-bottom: 12px;\">\n          Resend Diagnostic Test • OK\n        </div>\n        <h2 style=\"margin: 0 0 10px 0; font-size: 20px; color: #2E0249; font-weight: 800;\">\n          Resend API Integration Test\n        </h2>\n        <p style=\"font-size: 14px; line-height: 1.6; color: #1E293B; margin: 0 0 16px 0;\">\n          This is an official test email verifying that <strong>SMELTRAVELS876 Bookings <bookings@smeltravels876.com></strong> is operational and properly configured with Resend API credentials on the server.\n        </p>\n\n        <div class=\"card\">\n          <table class=\"table-details\">\n            <tr><td>Sender Address:</td><td>SMELTRAVELS876 Bookings <bookings@smeltravels876.com></td></tr>\n            <tr><td>Target Recipient:</td><td>zacpremacc12@gmail.com</td></tr>\n            <tr><td>Verified Domain:</td><td>smeltravels876.com</td></tr>\n            <tr><td>Dispatched At:</td><td>2026-10-25T18:32:12.203Z</td></tr>\n            <tr><td>Environment:</td><td>development</td></tr>\n          </table>\n        </div>\n\n        <div style=\"background: #F1F5F9; border-radius: 12px; padding: 14px; font-size: 12px; color: #475569;\">\n          <strong>Message Note:</strong> Resend transactional email integration test for smeltravels876.com\n        </div>\n      \n    </div>\n\n    <!-- Footer -->\n    <div class=\"footer\">\n      <p style=\"margin: 0 0 8px 0; color: #F1F5F9; font-weight: 700;\">\n        SMELTRAVELS876 LIMITED • Kingston, Jamaica\n      </p>\n      <p style=\"margin: 0 0 12px 0;\">\n        Direct Assistance: <a href=\"tel:(876) 834-1537\">(876) 834-1537</a> | \n        WhatsApp Concierge: <a href=\"https://wa.me/18768341537\">Chat on WhatsApp</a> | \n        Web: <a href=\"https://smeltravels876.com\">smeltravels876.com</a>\n      </p>\n      <p style=\"margin: 0; font-size: 11px; color: #64748B;\">\n        This automated transactional notification was delivered by the official Resend API on behalf of SMELTRAVELS876.<br/>\n        &copy; 2026 SMELTRAVELS876. All rights reserved.\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
+      "referenceNumber": "TEST-7820",
+      "customerName": "SMEL Administrator",
+      "id": "email-1792953132440-564",
+      "timestamp": "2026-10-25T18:32:12.440Z"
+    },
     {
       "templateType": "booking_customer",
       "sender": "SMELTRAVELS876 Bookings <bookings@smeltravels876.com>",

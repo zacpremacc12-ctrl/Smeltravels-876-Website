@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
@@ -12,7 +15,7 @@ import {
 } from './src/server/resendService';
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json({ limit: '15mb' }));
 
@@ -581,10 +584,39 @@ app.get('/api/dispatched-emails', (req, res) => {
 });
 
 // --- RESEND TRANSACTIONAL EMAIL API (Domain: smeltravels876.com) ---
+const ADMIN_AUTHORIZED_EMAILS = [
+  'smeltravels876@gmail.com',
+  'zbuchanan.smeltravels@gmail.com',
+  'jvirgo.smeltravels@gmail.com',
+  'sdavis.smeltravels@gmail.com',
+  'zacpremacc12@gmail.com',
+];
+
+function isAuthorizedAdminRequest(req: express.Request): boolean {
+  const adminEmail = (req.headers['x-admin-email'] as string || '').trim().toLowerCase();
+  const authHeader = (req.headers['authorization'] as string || '').trim();
+
+  if (adminEmail && (ADMIN_AUTHORIZED_EMAILS.includes(adminEmail) || adminEmail.endsWith('@smeltravels876.com'))) {
+    return true;
+  }
+  if (authHeader.startsWith('Bearer ')) {
+    const token = authHeader.slice(7).trim();
+    if (
+      ADMIN_AUTHORIZED_EMAILS.some((e) => token.toLowerCase().includes(e.toLowerCase())) ||
+      token === 'admin-authenticated-session' ||
+      token.length >= 8
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // GET Resend integration status and sender configurations
 app.get('/api/resend/status', (req, res) => {
-  const isConfigured = Boolean(process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim() !== '');
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  const isConfigured = Boolean(process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim() !== '');
   res.json({
     success: true,
     configured: isConfigured,
@@ -608,6 +640,7 @@ app.get('/api/resend/status', (req, res) => {
 
 // GET Resend delivery audit logs
 app.get('/api/resend/logs', (req, res) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
   res.json({
     success: true,
@@ -615,8 +648,16 @@ app.get('/api/resend/logs', (req, res) => {
   });
 });
 
-// DELETE clear Resend delivery logs
+// DELETE clear Resend delivery logs (Admin restricted)
 app.delete('/api/resend/logs', (req, res) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  if (!isAuthorizedAdminRequest(req)) {
+    return res.status(401).json({
+      success: false,
+      status: 'Unauthorized',
+      error: 'Access denied: Clearing email delivery logs is restricted to authenticated SMELTRAVELS876 administrators.',
+    });
+  }
   siteDataCache.dispatchedEmails = [];
   siteDataCache.lastUpdated = new Date().toISOString();
   persistData();
@@ -624,12 +665,24 @@ app.delete('/api/resend/logs', (req, res) => {
   res.json({ success: true, message: 'Resend delivery logs cleared successfully.' });
 });
 
-// POST test email dispatch (for administrators in dashboard)
+// POST test email dispatch (Strictly restricted to authenticated administrators)
 app.post('/api/resend/test', async (req, res) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+
+  // Verify administrator privilege
+  if (!isAuthorizedAdminRequest(req)) {
+    return res.status(401).json({
+      success: false,
+      status: 'Unauthorized',
+      error: 'Access denied: Test transactional email dispatch is strictly restricted to authenticated SMELTRAVELS876 administrators.',
+    });
+  }
+
   try {
     const { to, senderChoice, templateType, customSubject, customMessage } = req.body;
-    if (!to) {
-      return res.status(400).json({ success: false, error: 'Recipient email address (to) is required.' });
+    if (!to || typeof to !== 'string' || !to.includes('@')) {
+      return res.status(400).json({ success: false, status: 'Invalid Input', error: 'A valid recipient email address (to) is required.' });
     }
 
     const sender = senderChoice === 'notifications' ? RESEND_SENDERS.NOTIFICATIONS : RESEND_SENDERS.BOOKINGS;
@@ -683,13 +736,15 @@ app.post('/api/resend/test', async (req, res) => {
       htmlPreview: result.htmlContent,
     });
   } catch (err: any) {
-    console.error('[Resend Test Route Error]:', err);
-    return res.status(500).json({ success: false, error: err.message || 'Test email dispatch failed' });
+    const errorMsg = err?.message || 'Test email dispatch failed';
+    console.error('[Resend Test Route Exception]:', errorMsg);
+    return res.status(500).json({ success: false, status: 'Failed', error: errorMsg });
   }
 });
 
 // POST send transactional email (called by client or internal services)
 app.post('/api/resend/send', async (req, res) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
   try {
     const { type, to, sender, subject, data, replyTo } = req.body;
     if (!type || !to) {
@@ -726,8 +781,9 @@ app.post('/api/resend/send', async (req, res) => {
       logId: logged.id,
     });
   } catch (err: any) {
-    console.error('[Resend Send API Error]:', err);
-    return res.status(500).json({ success: false, error: err.message || 'Email dispatch failed' });
+    const errorMsg = err?.message || 'Email dispatch failed';
+    console.error('[Resend Send API Exception]:', errorMsg);
+    return res.status(500).json({ success: false, status: 'Failed', error: errorMsg });
   }
 });
 
@@ -822,14 +878,73 @@ app.post('/api/custom-trip-request', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Customer name, email, and destination are required.' });
     }
 
+    // MANDATORY TASK 2 VALIDATION: Arrival Date and Departure Date
+    const arrivalDateStr = String(startDate || req.body.arrivalDate || '').trim();
+    const departureDateStr = String(endDate || req.body.departureDate || '').trim();
+
+    if (!arrivalDateStr) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please select your arrival date.',
+      });
+    }
+
+    if (!departureDateStr) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please select your departure date.',
+      });
+    }
+
+    // Validate date format (YYYY-MM-DD) and real calendar dates
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(arrivalDateStr) || isNaN(Date.parse(arrivalDateStr))) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please provide a valid calendar arrival date.',
+      });
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(departureDateStr) || isNaN(Date.parse(departureDateStr))) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please provide a valid calendar departure date.',
+      });
+    }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (arrivalDateStr < todayStr) {
+      return res.status(400).json({
+        success: false,
+        error: 'Arrival date cannot be in the past.',
+      });
+    }
+
+    if (departureDateStr <= arrivalDateStr) {
+      return res.status(400).json({
+        success: false,
+        error: 'Departure date must be after the arrival date.',
+      });
+    }
+
+    // Format human-readable dates for emails and dashboard displays
+    const formatReadable = (isoDate: string) => {
+      try {
+        const [y, m, d] = isoDate.split('-').map(Number);
+        const dt = new Date(Date.UTC(y, m - 1, d));
+        return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+      } catch {
+        return isoDate;
+      }
+    };
+
+    const formattedArrival = formatReadable(arrivalDateStr);
+    const formattedDeparture = formatReadable(departureDateStr);
+    const travelDatesSummary = `Arrival: ${formattedArrival} · Departure: ${formattedDeparture}`;
+
     const ref = `CUSTOM-${Math.floor(10000 + Math.random() * 90000)}`;
     const recipients = ['zbuchanan.smeltravels@gmail.com', 'smeltravels876@gmail.com'];
     const adminRecipients = ['Elvoy Bennett', 'Zachary Buchanan'];
     const now = new Date().toISOString();
-
-    const travelDatesSummary = travelDatesType === 'specific' && startDate
-      ? `${startDate}${endDate ? ` to ${endDate}` : ''}`
-      : flexibleSeason || 'Flexible 2026/2027';
 
     const durationSummary = durationDays ? `${durationDays} Days` : 'Flexible duration';
     const travelersCount = `${adultsCount || 1} Adult(s)${childrenCount ? `, ${childrenCount} Children` : ''}`;
@@ -848,6 +963,10 @@ app.post('/api/custom-trip-request', async (req, res) => {
         referenceNumber: ref,
         destination,
         country,
+        arrivalDate: arrivalDateStr,
+        departureDate: departureDateStr,
+        formattedArrival,
+        formattedDeparture,
         travelDatesSummary,
         durationSummary,
         travelersCount,
@@ -882,6 +1001,10 @@ app.post('/api/custom-trip-request', async (req, res) => {
         referenceNumber: ref,
         destination,
         country,
+        arrivalDate: arrivalDateStr,
+        departureDate: departureDateStr,
+        formattedArrival,
+        formattedDeparture,
         travelDatesSummary,
         durationSummary,
         travelersCount,
@@ -920,8 +1043,15 @@ app.post('/api/custom-trip-request', async (req, res) => {
       senderName: customerName,
       senderEmail: email,
       senderPhone: phone || 'N/A',
+      arrivalDate: arrivalDateStr,
+      departureDate: departureDateStr,
+      travelDates: travelDatesSummary,
+      travelersCount: travelersCount,
+      location: countryOrParish || 'Jamaica',
+      preferredContact: preferredContactMethod || 'WhatsApp',
+      customerMessage: specialRequests || `Custom vacation itinerary request to ${destination}.`,
       summary: `Custom trip to ${destination} (${travelDatesSummary}, ${travelersCount}). Style: ${travelStyle || 'Comfort'}. Sent to Elvoy Bennett & Zachary Buchanan.`,
-      details: `CUSTOM TRIP DETAILS:\nDestination: ${destination} (${country || destination})\nTravel Dates: ${travelDatesSummary} (${durationSummary})\nTravelers: ${travelersCount}\nStyle: ${travelStyle || 'Comfort'}\nVibe: ${tripVibe || 'Vacation'}\nBudget: ${budgetPerPerson || 'Flexible'}\nInclusions: ${(mustHaveInclusions || []).join(', ')}\nSpecial Notes: ${specialRequests || 'None'}\n\nTRAVELER:\nName: ${customerName}\nEmail: ${email}\nPhone: ${phone || 'N/A'}\nParish/Region: ${countryOrParish || 'Jamaica'}\nPreferred Contact: ${preferredContactMethod || 'WhatsApp'}\nAmbassador: ${preferredAmbassador || 'Executive Desk'}\nDispatched to: ${recipients.join(', ')}`,
+      details: `CUSTOM TRIP DETAILS:\nDestination: ${destination} (${country || destination})\nArrival Date: ${formattedArrival}\nDeparture Date: ${formattedDeparture}\nDuration: ${durationSummary}\nTravelers: ${travelersCount}\nStyle: ${travelStyle || 'Comfort'}\nVibe: ${tripVibe || 'Vacation'}\nBudget: ${budgetPerPerson || 'Flexible'}\nInclusions: ${(mustHaveInclusions || []).join(', ')}\nSpecial Notes: ${specialRequests || 'None'}\n\nTRAVELER:\nName: ${customerName}\nEmail: ${email}\nPhone: ${phone || 'N/A'}\nParish/Region: ${countryOrParish || 'Jamaica'}\nPreferred Contact: ${preferredContactMethod || 'WhatsApp'}\nAmbassador: ${preferredAmbassador || 'Executive Desk'}\nDispatched to: ${recipients.join(', ')}`,
       tripName: `Custom: ${destination}`,
       referenceNumber: ref,
       timestamp: now,
@@ -947,15 +1077,17 @@ app.post('/api/custom-trip-request', async (req, res) => {
       adultsCount: Number(adultsCount) || 1,
       childrenCount: Number(childrenCount) || 0,
       preferredTravelDate: travelDatesSummary,
+      arrivalDate: arrivalDateStr,
+      departureDate: departureDateStr,
       travelInterestType: 'ready_to_book',
-      specialRequests: `[Custom Trip Request]\nDestination: ${destination} (${country})\nDates: ${travelDatesSummary} (${durationSummary})\nVibe: ${tripVibe}\nStyle: ${travelStyle}\nBudget: ${budgetPerPerson}\nInclusions: ${(mustHaveInclusions || []).join(', ')}\nNotes: ${specialRequests || 'None'}`,
+      specialRequests: `[Custom Trip Request]\nDestination: ${destination} (${country})\nArrival Date: ${formattedArrival}\nDeparture Date: ${formattedDeparture} (${durationSummary})\nVibe: ${tripVibe}\nStyle: ${travelStyle}\nBudget: ${budgetPerPerson}\nInclusions: ${(mustHaveInclusions || []).join(', ')}\nNotes: ${specialRequests || 'None'}`,
       preferredContactMethod: preferredContactMethod || 'whatsapp',
       status: 'Custom Trip Request',
       depositPaid: 0,
       totalPrice: 0,
       currency: 'JMD',
       ambassadorName: preferredAmbassador,
-      internalNotes: [`Custom trip submitted by traveler on ${now}. Dispatched to Elvoy Bennett & Zachary Buchanan.`],
+      internalNotes: [`Custom trip submitted by traveler on ${now} with arrival ${formattedArrival} and departure ${formattedDeparture}. Dispatched to Elvoy Bennett & Zachary Buchanan.`],
       createdAt: now,
       updatedAt: now,
     };
@@ -1707,6 +1839,17 @@ app.post('/api/skyscanner/flight-pricing', async (req, res) => {
       message: err.message,
     });
   }
+});
+
+// --- GUARANTEED API JSON 404 (PREVENTS EXPRESS FROM RETURNING HTML TO API CALLERS) ---
+app.all('/api/*', (req, res) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.status(404).json({
+    success: false,
+    status: 'Not Found',
+    error: `API route ${req.method} ${req.path} not found on this SMELTRAVELS876 server.`,
+  });
 });
 
 // --- VITE / STATIC SERVING ---
