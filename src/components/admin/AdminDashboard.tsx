@@ -65,6 +65,7 @@ import { FeaturedHeroTripManager } from './FeaturedHeroTripManager';
 import { PastTripMediaManager } from './PastTripMediaManager';
 import { AdminSidebar } from './AdminSidebar';
 import { AdminOverviewView } from './AdminOverviewView';
+import { AdminEmailNotificationsView } from './AdminEmailNotificationsView';
 import { WORLD_DESTINATIONS } from '../../data/customTripDestinations';
 import { pushSiteContentToRTDB, pushFullSiteContentToRTDB } from '../../lib/firebase';
 import { getSafeTripImageUrl, handleTripImageError } from '../../lib/imageUtils';
@@ -113,7 +114,7 @@ export const AdminDashboard: React.FC = () => {
     wingoRoutes,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'inbox' | 'excel-orders' | 'wingo-rates' | 'featured-trip' | 'local-trips' | 'origin-pricing' | 'inquiries' | 'trips' | 'destinations' | 'custom-destinations' | 'guides' | 'faqs' | 'offers' | 'testimonials' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'inbox' | 'excel-orders' | 'wingo-rates' | 'featured-trip' | 'local-trips' | 'origin-pricing' | 'inquiries' | 'trips' | 'destinations' | 'custom-destinations' | 'guides' | 'faqs' | 'offers' | 'testimonials' | 'email-notifications' | 'settings'>('overview');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
@@ -150,6 +151,8 @@ export const AdminDashboard: React.FC = () => {
         return { section: 'Content & Marketing', title: 'Promotional Offers & Discounts' };
       case 'testimonials':
         return { section: 'Content & Marketing', title: 'Reviews & Testimonials' };
+      case 'email-notifications':
+        return { section: 'Agency Administration', title: 'Resend Email Notifications & Delivery Logs' };
       case 'settings':
         return { section: 'Agency Administration', title: 'Agency Settings & WiPay Configuration' };
       default:
@@ -2948,6 +2951,9 @@ export const AdminDashboard: React.FC = () => {
             )}
           </div>
         )}
+
+        {/* TAB 7.5: RESEND TRANSACTIONAL EMAIL NOTIFICATIONS & LOGS */}
+        {activeTab === 'email-notifications' && <AdminEmailNotificationsView />}
 
         {/* TAB 8: AGENCY SETTINGS */}
         {activeTab === 'settings' && (

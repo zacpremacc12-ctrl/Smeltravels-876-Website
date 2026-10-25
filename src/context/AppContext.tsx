@@ -2192,6 +2192,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           adultsCount: data.adultsCount,
         }),
       }).catch((e) => console.warn('[createBooking] automated notification', e));
+
+      // Automated Resend Transactional Email Dispatch (bookings@smeltravels876.com)
+      // 1. Customer Confirmation
+      fetch('/api/resend/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'booking_customer',
+          to: data.email,
+          sender: 'SMELTRAVELS876 Bookings <bookings@smeltravels876.com>',
+          data: {
+            referenceNumber: ref,
+            customerName: data.customerName,
+            email: data.email,
+            phone: data.phone,
+            tripName: data.tripName,
+            preferredTravelDate: data.preferredTravelDate,
+            adultsCount: data.adultsCount,
+            childrenCount: data.childrenCount,
+            totalPrice: data.totalPrice,
+            depositPaid: data.depositPaid,
+            ambassadorName: data.ambassadorName,
+          },
+        }),
+      }).catch((e) => console.warn('[createBooking Customer Resend Notice]:', e));
+
+      // 2. Admin Alert
+      fetch('/api/resend/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'booking_admin',
+          to: ['zbuchanan.smeltravels@gmail.com', 'smeltravels876@gmail.com', 'zacpremacc12@gmail.com'],
+          sender: 'SMELTRAVELS876 Bookings <bookings@smeltravels876.com>',
+          data: {
+            referenceNumber: ref,
+            customerName: data.customerName,
+            email: data.email,
+            phone: data.phone,
+            countryOrParish: data.countryOrParish,
+            tripName: data.tripName,
+            totalPrice: data.totalPrice,
+            depositPaid: data.depositPaid,
+            ambassadorName: data.ambassadorName,
+          },
+        }),
+      }).catch((e) => console.warn('[createBooking Admin Resend Notice]:', e));
     } catch (e) {}
 
     // Upsert Customer
@@ -2572,6 +2619,59 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       transactionId: generatedTxn,
       date: now.toLocaleString(),
     });
+
+    // Automated Resend Transactional Email Dispatch for confirmed WiPay deposit (bookings@smeltravels876.com)
+    try {
+      // 1. Customer Confirmation with verified deposit receipt
+      fetch('/api/resend/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'booking_customer',
+          to: newBooking.email,
+          sender: 'SMELTRAVELS876 Bookings <bookings@smeltravels876.com>',
+          data: {
+            referenceNumber: ref,
+            customerName: newBooking.customerName,
+            email: newBooking.email,
+            phone: newBooking.phone,
+            tripName: tripTitle,
+            preferredTravelDate: newBooking.preferredTravelDate,
+            adultsCount: newBooking.adultsCount,
+            childrenCount: newBooking.childrenCount,
+            totalPrice: newBooking.totalPrice,
+            depositPaid: depositAmount,
+            paymentMethod: 'WiPay Jamaica Verified Checkout',
+            transactionId: generatedTxn,
+            ambassadorName: newBooking.ambassadorName,
+          },
+        }),
+      }).catch((e) => console.warn('[WiPay Customer Resend Notice]:', e));
+
+      // 2. Admin Alert for confirmed WiPay deposit
+      fetch('/api/resend/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'booking_admin',
+          to: ['zbuchanan.smeltravels@gmail.com', 'smeltravels876@gmail.com', 'zacpremacc12@gmail.com'],
+          sender: 'SMELTRAVELS876 Bookings <bookings@smeltravels876.com>',
+          data: {
+            referenceNumber: ref,
+            customerName: newBooking.customerName,
+            email: newBooking.email,
+            phone: newBooking.phone,
+            countryOrParish: newBooking.countryOrParish,
+            tripName: tripTitle,
+            totalPrice: newBooking.totalPrice,
+            depositPaid: depositAmount,
+            paymentMethod: 'WiPay Jamaica Verified Checkout',
+            transactionId: generatedTxn,
+            ambassadorName: newBooking.ambassadorName,
+          },
+        }),
+      }).catch((e) => console.warn('[WiPay Admin Resend Notice]:', e));
+    } catch (e) {}
 
     return newBooking;
   };
@@ -3183,6 +3283,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         adminRole: 'Super Admin',
       }));
       showNotification('Access Granted', `Welcome back, ${profile.name} (${cleanEmail}). Super Admin unlocked.`);
+
+      // Automated Resend Security Alert (notifications@smeltravels876.com)
+      try {
+        fetch('/api/resend/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'security_alert',
+            to: cleanEmail,
+            sender: 'SMELTRAVELS876 Security & Accounts <notifications@smeltravels876.com>',
+            data: {
+              customerName: profile.name,
+              email: cleanEmail,
+              time: new Date().toLocaleString('en-US', { timeZone: 'America/Jamaica' }),
+              device: typeof navigator !== 'undefined' ? `${navigator.userAgent.slice(0, 60)}...` : 'Administrator Console',
+            },
+          }),
+        }).catch((e) => console.warn('[Admin Login Resend Notice]:', e));
+      } catch (e) {}
+
       return { success: true };
     } else {
       showNotification('Access Denied', 'Invalid administrator email or password.', 'warning');
@@ -3240,6 +3360,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentUser(user);
     setIsAuthModalOpen(false);
 
+    // Automated Resend Security Alert (notifications@smeltravels876.com)
+    try {
+      fetch('/api/resend/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'security_alert',
+          to: cleanEmail,
+          sender: 'SMELTRAVELS876 Security & Accounts <notifications@smeltravels876.com>',
+          data: {
+            customerName: user.name,
+            email: cleanEmail,
+            time: new Date().toLocaleString('en-US', { timeZone: 'America/Jamaica' }),
+            device: typeof navigator !== 'undefined' ? `${navigator.userAgent.slice(0, 60)}...` : 'Traveler Portal',
+          },
+        }),
+      }).catch((e) => console.warn('[loginUser Resend Notice]:', e));
+    } catch (e) {}
+
     // If traveler was waiting to secure their spot, open booking modal now!
     if (pendingTripForBooking) {
       const tripToLock = pendingTripForBooking;
@@ -3289,6 +3428,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       syncToLiveServer({ customers: updated });
       return updated;
     });
+
+    // Automated Resend Welcome Email (notifications@smeltravels876.com)
+    try {
+      fetch('/api/resend/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'welcome_account',
+          to: cleanEmail,
+          sender: 'SMELTRAVELS876 Security & Accounts <notifications@smeltravels876.com>',
+          data: {
+            customerName: user.name,
+            name: user.name,
+            email: cleanEmail,
+          },
+        }),
+      }).catch((e) => console.warn('[signupUser Resend Notice]:', e));
+    } catch (e) {}
 
     setIsAuthModalOpen(false);
     showNotification('Account Created!', `Welcome to SMELTRAVELS876, ${user.name}!`);

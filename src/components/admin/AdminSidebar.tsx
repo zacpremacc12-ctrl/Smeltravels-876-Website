@@ -4,6 +4,7 @@ import {
   FileSpreadsheet,
   UserCheck,
   Inbox,
+  Mail,
   Plane,
   Compass,
   Sparkles,
@@ -194,6 +195,13 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       title: 'Agency Administration',
       id: 'admin-section',
       items: [
+        {
+          id: 'email-notifications',
+          label: 'Email Notifications & Logs',
+          icon: Mail,
+          badge: 'Resend',
+          badgeColor: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
+        },
         {
           id: 'settings',
           label: 'Agency Settings & WiPay',

@@ -3,6 +3,13 @@ import path from 'path';
 import fs from 'fs';
 import nodemailer from 'nodemailer';
 import { createServer as createViteServer } from 'vite';
+import {
+  sendResendEmail,
+  RESEND_SENDERS,
+  renderEmailTemplate,
+  EmailLogEntry,
+  EmailTemplateType,
+} from './src/server/resendService';
 
 const app = express();
 const PORT = 3000;
@@ -63,6 +70,32 @@ const broadcastSiteUpdate = (data: any) => {
     }
   }
 };
+
+// Record email log to persistent store and broadcast update to connected admin dashboards
+function recordEmailLog(entry: {
+  templateType: EmailTemplateType;
+  sender: string;
+  recipient: string | string[];
+  subject: string;
+  status: 'Delivered' | 'Queued' | 'Simulated' | 'Failed';
+  messageId?: string;
+  error?: string;
+  htmlContent?: string;
+  referenceNumber?: string;
+  customerName?: string;
+}) {
+  const currentLogs = Array.isArray(siteDataCache.dispatchedEmails) ? siteDataCache.dispatchedEmails : [];
+  const logItem: EmailLogEntry = {
+    ...entry,
+    id: `email-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    timestamp: new Date().toISOString(),
+  };
+  siteDataCache.dispatchedEmails = [logItem, ...currentLogs];
+  siteDataCache.lastUpdated = new Date().toISOString();
+  persistData();
+  broadcastSiteUpdate(siteDataCache);
+  return logItem;
+}
 
 // Dispatch custom trip request notification email to all admins
 async function dispatchCustomTripEmail(data: {
@@ -547,6 +580,157 @@ app.get('/api/dispatched-emails', (req, res) => {
   });
 });
 
+// --- RESEND TRANSACTIONAL EMAIL API (Domain: smeltravels876.com) ---
+// GET Resend integration status and sender configurations
+app.get('/api/resend/status', (req, res) => {
+  const isConfigured = Boolean(process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim() !== '');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.json({
+    success: true,
+    configured: isConfigured,
+    domain: 'smeltravels876.com',
+    verified: true,
+    senders: [
+      {
+        address: 'bookings@smeltravels876.com',
+        displayName: 'SMELTRAVELS876 Bookings',
+        purpose: 'Booking Confirmations, Custom Trip Requests & Customer Enquiries',
+      },
+      {
+        address: 'notifications@smeltravels876.com',
+        displayName: 'SMELTRAVELS876 Security & Accounts',
+        purpose: 'Account Registration (Welcome) & Sign-in Security Alerts',
+      },
+    ],
+    totalLogged: (siteDataCache.dispatchedEmails || []).length,
+  });
+});
+
+// GET Resend delivery audit logs
+app.get('/api/resend/logs', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.json({
+    success: true,
+    logs: siteDataCache.dispatchedEmails || [],
+  });
+});
+
+// DELETE clear Resend delivery logs
+app.delete('/api/resend/logs', (req, res) => {
+  siteDataCache.dispatchedEmails = [];
+  siteDataCache.lastUpdated = new Date().toISOString();
+  persistData();
+  broadcastSiteUpdate(siteDataCache);
+  res.json({ success: true, message: 'Resend delivery logs cleared successfully.' });
+});
+
+// POST test email dispatch (for administrators in dashboard)
+app.post('/api/resend/test', async (req, res) => {
+  try {
+    const { to, senderChoice, templateType, customSubject, customMessage } = req.body;
+    if (!to) {
+      return res.status(400).json({ success: false, error: 'Recipient email address (to) is required.' });
+    }
+
+    const sender = senderChoice === 'notifications' ? RESEND_SENDERS.NOTIFICATIONS : RESEND_SENDERS.BOOKINGS;
+    const type = (templateType as EmailTemplateType) || 'test_email';
+
+    const testRef = `TEST-${Math.floor(1000 + Math.random() * 9000)}`;
+    const result = await sendResendEmail({
+      type,
+      to,
+      sender,
+      subject: customSubject,
+      data: {
+        to,
+        customerName: 'SMEL Administrator',
+        email: to,
+        senderChoice,
+        customSubject,
+        message: customMessage || 'Resend transactional email integration test for smeltravels876.com',
+        referenceNumber: testRef,
+        tripName: 'Panama 2026 Experience',
+        depositPaid: 40000,
+        totalPrice: 250000,
+        preferredTravelDate: 'October 15 – 19, 2026',
+        preferredContactMethod: 'WhatsApp',
+        destination: 'Panama City',
+      },
+    });
+
+    const logged = recordEmailLog({
+      templateType: type,
+      sender,
+      recipient: to,
+      subject: result.subject,
+      status: result.status,
+      messageId: result.messageId,
+      error: result.error,
+      htmlContent: result.htmlContent,
+      referenceNumber: testRef,
+      customerName: 'SMEL Administrator',
+    });
+
+    return res.json({
+      success: result.success,
+      status: result.status,
+      messageId: result.messageId,
+      error: result.error,
+      sender,
+      recipient: to,
+      subject: result.subject,
+      logId: logged.id,
+      htmlPreview: result.htmlContent,
+    });
+  } catch (err: any) {
+    console.error('[Resend Test Route Error]:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Test email dispatch failed' });
+  }
+});
+
+// POST send transactional email (called by client or internal services)
+app.post('/api/resend/send', async (req, res) => {
+  try {
+    const { type, to, sender, subject, data, replyTo } = req.body;
+    if (!type || !to) {
+      return res.status(400).json({ success: false, error: 'Both template "type" and recipient "to" are required.' });
+    }
+
+    const result = await sendResendEmail({
+      type,
+      to,
+      sender,
+      subject,
+      data: data || {},
+      replyTo,
+    });
+
+    const logged = recordEmailLog({
+      templateType: type,
+      sender: result.sender,
+      recipient: to,
+      subject: result.subject,
+      status: result.status,
+      messageId: result.messageId,
+      error: result.error,
+      htmlContent: result.htmlContent,
+      referenceNumber: data?.referenceNumber,
+      customerName: data?.customerName || data?.name,
+    });
+
+    return res.json({
+      success: result.success,
+      status: result.status,
+      messageId: result.messageId,
+      error: result.error,
+      logId: logged.id,
+    });
+  } catch (err: any) {
+    console.error('[Resend Send API Error]:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Email dispatch failed' });
+  }
+});
+
 // POST append to Admin Inbox (for inquiries, deposits, reviews, messages)
 app.post('/api/inbox', (req, res) => {
   try {
@@ -654,28 +838,78 @@ app.post('/api/custom-trip-request', async (req, res) => {
       ? (typeof landmarkPhotos[0] === 'string' ? landmarkPhotos[0] : landmarkPhotos[0]?.url)
       : undefined;
 
-    // 1. Dispatch Automated Email to BOTH Admins
-    const emailResult = await dispatchCustomTripEmail({
-      recipients,
-      referenceNumber: ref,
-      destination: destination || 'Custom Itinerary',
-      country: country || destination,
-      landmarkPhoto,
-      travelDatesSummary,
-      durationSummary,
-      travelersCount,
-      tripVibe: tripVibe || 'Vacation & Exploration',
-      travelStyle: travelStyle || 'Comfortable',
-      budgetPerPerson: budgetPerPerson || 'Flexible',
-      mustHaveInclusions: Array.isArray(mustHaveInclusions) ? mustHaveInclusions : [],
-      specialRequests: specialRequests || '',
-      customerName,
-      email,
-      phone: phone || 'N/A',
-      countryOrParish: countryOrParish || 'Jamaica',
-      preferredContactMethod: preferredContactMethod || 'whatsapp',
-      preferredAmbassador: preferredAmbassador || 'Zachary Buchanan / Elvoy Bennett',
-    });
+    // 1. Dispatch Automated Transactional Emails via Resend (bookings@smeltravels876.com)
+    // A) Customer Itinerary Confirmation
+    sendResendEmail({
+      type: 'custom_trip_customer',
+      to: email,
+      sender: RESEND_SENDERS.BOOKINGS,
+      data: {
+        referenceNumber: ref,
+        destination,
+        country,
+        travelDatesSummary,
+        durationSummary,
+        travelersCount,
+        tripVibe,
+        travelStyle,
+        budgetPerPerson,
+        customerName,
+        email,
+        specialRequests,
+      },
+    }).then((resendRes) => {
+      recordEmailLog({
+        templateType: 'custom_trip_customer',
+        sender: resendRes.sender,
+        recipient: email,
+        subject: resendRes.subject,
+        status: resendRes.status,
+        messageId: resendRes.messageId,
+        error: resendRes.error,
+        htmlContent: resendRes.htmlContent,
+        referenceNumber: ref,
+        customerName,
+      });
+    }).catch((e) => console.warn('[Custom Trip Customer Resend Notice]:', e));
+
+    // B) Admin Alert to Elvoy Bennett & Zachary Buchanan
+    sendResendEmail({
+      type: 'custom_trip_admin',
+      to: recipients,
+      sender: RESEND_SENDERS.BOOKINGS,
+      data: {
+        referenceNumber: ref,
+        destination,
+        country,
+        travelDatesSummary,
+        durationSummary,
+        travelersCount,
+        tripVibe,
+        travelStyle,
+        budgetPerPerson,
+        customerName,
+        email,
+        phone,
+        countryOrParish,
+        preferredContactMethod,
+        preferredAmbassador,
+        specialRequests,
+      },
+    }).then((resendRes) => {
+      recordEmailLog({
+        templateType: 'custom_trip_admin',
+        sender: resendRes.sender,
+        recipient: recipients,
+        subject: resendRes.subject,
+        status: resendRes.status,
+        messageId: resendRes.messageId,
+        error: resendRes.error,
+        htmlContent: resendRes.htmlContent,
+        referenceNumber: ref,
+        customerName,
+      });
+    }).catch((e) => console.warn('[Custom Trip Admin Resend Notice]:', e));
 
     // 2. Log to Onsite Admin Inbox for ALL ADMINS (Elvoy Bennett & Zachary Buchanan)
     const currentInbox = Array.isArray(siteDataCache.adminInbox) ? siteDataCache.adminInbox : [];
@@ -788,19 +1022,68 @@ app.post('/api/trip-inquiry', async (req, res) => {
         ? 'Interested But Needs Help'
         : 'Trip Inquiry';
 
-    // 1. Dispatch Automated Email to BOTH Admins
-    const emailResult = await dispatchInquiryEmail({
-      recipients,
-      customerName,
-      email,
-      phone: phone || 'N/A',
-      parish: parish || 'Jamaica',
-      tripName: tripName || 'Travel Package',
-      stageLabel,
-      inquiryText: inquiryContent,
-      preferredContactMethod: preferredContactMethod || 'WhatsApp',
-      referenceNumber: ref,
-    });
+    // 1. Dispatch Automated Transactional Emails via Resend (bookings@smeltravels876.com)
+    // A) Customer Inquiry Confirmation
+    sendResendEmail({
+      type: 'inquiry_customer',
+      to: email,
+      sender: RESEND_SENDERS.BOOKINGS,
+      data: {
+        referenceNumber: ref,
+        customerName,
+        email,
+        tripName: tripName || 'Travel Package',
+        preferredTravelDate: req.body.preferredTravelDate || 'Flexible 2026/2027',
+        preferredContactMethod: preferredContactMethod || 'WhatsApp',
+        specialRequests: inquiryContent,
+        adultsCount: adultsCount || 1,
+      },
+    }).then((resendRes) => {
+      recordEmailLog({
+        templateType: 'inquiry_customer',
+        sender: resendRes.sender,
+        recipient: email,
+        subject: resendRes.subject,
+        status: resendRes.status,
+        messageId: resendRes.messageId,
+        error: resendRes.error,
+        htmlContent: resendRes.htmlContent,
+        referenceNumber: ref,
+        customerName,
+      });
+    }).catch((e) => console.warn('[Trip Inquiry Customer Resend Notice]:', e));
+
+    // B) Admin Alert to Elvoy Bennett & Zachary Buchanan
+    sendResendEmail({
+      type: 'inquiry_admin',
+      to: recipients,
+      sender: RESEND_SENDERS.BOOKINGS,
+      data: {
+        referenceNumber: ref,
+        customerName,
+        email,
+        phone: phone || 'N/A',
+        countryOrParish: parish || 'Jamaica',
+        tripName: tripName || 'Travel Package',
+        stageLabel,
+        specialRequests: inquiryContent,
+        preferredContactMethod: preferredContactMethod || 'WhatsApp',
+        preferredTravelDate: req.body.preferredTravelDate || 'Flexible',
+      },
+    }).then((resendRes) => {
+      recordEmailLog({
+        templateType: 'inquiry_admin',
+        sender: resendRes.sender,
+        recipient: recipients,
+        subject: resendRes.subject,
+        status: resendRes.status,
+        messageId: resendRes.messageId,
+        error: resendRes.error,
+        htmlContent: resendRes.htmlContent,
+        referenceNumber: ref,
+        customerName,
+      });
+    }).catch((e) => console.warn('[Trip Inquiry Admin Resend Notice]:', e));
 
     // 2. Log to Onsite Admin Inbox for BOTH ADMINS (Elvoy Bennett & Zachary Buchanan)
     const currentInbox = Array.isArray(siteDataCache.adminInbox) ? siteDataCache.adminInbox : [];
@@ -843,32 +1126,6 @@ app.post('/api/trip-inquiry', async (req, res) => {
       createdAt: now,
     };
     siteDataCache.contacts = [newContact, ...currentContacts];
-
-    // 4. Log Outbound Automated Email Dispatch Record for Admin Audit Trail
-    const currentLogs = Array.isArray(siteDataCache.dispatchedEmails) ? siteDataCache.dispatchedEmails : [];
-    const emailLog = {
-      id: `email-${Date.now()}`,
-      referenceNumber: ref,
-      to: recipients,
-      adminRecipients,
-      from: 'SMELTRAVELS876 Traveler Notification <no-reply@smeltravels876.com>',
-      replyTo: email,
-      subject: emailResult.subject,
-      content: {
-        customerName,
-        email,
-        phone,
-        parish,
-        tripName,
-        stageLabel,
-        inquiryText,
-        preferredContactMethod: preferredContactMethod || 'whatsapp',
-      },
-      sentAt: now,
-      status: 'Delivered to Elvoy Bennett & Zachary Buchanan',
-      messageId: emailResult.messageId,
-    };
-    siteDataCache.dispatchedEmails = [emailLog, ...currentLogs];
 
     siteDataCache.lastUpdated = now;
     persistData();
