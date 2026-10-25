@@ -63,6 +63,8 @@ import { LocalTripsManager } from './LocalTripsManager';
 import { WingoRatesDatabaseTable } from './WingoRatesDatabaseTable';
 import { FeaturedHeroTripManager } from './FeaturedHeroTripManager';
 import { PastTripMediaManager } from './PastTripMediaManager';
+import { AdminSidebar } from './AdminSidebar';
+import { AdminOverviewView } from './AdminOverviewView';
 import { WORLD_DESTINATIONS } from '../../data/customTripDestinations';
 import { pushSiteContentToRTDB, pushFullSiteContentToRTDB } from '../../lib/firebase';
 import { getSafeTripImageUrl, handleTripImageError } from '../../lib/imageUtils';
@@ -111,7 +113,49 @@ export const AdminDashboard: React.FC = () => {
     wingoRoutes,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'inbox' | 'excel-orders' | 'wingo-rates' | 'featured-trip' | 'local-trips' | 'origin-pricing' | 'inquiries' | 'trips' | 'destinations' | 'custom-destinations' | 'guides' | 'faqs' | 'offers' | 'testimonials' | 'settings'>('inbox');
+  const [activeTab, setActiveTab] = useState<'overview' | 'inbox' | 'excel-orders' | 'wingo-rates' | 'featured-trip' | 'local-trips' | 'origin-pricing' | 'inquiries' | 'trips' | 'destinations' | 'custom-destinations' | 'guides' | 'faqs' | 'offers' | 'testimonials' | 'settings'>('overview');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  // Helper for top breadcrumb navigation
+  const getTabBreadcrumb = (tab: string) => {
+    switch (tab) {
+      case 'overview':
+        return { section: 'Executive Overview', title: 'Operations & Business Analytics' };
+      case 'excel-orders':
+        return { section: 'Bookings & Orders', title: 'Master Bookings & Excel Database' };
+      case 'inquiries':
+        return { section: 'Bookings & Orders', title: 'Website Inquiries' };
+      case 'inbox':
+        return { section: 'Bookings & Orders', title: 'Admin Inbox & Custom Briefs' };
+      case 'trips':
+        return { section: 'Travel Inventory', title: 'International Travel Packages' };
+      case 'local-trips':
+        return { section: 'Travel Inventory', title: 'Jamaican Local Trips & Excursions' };
+      case 'featured-trip':
+        return { section: 'Travel Inventory', title: 'Featured Hero Trip' };
+      case 'destinations':
+        return { section: 'Travel Inventory', title: 'Destinations Catalog' };
+      case 'custom-destinations':
+        return { section: 'Travel Inventory', title: 'Custom Trip Destinations' };
+      case 'origin-pricing':
+        return { section: 'Pricing & Flights', title: 'Origin & Route Pricing Engine' };
+      case 'wingo-rates':
+        return { section: 'Pricing & Flights', title: 'Wingo Rates Database (11 Countries)' };
+      case 'guides':
+        return { section: 'Content & Marketing', title: 'Blog & Travel Guides' };
+      case 'faqs':
+        return { section: 'Content & Marketing', title: 'Frequently Asked Questions (FAQs)' };
+      case 'offers':
+        return { section: 'Content & Marketing', title: 'Promotional Offers & Discounts' };
+      case 'testimonials':
+        return { section: 'Content & Marketing', title: 'Reviews & Testimonials' };
+      case 'settings':
+        return { section: 'Agency Administration', title: 'Agency Settings & WiPay Configuration' };
+      default:
+        return { section: 'Admin Console', title: 'Dashboard' };
+    }
+  };
   const [inquirySearch, setInquirySearch] = useState('');
   const [inquiryFilterStatus, setInquiryFilterStatus] = useState<string>('All');
   const [selectedInquiry, setSelectedInquiry] = useState<BookingInquiry | null>(null);
@@ -515,267 +559,200 @@ export const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="bg-neutral-100 min-h-screen pb-20">
-      {/* Admin Header */}
-      <div className="bg-[#2E0249] text-white border-b border-purple-900 sticky top-16 z-20 shadow-lg">
-        <div className="w-full max-w-[98%] 2xl:max-w-[1850px] mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-white p-1 flex items-center justify-center shadow-md overflow-hidden shrink-0">
-              <img
-                src="/logo.png"
-                alt="SMELTRAVELS876 Logo"
-                className="w-10 h-10 object-contain rounded-xl"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-            <div>
-              <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-2xl sm:text-3xl font-black font-['Outfit',sans-serif] tracking-tight text-white">SMELTRAVELS876 CMS</h1>
-                <span className="text-[11px] bg-emerald-500/30 text-emerald-300 border border-emerald-400/50 px-2.5 py-0.5 rounded-full font-mono font-bold flex items-center gap-1.5 shadow-xs">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  AUTO-SYNC TO LIVE FEED
-                </span>
+    <div className="min-h-screen bg-[#F8FAFC] flex text-slate-900 antialiased">
+      {/* 1. Left Vertical Dark Navy Collapsible Sidebar */}
+      <AdminSidebar
+        activeTab={activeTab}
+        setActiveTab={(tab) => setActiveTab(tab as any)}
+        unreadInboxCount={unreadInboxCount}
+        excelOrdersCount={adminOrdersExcel.length}
+        bookingsCount={bookings.length}
+        tripsCount={trips.length}
+        localTripsCount={localTrips.length}
+        destinationsCount={destinations.length}
+        isCollapsed={isSidebarCollapsed}
+        toggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
+        isMobileOpen={isMobileSidebarOpen}
+        closeMobile={() => setIsMobileSidebarOpen(false)}
+        onLogout={logoutAdmin}
+        adminRole={currentAdminRole}
+        adminEmail={adminEmail}
+      />
+
+      {/* 2. Main Workspace Canvas */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen overflow-x-hidden">
+        {/* Top Header Bar */}
+        <header className="bg-white border-b border-slate-200/90 sticky top-0 z-30 shadow-xs">
+          <div className="px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {/* Left: Mobile trigger & Breadcrumbs */}
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                type="button"
+                onClick={() => setIsMobileSidebarOpen(true)}
+                className="md:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+                aria-label="Open navigation menu"
+              >
+                <Layers className="w-5 h-5 text-slate-700" />
+              </button>
+
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
+                  <span>SMELTRAVELS876</span>
+                  <span>/</span>
+                  <span className="text-slate-600 font-bold">{getTabBreadcrumb(activeTab).section}</span>
+                </div>
+                <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight truncate font-['Outfit',sans-serif]">
+                  {getTabBreadcrumb(activeTab).title}
+                </h1>
               </div>
-              <p className="text-xs sm:text-sm text-neutral-300 flex flex-wrap items-center gap-2 mt-1">
-                <span>Agency Back-Office • Administrator: <strong className="text-[#FFC72C] font-bold">{adminEmail?.includes('smeltravels876') ? 'Elvoy Bennett (smeltravels876@gmail.com)' : 'Zachary Buchanan (zbuchanan.smeltravels@gmail.com)'}</strong></span>
-                <span className="inline-flex items-center gap-1 text-[11px] bg-emerald-400/20 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-400/40 font-semibold">
-                  <span>✓</span> Unified Settings Parity Active (Elvoy & Zachary)
+            </div>
+
+            {/* Right: Master Live Save, Co-admin sync, Live site, Reset & Lock */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Master Live Save */}
+              <button
+                type="button"
+                onClick={handleLiveSaveAll}
+                disabled={isLiveSavingAll}
+                id="admin-live-save-all-btn"
+                className={`font-black text-xs px-3.5 py-2 rounded-xl border shadow-xs transition-all flex items-center gap-2 cursor-pointer active:scale-95 ${
+                  isLiveSavingAll
+                    ? 'bg-slate-900 text-[#FFC72C] border-slate-800 opacity-90 cursor-wait'
+                    : liveSaveAllSuccess
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500'
+                    : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500'
+                }`}
+                title="Immediately live-save all admin changes (trips, past trips, settings, destinations, local trips) for the entire website"
+              >
+                {isLiveSavingAll ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                    <span>Saving All...</span>
+                  </>
+                ) : liveSaveAllSuccess ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-100" />
+                    <span>✓ All Changes Saved Live!</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-3.5 h-3.5 text-[#FFC72C]" />
+                    <span>Live Save All Changes</span>
+                  </>
+                )}
+              </button>
+
+              {lastLiveSaveTime && (
+                <span className="text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1.5 rounded-xl font-mono font-bold hidden xl:inline-flex items-center gap-1 shadow-2xs">
+                  <span>✓</span> {lastLiveSaveTime}
                 </span>
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Live Save All Changes Button - Master live save for the entire website */}
-            <button
-              type="button"
-              onClick={handleLiveSaveAll}
-              disabled={isLiveSavingAll}
-              id="admin-live-save-all-btn"
-              className={`font-black text-xs px-4 py-2 rounded-xl border shadow-md transition-all flex items-center gap-2 cursor-pointer active:scale-95 ${
-                isLiveSavingAll
-                  ? 'bg-purple-900 text-[#FFC72C] border-purple-700 opacity-90 cursor-wait'
-                  : liveSaveAllSuccess
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-white border-white shadow-emerald-950/40'
-                  : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400 shadow-emerald-950/30'
-              }`}
-              title="Immediately live-save all admin changes (trips, past trips, settings, destinations, local trips) for the entire website"
-            >
-              {isLiveSavingAll ? (
-                <>
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
-                  <span>Saving Entire Site...</span>
-                </>
-              ) : liveSaveAllSuccess ? (
-                <>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-100" />
-                  <span>✓ All Changes Saved Live!</span>
-                </>
-              ) : (
-                <>
-                  <span className="w-2 h-2 rounded-full bg-emerald-200 animate-ping"></span>
-                  <Save className="w-3.5 h-3.5 text-[#FFC72C]" />
-                  <span>Live Save All Changes</span>
-                  <span className="bg-emerald-800 text-emerald-200 text-[9px] px-1.5 py-0.5 rounded-full font-mono uppercase font-black">
-                    Entire Site
-                  </span>
-                </>
               )}
-            </button>
 
-            {lastLiveSaveTime && (
-              <span className="text-[11px] bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 px-2.5 py-1 rounded-xl font-mono font-bold hidden lg:inline-flex items-center gap-1 shadow-xs">
-                <span>✓</span> Saved: {lastLiveSaveTime}
-              </span>
-            )}
+              {/* Sync with Co-Admin */}
+              <button
+                onClick={async () => {
+                  await refreshSiteData();
+                  showNotification('Admin Settings Refreshed', 'Successfully synchronized settings with Elvoy Bennett and Zachary Buchanan.', 'success');
+                }}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+                title="Refresh server data to ensure parity with co-admin"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-blue-600" />
+                <span className="hidden sm:inline">Sync Co-Admin</span>
+              </button>
 
-            <button
-              onClick={async () => {
-                await refreshSiteData();
-                showNotification('Admin Settings Refreshed', 'Successfully synchronized settings with Elvoy Bennett and Zachary Buchanan.', 'success');
-              }}
-              className="bg-purple-800/80 hover:bg-purple-700 text-[#FFC72C] text-xs font-semibold px-3 py-2 rounded-xl border border-purple-600 transition-colors flex items-center gap-1.5 cursor-pointer"
-              title="Refresh server data to ensure parity with co-admin"
-            >
-              <RefreshCw className="w-3.5 h-3.5 text-[#FFC72C]" />
-              <span>Sync with Co-Admin</span>
-            </button>
+              {/* Live Website */}
+              <button
+                onClick={() => navigateTo('home')}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <ExternalLink className="w-3.5 h-3.5 text-slate-600" />
+                <span className="hidden sm:inline">Live Website</span>
+              </button>
 
-            <button
-              onClick={() => navigateTo('home')}
-              className="bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3.5 py-2 rounded-xl border border-white/20 transition-colors flex items-center gap-1.5"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span>Live Website</span>
-            </button>
+              {/* Reset Data */}
+              <button
+                onClick={() => {
+                  if (window.confirm('Reset all CMS data to default demo seed data? This will restore original packages.')) {
+                    resetToInitialData();
+                  }
+                }}
+                className="bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold px-3 py-2 rounded-xl border border-rose-200 transition-colors flex items-center gap-1 cursor-pointer"
+                title="Restore initial data"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Reset</span>
+              </button>
 
-            <button
-              onClick={() => {
-                if (window.confirm('Reset all CMS data to default demo seed data? This will restore original packages.')) {
-                  resetToInitialData();
-                }
-              }}
-              className="bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 text-xs font-semibold px-3 py-2 rounded-xl border border-rose-400/30 transition-colors flex items-center gap-1"
-              title="Restore initial data"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset Data</span>
-            </button>
-
-            {/* Lock Panel / Logout Button */}
-            <button
-              onClick={logoutAdmin}
-              id="admin-logout-btn"
-              className="bg-amber-400 text-[#2E0249] hover:bg-amber-300 text-xs font-bold px-3.5 py-2 rounded-xl border border-amber-300 transition-colors flex items-center gap-1.5 shadow"
-              title="Lock administrator portal"
-            >
-              <Lock className="w-3.5 h-3.5" />
-              <span>Lock Panel</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Tab Navigation with Slide Across Arrow Controls */}
-        <div className="w-full max-w-[98%] 2xl:max-w-[1850px] mx-auto px-4 sm:px-6 lg:px-8 pt-1.5">
-          <div className="flex items-center gap-2">
-            {/* Left slide arrow button */}
-            <button
-              type="button"
-              onClick={() => scrollTabs('left')}
-              disabled={!canScrollLeft}
-              className={`h-9 w-8 rounded-lg transition-all shrink-0 flex items-center justify-center border ${
-                canScrollLeft
-                  ? 'bg-white/20 hover:bg-white/30 text-white border-white/40 cursor-pointer shadow-xs active:scale-95'
-                  : 'bg-white/5 text-white/25 border-white/10 cursor-not-allowed opacity-40'
-              }`}
-              title="Slide tabs left"
-              aria-label="Slide tabs left"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-
-            {/* Scrollable tabs container */}
-            <div
-              ref={tabsContainerRef}
-              onScroll={checkTabScroll}
-              className="flex-1 flex items-center gap-1 overflow-x-auto scrollbar-none text-xs font-bold scroll-smooth"
-            >
-              {[
-                {
-                  id: 'inbox',
-                  label: 'Admin Inbox',
-                  count: adminInbox.length,
-                  badge: unreadInboxCount > 0 ? `${unreadInboxCount} new` : undefined,
-                  icon: Inbox,
-                },
-                {
-                  id: 'excel-orders',
-                  label: `Excel Database (${adminOrdersExcel.length})`,
-                  badge: 'Spreadsheet',
-                  icon: FileSpreadsheet,
-                },
-                {
-                  id: 'wingo-rates',
-                  label: `Wingo Rates Database (${wingoRoutes.length})`,
-                  badge: '11 Countries',
-                  icon: Plane,
-                },
-                {
-                  id: 'featured-trip',
-                  label: 'Featured Hero Trip',
-                  badge: settings.featuredHeroTrip?.tripType === 'local' ? 'Local Trip' : 'Promo',
-                  icon: Sparkles,
-                },
-                {
-                  id: 'local-trips',
-                  label: `Local Trips (${localTrips.length})`,
-                  badge: 'Website',
-                  icon: Compass,
-                },
-                {
-                  id: 'origin-pricing',
-                  label: `Origin & Route Pricing (${originPricingRoutes.length})`,
-                  badge: 'Engine',
-                  icon: Plane,
-                },
-                { id: 'inquiries', label: `Inquiries (${bookings.length})`, icon: UserCheck },
-                { id: 'trips', label: `Trips (${trips.length})`, icon: Plane },
-                { id: 'destinations', label: `Destinations (${destinations.length})`, icon: Compass },
-                {
-                  id: 'custom-destinations',
-                  label: `Custom Trip Destinations (${(localSettings.customTripDestinations?.length ?? WORLD_DESTINATIONS.length)})`,
-                  icon: Globe,
-                },
-                { id: 'guides', label: `Blog & Guides (${blogPosts.length})`, icon: BookOpen },
-                { id: 'faqs', label: `FAQs (${faqs.length})`, icon: HelpCircle },
-                { id: 'offers', label: `Offers (${offers.length})`, icon: Tag },
-                { id: 'testimonials', label: `Reviews (${testimonials.length})`, icon: Star },
-                { id: 'settings', label: 'Agency Settings', icon: SettingsIcon },
-              ].map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    data-tab-id={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
-                    className={`flex items-center gap-2 px-4 py-3 rounded-t-xl transition-colors whitespace-nowrap border-b-2 cursor-pointer ${
-                      activeTab === tab.id
-                        ? 'bg-neutral-100 text-[#2E0249] border-[#FFC72C]'
-                        : 'text-neutral-300 hover:text-white border-transparent hover:bg-white/5'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span>{tab.label}</span>
-                    {tab.badge && (
-                      <span className="bg-amber-400 text-[#2E0249] text-[10px] font-black px-1.5 py-0.5 rounded-full uppercase animate-pulse">
-                        {tab.badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+              {/* Lock Panel / Logout */}
+              <button
+                onClick={logoutAdmin}
+                id="admin-logout-btn"
+                className="bg-[#0B132B] hover:bg-[#1E293B] text-[#38BDF8] text-xs font-bold px-3 py-2 rounded-xl border border-slate-700 transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                title="Lock administrator portal"
+              >
+                <Lock className="w-3.5 h-3.5 text-[#FFC72C]" />
+                <span className="hidden sm:inline">Lock</span>
+              </button>
             </div>
-
-            {/* Right slide arrow button */}
-            <button
-              type="button"
-              onClick={() => scrollTabs('right')}
-              disabled={!canScrollRight}
-              className={`h-9 w-8 rounded-lg transition-all shrink-0 flex items-center justify-center border ${
-                canScrollRight
-                  ? 'bg-white/20 hover:bg-white/30 text-white border-white/40 cursor-pointer shadow-xs active:scale-95'
-                  : 'bg-white/5 text-white/25 border-white/10 cursor-not-allowed opacity-40'
-              }`}
-              title="Slide tabs right"
-              aria-label="Slide tabs right"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-
-            {/* Slide Across Arrow to Agency Settings */}
-            <button
-              type="button"
-              onClick={scrollToAgencySettings}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 border cursor-pointer ${
-                activeTab === 'settings'
-                  ? 'bg-[#FFC72C] text-[#2E0249] border-[#FFC72C] shadow-md'
-                  : 'bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 hover:brightness-105 text-[#2E0249] border-amber-300 shadow-sm hover:scale-102 active:scale-98'
-              }`}
-              title="Slide across directly to Agency Settings"
-            >
-              <SettingsIcon className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Agency Settings</span>
-              <span className="md:hidden">Settings</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
           </div>
-        </div>
-      </div>
+        </header>
 
-      {/* Main Admin Content Body */}
-      <div className="w-full max-w-[98%] 2xl:max-w-[1850px] mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-        {/* TAB 0: ADMIN INBOX */}
-        {activeTab === 'inbox' && <AdminInboxView onNavigateToTab={(t) => setActiveTab(t as any)} />}
+        {/* Main Admin Content Body */}
+        <main className="p-4 sm:p-6 lg:p-8 max-w-[1920px] mx-auto w-full flex-1">
+          {/* TAB 0: EXECUTIVE OVERVIEW */}
+          {activeTab === 'overview' && (
+            <AdminOverviewView
+              onNavigateTab={(t) => setActiveTab(t as any)}
+              onOpenNewTripModal={() => {
+                setActiveTab('trips');
+                const newTrip: TripPackage = {
+                  id: 'trip-' + Date.now(),
+                  slug: 'new-trip-' + Date.now(),
+                  name: 'New Custom Group Trip',
+                  country: 'Destination Country',
+                  countryAcronym: 'NEW',
+                  availabilityNote: 'Accepting Deposits',
+                  destination: 'New Destination',
+                  countryFlag: '✈️',
+                  year: 2027,
+                  dates: 'Dates TBA',
+                  price: 250000,
+                  deposit: 40000,
+                  currency: 'JMD',
+                  status: 'Coming Soon',
+                  isAdultsOnly: false,
+                  childPrice: 175000,
+                  childDeposit: 28000,
+                  hotel: 'Selected 4-Star Resort',
+                  baggageInfo: '1 Carry-on + Personal item',
+                  shortDescription: 'Exciting group trip package coordinated by SMELTRAVELS876.',
+                  fullDescription: 'Comprehensive travel package with flights, hotel, transfers, and excursions.',
+                  tripLogo: '',
+                  featuredImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80',
+                  gallery: [
+                    'https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=800&q=80',
+                    'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=800&q=80',
+                  ],
+                  packageInclusions: ['Roundtrip flights', 'Hotel accommodation', 'Airport transfers'],
+                  exclusions: ['Personal expenses', 'Travel insurance'],
+                  itinerary: [{ day: 1, title: 'Arrival', description: 'Arrive at destination airport and meet transfer coordinator.' }],
+                  travelRequirements: ['Valid passport with 6 months validity'],
+                  visaRequirements: 'Entry visa info to be confirmed based on passport nationality.',
+                  paymentPlanInfo: 'Monthly installments following deposit.',
+                  excursions: ['Sightseeing guided tour', 'Local dining experience'],
+                  orderIndex: trips.length + 1,
+                };
+                setEditingTrip(newTrip);
+                setNewInclusionInput('');
+                setBulkInclusionsMode(false);
+                setBulkInclusionsText(newTrip.packageInclusions.join('\n'));
+              }}
+            />
+          )}
+
+          {/* TAB 0.1: ADMIN INBOX */}
+          {activeTab === 'inbox' && <AdminInboxView onNavigateToTab={(t) => setActiveTab(t as any)} />}
 
         {/* TAB 0.5: EXCEL SPREADSHEET DATABASE */}
         {activeTab === 'excel-orders' && <AdminOrdersTable />}
@@ -3740,7 +3717,7 @@ export const AdminDashboard: React.FC = () => {
             </form>
           </div>
         )}
-      </div>
+      </main>
 
       {/* AMBASSADOR MODAL (Add / Edit) */}
       {ambassadorModalOpen && (
@@ -3888,5 +3865,6 @@ export const AdminDashboard: React.FC = () => {
         </div>
       )}
     </div>
-  );
+  </div>
+);
 };
