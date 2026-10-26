@@ -12,6 +12,10 @@ export const DestinationsPage: React.FC<DestinationsPageProps> = ({ initialSlug 
   const { destinations, trips, navigateTo, openCustomTripModal } = useApp();
   const [activeDestSlug, setActiveDestSlug] = useState<string | null>(initialSlug || null);
 
+  React.useEffect(() => {
+    setActiveDestSlug(initialSlug || null);
+  }, [initialSlug]);
+
   const activeDestination = activeDestSlug ? destinations.find(d => d.slug === activeDestSlug || d.id === activeDestSlug) : null;
 
   if (activeDestination) {
@@ -27,7 +31,10 @@ export const DestinationsPage: React.FC<DestinationsPageProps> = ({ initialSlug 
         <div className="bg-white border-b border-neutral-200 py-3 sticky top-16 z-30">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <button
-              onClick={() => setActiveDestSlug(null)}
+              onClick={() => {
+                setActiveDestSlug(null);
+                navigateTo('destinations');
+              }}
               className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-neutral-700 hover:text-[#2E0249] transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -207,7 +214,10 @@ export const DestinationsPage: React.FC<DestinationsPageProps> = ({ initialSlug 
           {destinations.map((dest) => (
             <div
               key={dest.id}
-              onClick={() => setActiveDestSlug(dest.slug)}
+              onClick={() => {
+                setActiveDestSlug(dest.slug);
+                navigateTo('destinations', dest.slug);
+              }}
               className="group cursor-pointer bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-neutral-200 flex flex-col justify-between"
             >
               <div>

@@ -12,6 +12,10 @@ export const TravelGuidesPage: React.FC<TravelGuidesPageProps> = ({ initialSlug 
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [activePostSlug, setActivePostSlug] = useState<string | null>(initialSlug || null);
 
+  React.useEffect(() => {
+    setActivePostSlug(initialSlug || null);
+  }, [initialSlug]);
+
   const categories = [
     'All',
     'Visa Information',
@@ -29,7 +33,10 @@ export const TravelGuidesPage: React.FC<TravelGuidesPageProps> = ({ initialSlug 
         <div className="bg-white border-b border-neutral-200 py-3 sticky top-16 z-30">
           <div className="max-w-4xl mx-auto px-4 sm:px-6">
             <button
-              onClick={() => setActivePostSlug(null)}
+              onClick={() => {
+                setActivePostSlug(null);
+                navigateTo('guides');
+              }}
               className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-neutral-700 hover:text-[#2E0249] transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -171,7 +178,10 @@ export const TravelGuidesPage: React.FC<TravelGuidesPageProps> = ({ initialSlug 
           {filteredPosts.map((post) => (
             <article
               key={post.id}
-              onClick={() => setActivePostSlug(post.slug)}
+              onClick={() => {
+                setActivePostSlug(post.slug);
+                navigateTo('guides', post.slug);
+              }}
               className="cursor-pointer group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-neutral-200 flex flex-col justify-between"
             >
               <div>

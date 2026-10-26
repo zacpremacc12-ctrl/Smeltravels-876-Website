@@ -104,6 +104,7 @@ export const AdminDashboard: React.FC = () => {
     resetToInitialData,
     showNotification,
     navigateTo,
+    pageParam,
     isAdminLoggedIn,
     adminEmail,
     currentAdminRole,
@@ -114,7 +115,58 @@ export const AdminDashboard: React.FC = () => {
     wingoRoutes,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'inbox' | 'excel-orders' | 'wingo-rates' | 'featured-trip' | 'local-trips' | 'origin-pricing' | 'inquiries' | 'trips' | 'destinations' | 'custom-destinations' | 'guides' | 'faqs' | 'offers' | 'testimonials' | 'email-notifications' | 'settings'>('overview');
+  const VALID_ADMIN_TABS = [
+    'overview',
+    'inbox',
+    'excel-orders',
+    'wingo-rates',
+    'featured-trip',
+    'local-trips',
+    'origin-pricing',
+    'inquiries',
+    'trips',
+    'destinations',
+    'custom-destinations',
+    'guides',
+    'faqs',
+    'offers',
+    'testimonials',
+    'email-notifications',
+    'settings',
+  ] as const;
+  type AdminTabType = typeof VALID_ADMIN_TABS[number];
+
+  const [activeTab, setActiveTab] = useState<AdminTabType>(() => {
+    if (pageParam && (VALID_ADMIN_TABS as readonly string[]).includes(pageParam)) {
+      return pageParam as AdminTabType;
+    }
+    try {
+      const stored = localStorage.getItem('smeltravels876_v2_admin_tab');
+      if (stored && (VALID_ADMIN_TABS as readonly string[]).includes(stored)) {
+        return stored as AdminTabType;
+      }
+    } catch (e) {}
+    return 'overview';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('smeltravels876_v2_admin_tab', activeTab);
+      if (typeof window !== 'undefined' && window.location.hash.startsWith('#admin')) {
+        const targetHash = `#admin?tab=${activeTab}`;
+        if (window.location.hash !== targetHash) {
+          window.history.replaceState(null, '', targetHash);
+        }
+      }
+    } catch (e) {}
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (pageParam && (VALID_ADMIN_TABS as readonly string[]).includes(pageParam) && pageParam !== activeTab) {
+      setActiveTab(pageParam as AdminTabType);
+    }
+  }, [pageParam]);
+
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 

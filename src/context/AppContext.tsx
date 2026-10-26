@@ -341,6 +341,66 @@ function setStoredItem<T>(key: string, val: T): void {
   }
 }
 
+export const VALID_APP_PAGES = [
+  'home',
+  'trips',
+  'trip-detail',
+  'destinations',
+  'about',
+  'local-trips',
+  'guides',
+  'faq',
+  'contact',
+  'legal',
+  'admin',
+] as const;
+
+export type AppNavPage = typeof VALID_APP_PAGES[number];
+
+export function parseUrlHash(): { page: string; param: string | null } | null {
+  if (typeof window === 'undefined') return null;
+  const hash = window.location.hash;
+  if (!hash || hash === '#' || hash === '#/') return null;
+
+  const raw = hash.replace(/^#\/?/, '').trim();
+  if (!raw) return null;
+
+  const [pathPart, queryPart] = raw.split('?');
+  const pathSegments = pathPart.split('/').filter(Boolean);
+  const primaryPage = (pathSegments[0] || '').toLowerCase();
+
+  if (!VALID_APP_PAGES.includes(primaryPage as any)) {
+    return null;
+  }
+
+  // 1. Path param: e.g. #trip-detail/panama-2026 or #destinations/panama
+  let param: string | null = pathSegments.length > 1 ? decodeURIComponent(pathSegments.slice(1).join('/')) : null;
+
+  // 2. Query param: e.g. #admin?tab=inbox or #trips?param=2026 or #legal?param=terms
+  if (!param && queryPart) {
+    try {
+      const sp = new URLSearchParams(queryPart);
+      param = sp.get('param') || sp.get('slug') || sp.get('tab') || sp.get('filter') || sp.get('id') || null;
+    } catch (e) {}
+  }
+
+  return { page: primaryPage, param };
+}
+
+export function formatUrlHash(page: string, param?: string | null): string {
+  if (page === 'home' && !param) return '';
+  if (param) {
+    if (page === 'trip-detail' || page === 'destinations' || page === 'guides') {
+      return `#${page}/${encodeURIComponent(param)}`;
+    }
+    if (page === 'admin') {
+      return `#admin?tab=${encodeURIComponent(param)}`;
+    }
+    return `#${page}?param=${encodeURIComponent(param)}`;
+  }
+  return `#${page}`;
+}
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<SiteSettings>(() => {
     const loaded = getStoredItem('settings', INITIAL_SETTINGS);
@@ -551,10 +611,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedTripForBooking, setSelectedTripForBooking] = useState<TripPackage | null>(null);
   const [selectedTripForInquiry, setSelectedTripForInquiry] = useState<TripPackage | null>(null);
   const [selectedTripDetail, setSelectedTripDetail] = useState<TripPackage | null>(null);
-  const [activePage, setActivePage] = useState<string>('home');
-  const [pageParam, setPageParam] = useState<string | null>(null);
+  const [activePage, setActivePage] = useState<string>(() => {
+    const fromHash = parseUrlHash();
+    if (fromHash?.page) return fromHash.page;
+    const stored = getStoredItem<string>('active_page', 'home');
+    if (stored && VALID_APP_PAGES.includes(stored as any)) {
+      return stored;
+    }
+    return 'home';
+  });
+  const [pageParam, setPageParam] = useState<string | null>(() => {
+    const fromHash = parseUrlHash();
+    if (fromHash) return fromHash.param;
+    return getStoredItem<string | null>('page_param', null);
+  });
 
   // Sync with localStorage
+  useEffect(() => { setStoredItem('active_page', activePage); }, [activePage]);
+  useEffect(() => { setStoredItem('page_param', pageParam); }, [pageParam]);
   useEffect(() => { setStoredItem('settings', settings); }, [settings]);
   useEffect(() => { setStoredItem('trips', trips); }, [trips]);
   useEffect(() => { setStoredItem('destinations', destinations); }, [destinations]);
@@ -1011,10 +1085,83 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const clearNotification = () => setActiveNotification(null);
 
+  // Listen to browser navigation (back/forward) and synchronize URL hash
+  useEffect(() => {
+    const handleUrlChange = () => {
+      const parsed = parseUrlHash();
+      if (parsed) {
+        setActivePage(parsed.page);
+        setPageParam(parsed.param);
+        setStoredItem('active_page', parsed.page);
+        setStoredItem('page_param', parsed.param);
+      } else {
+        if (typeof window !== 'undefined' && (window.location.hash === '' || window.location.hash === '#')) {
+          setActivePage('home');
+          setPageParam(null);
+          setStoredItem('active_page', 'home');
+          setStoredItem('page_param', null);
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handleUrlChange);
+    window.addEventListener('hashchange', handleUrlChange);
+
+    // Initial check: if there is no hash in URL, but activePage was restored from storage (not 'home'),
+    // synchronize the hash so address bar reflects the current page.
+    const currentHashParsed = parseUrlHash();
+    if (!currentHashParsed) {
+      const stored = getStoredItem<string>('active_page', 'home');
+      const storedParam = getStoredItem<string | null>('page_param', null);
+      if (stored && stored !== 'home' && VALID_APP_PAGES.includes(stored as any)) {
+        const hashToSet = formatUrlHash(stored, storedParam);
+        if (hashToSet) {
+          try {
+            window.history.replaceState(null, '', hashToSet);
+          } catch (e) {
+            window.location.hash = hashToSet;
+          }
+        }
+      }
+    } else {
+      setActivePage(currentHashParsed.page);
+      setPageParam(currentHashParsed.param);
+      setStoredItem('active_page', currentHashParsed.page);
+      setStoredItem('page_param', currentHashParsed.param);
+    }
+
+    return () => {
+      window.removeEventListener('popstate', handleUrlChange);
+      window.removeEventListener('hashchange', handleUrlChange);
+    };
+  }, []);
+
   const navigateTo = (page: string, param?: string) => {
+    const cleanParam = param || null;
     setActivePage(page);
-    setPageParam(param || null);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setPageParam(cleanParam);
+    setStoredItem('active_page', page);
+    setStoredItem('page_param', cleanParam);
+
+    if (typeof window !== 'undefined') {
+      const newHash = formatUrlHash(page, cleanParam);
+      if (!newHash) {
+        if (window.location.hash) {
+          try {
+            window.history.pushState(null, '', window.location.pathname + window.location.search);
+          } catch (e) {
+            window.location.hash = '';
+          }
+        }
+      } else if (window.location.hash !== newHash) {
+        try {
+          window.history.pushState(null, '', newHash);
+        } catch (e) {
+          window.location.hash = newHash;
+        }
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   // Settings

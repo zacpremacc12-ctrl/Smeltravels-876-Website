@@ -9,11 +9,17 @@ interface LegalPolicyPageProps {
 export const LegalPolicyPage: React.FC<LegalPolicyPageProps> = ({ initialTab }) => {
   const { settings, navigateTo } = useApp();
   const [activePolicyTab, setActivePolicyTab] = useState<string>(() => {
-    if (initialTab && ['terms', 'privacy', 'cancellation', 'schengen'].includes(initialTab)) {
+    if (initialTab && ['terms', 'privacy', 'cancellation', 'schengen', 'booking'].includes(initialTab)) {
       return initialTab;
     }
     return 'booking';
   });
+
+  React.useEffect(() => {
+    if (initialTab && ['terms', 'privacy', 'cancellation', 'schengen', 'booking'].includes(initialTab)) {
+      setActivePolicyTab(initialTab);
+    }
+  }, [initialTab]);
 
   return (
     <div className="bg-[#FAF9F6] min-h-screen py-12">
@@ -46,7 +52,10 @@ export const LegalPolicyPage: React.FC<LegalPolicyPageProps> = ({ initialTab }) 
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActivePolicyTab(tab.id)}
+              onClick={() => {
+                setActivePolicyTab(tab.id);
+                navigateTo('legal', tab.id);
+              }}
               className={`px-4 py-2 rounded-xl whitespace-nowrap transition-colors ${
                 activePolicyTab === tab.id
                   ? 'bg-[#2E0249] text-[#FFC72C]'
