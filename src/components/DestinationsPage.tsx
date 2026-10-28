@@ -97,47 +97,65 @@ export const DestinationsPage: React.FC<DestinationsPageProps> = ({ initialSlug 
               {/* Related Trips */}
               <div className="space-y-4">
                 <h3 className="text-xl font-bold text-neutral-900 font-['Outfit',sans-serif]">
-                  Available Group Trips to {activeDestination.name}
+                  Group Packages & Tours for {activeDestination.name}
                 </h3>
                 {relatedTrips.length > 0 ? (
                   <div className="space-y-4">
-                    {relatedTrips.map((rt) => (
-                      <div
-                        key={rt.id}
-                        className="bg-white p-5 rounded-2xl border border-neutral-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4"
-                      >
-                        <div className="flex items-center gap-4">
-                          <img
-                            src={getSafeTripImageUrl(rt.featuredImage, `${rt.destination} ${rt.country}`)}
-                            alt={rt.name}
-                            className="w-16 h-16 rounded-xl object-cover shrink-0"
-                            loading="lazy"
-                            referrerPolicy="no-referrer"
-                            onError={(e) => handleTripImageError(e, `${rt.destination} ${rt.country}`)}
-                          />
-                          <div>
-                            <span className="text-xs font-bold text-[#2E0249] block">{rt.dates}</span>
-                            <h4 className="text-base font-bold text-neutral-900 font-['Outfit',sans-serif]">
-                              {rt.name}
-                            </h4>
-                            <p className="text-xs text-neutral-500">{rt.hotel}</p>
+                    {relatedTrips.map((rt) => {
+                      const isPast = rt.isPastTrip || rt.status === 'Past Trip';
+                      return (
+                        <div
+                          key={rt.id}
+                          className="bg-white p-5 rounded-2xl border border-neutral-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4"
+                        >
+                          <div className="flex items-center gap-4">
+                            <img
+                              src={getSafeTripImageUrl(rt.featuredImage, `${rt.destination} ${rt.country}`)}
+                              alt={rt.name}
+                              className="w-16 h-16 rounded-xl object-cover shrink-0"
+                              loading="lazy"
+                              referrerPolicy="no-referrer"
+                              onError={(e) => handleTripImageError(e, `${rt.destination} ${rt.country}`)}
+                            />
+                            <div>
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <span className="text-xs font-bold text-[#2E0249]">{rt.dates}</span>
+                                {isPast ? (
+                                  <span className="text-[10px] font-black uppercase px-2 py-0.2 rounded bg-purple-900 text-[#FFC72C]">
+                                    Completed Tour
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] font-black uppercase px-2 py-0.2 rounded bg-emerald-100 text-emerald-800">
+                                    {rt.status}
+                                  </span>
+                                )}
+                              </div>
+                              <h4 className="text-base font-bold text-neutral-900 font-['Outfit',sans-serif]">
+                                {rt.name}
+                              </h4>
+                              <p className="text-xs text-neutral-500">{rt.hotel}</p>
+                            </div>
                           </div>
-                        </div>
 
-                        <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-                          <div className="text-right">
-                            <span className="text-xs text-neutral-500 block">From</span>
-                            <span className="text-lg font-black text-neutral-900">${rt.price.toLocaleString()} JMD</span>
+                          <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                            <div className="text-right">
+                              <span className="text-xs text-neutral-500 block">Package Rate</span>
+                              <span className="text-lg font-black text-neutral-900">${rt.price.toLocaleString()} JMD</span>
+                            </div>
+                            <button
+                              onClick={() => navigateTo('trip-detail', rt.slug)}
+                              className={`text-xs font-bold px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
+                                isPast
+                                  ? 'bg-[#2E0249] text-[#FFC72C] hover:bg-[#3B185F]'
+                                  : 'bg-[#FFC72C] text-[#2E0249] hover:bg-amber-300 shadow-xs'
+                              }`}
+                            >
+                              {isPast ? 'View Recap' : 'View Package'}
+                            </button>
                           </div>
-                          <button
-                            onClick={() => navigateTo('trip-detail', rt.slug)}
-                            className="bg-[#2E0249] text-[#FFC72C] hover:bg-[#3B185F] text-xs font-bold px-4 py-2.5 rounded-xl transition-all cursor-pointer"
-                          >
-                            View Package
-                          </button>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-xs text-neutral-500 bg-white p-4 rounded-xl border border-neutral-200">

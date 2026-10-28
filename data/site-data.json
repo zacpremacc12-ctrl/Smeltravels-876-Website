@@ -1374,9 +1374,9 @@
         "https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=800&q=80",
         "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80"
       ],
-      "status": "Available",
+      "status": "Past Trip",
       "isFeatured": true,
-      "is2026Featured": true,
+      "is2026Featured": false,
       "is2027Collection": false,
       "isAdultsOnly": false,
       "childPrice": 106612,
@@ -1384,7 +1384,9 @@
       "occupancyNote": "Per person rate based on double occupancy. Single supplement available upon inquiry.",
       "orderIndex": 1,
       "seoTitle": "Panama 2026 Part 2 Group Trip from Kingston | SMELTRAVELS876",
-      "metaDescription": "Book Panama 2026 Part 2 with SMELTRAVELS876! Flights from KIN, hotel, bed & breakfast, 2 paid excursions, airport transfers, and document prep included."
+      "metaDescription": "Book Panama 2026 Part 2 with SMELTRAVELS876! Flights from KIN, hotel, bed & breakfast, 2 paid excursions, airport transfers, and document prep included.",
+      "isPastTrip": true,
+      "availabilityNote": "Completed Tour (October 2026)"
     },
     {
       "id": "mexico-2026",
@@ -2078,9 +2080,9 @@
         "https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=800&q=80",
         "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80"
       ],
-      "status": "Available",
+      "status": "Past Trip",
       "isFeatured": true,
-      "is2026Featured": true,
+      "is2026Featured": false,
       "is2027Collection": false,
       "isAdultsOnly": false,
       "childPrice": 106612,
@@ -2088,7 +2090,9 @@
       "occupancyNote": "Per person rate based on double occupancy. Single supplement available upon inquiry.",
       "orderIndex": 1,
       "seoTitle": "Panama 2026 Part 2 Group Trip from Kingston | SMELTRAVELS876",
-      "metaDescription": "Book Panama 2026 Part 2 with SMELTRAVELS876! Flights from KIN, hotel, bed & breakfast, 2 paid excursions, airport transfers, and document prep included."
+      "metaDescription": "Book Panama 2026 Part 2 with SMELTRAVELS876! Flights from KIN, hotel, bed & breakfast, 2 paid excursions, airport transfers, and document prep included.",
+      "isPastTrip": true,
+      "availabilityNote": "Completed Tour (October 2026)"
     },
     {
       "id": "mexico-2026",
@@ -2913,7 +2917,7 @@
       "id": "heroes-weekend-royalton-2026",
       "slug": "heroes-weekend-royalton-hideaway-blue-waters",
       "title": "HEROES WEEKEND - Royalton Hideaway Blue Waters",
-      "subtitle": "Luxury All-Inclusive Adults Only",
+      "subtitle": "Completed Event • October 16–19, 2026",
       "description": "Celebrate Heroes Weekend in pure luxury at Royalton Hideaway Blue Waters in Trelawny, Jamaica. An exclusive all-inclusive adults-only getaway featuring swim-out suites, gourmet international dining, pristine white sand beaches, world-class nightlife, and unforgettable island memories.",
       "fullDescription": "Escape to the ultimate Jamaican holiday weekend! Royalton Hideaway Blue Waters provides an opulent, adults-only sanctuary nestled on the turquoise coastline of Falmouth, Trelawny. From October 16 to 19, 2026, celebrate National Heroes Weekend with premium all-inclusive amenities, infinity pools, swim-out cocktail service, 11 signature dining venues, and vibrant evening entertainment curated by SMELTRAVELS876.",
       "featuredImage": "/images/heroes_weekend_royalton.jpg",
@@ -2925,8 +2929,8 @@
       "deposit": 60760,
       "duration": "4 Days / 3 Nights",
       "availableDates": "October 16 - 19, 2026",
-      "status": "Limited Spots",
-      "ctaText": "Book Now (Pay Deposit)",
+      "status": "Sold Out",
+      "ctaText": "Completed (Sold Out)",
       "inclusions": [
         "Two (2) Adults Package for Heroes Weekend (Oct 16–19, 2026)",
         "Luxury All-Inclusive Accommodations (Adults Only 18+)",
@@ -5024,5 +5028,5 @@
   ],
   "contacts": [],
   "dispatchedEmails": [],
-  "lastUpdated": "2026-10-28T02:47:15.415Z"
+  "lastUpdated": "2026-10-28T03:07:12.279Z"
 }

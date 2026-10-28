@@ -292,8 +292,13 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
                                   )}
                                 </div>
                                 <div className="min-w-0">
-                                  <span className="font-bold text-white text-xs group-hover:text-[#FFC72C] transition-colors truncate block">
-                                    {t.countryFlag} {t.name}
+                                  <span className="font-bold text-white text-xs group-hover:text-[#FFC72C] transition-colors truncate flex items-center gap-1.5">
+                                    <span>{t.countryFlag} {t.name}</span>
+                                    {(t.isPastTrip || t.status === 'Past Trip') && (
+                                      <span className="text-[9px] bg-purple-900 text-[#FFC72C] px-1.5 py-0.2 rounded font-black border border-[#FFC72C]/30">
+                                        Completed
+                                      </span>
+                                    )}
                                   </span>
                                   <span className="text-[10px] text-neutral-400 block truncate">
                                     {t.dates} • <strong className="text-neutral-200">{formatPriceJMD(t.price)}</strong>
@@ -302,7 +307,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onOpenAdmin }) => 
                               </div>
 
                               <div className="shrink-0 flex items-center gap-1 text-[10px] font-extrabold bg-[#FFC72C]/20 text-[#FFC72C] group-hover:bg-[#FFC72C] group-hover:text-[#2E0249] px-2.5 py-1.5 rounded-lg transition-all shadow-sm">
-                                <span>View Package</span>
+                                <span>{(t.isPastTrip || t.status === 'Past Trip') ? 'View Recap' : 'View Package'}</span>
                                 <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                               </div>
                             </button>

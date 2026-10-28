@@ -244,9 +244,11 @@ export const INITIAL_TRIPS: TripPackage[] = [
       'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=800&q=80',
       'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80'
     ],
-    status: 'Available',
+    status: 'Past Trip',
+    isPastTrip: true,
     isFeatured: true,
-    is2026Featured: true,
+    is2026Featured: false,
+    availabilityNote: 'Completed Tour (October 2026)',
     is2027Collection: false,
     isAdultsOnly: false,
     childPrice: 106612,

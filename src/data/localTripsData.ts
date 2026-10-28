@@ -84,7 +84,7 @@ export const INITIAL_LOCAL_TRIPS: LocalTrip[] = [
     id: 'heroes-weekend-royalton-2026',
     slug: 'heroes-weekend-royalton-hideaway-blue-waters',
     title: 'HEROES WEEKEND - Royalton Hideaway Blue Waters',
-    subtitle: 'Luxury All-Inclusive Adults Only',
+    subtitle: 'Completed Event • October 16–19, 2026',
     description:
       'Celebrate Heroes Weekend in pure luxury at Royalton Hideaway Blue Waters in Trelawny, Jamaica. An exclusive all-inclusive adults-only getaway featuring swim-out suites, gourmet international dining, pristine white sand beaches, world-class nightlife, and unforgettable island memories.',
     fullDescription:
@@ -98,15 +98,15 @@ export const INITIAL_LOCAL_TRIPS: LocalTrip[] = [
     deposit: 60760,
     duration: '4 Days / 3 Nights',
     availableDates: 'October 16 - 19, 2026',
-    status: 'Limited Spots',
-    ctaText: 'Book Now (Pay Deposit)',
+    status: 'Sold Out',
+    ctaText: 'Completed (Sold Out)',
     inclusions: [
       'Two (2) Adults Package for Heroes Weekend (Oct 16–19, 2026)',
       'Luxury All-Inclusive Accommodations (Adults Only 18+)',
       'All Gourmet Meals, 24-hr Room Service & Premium Top-Shelf Spirits',
       'Access to Oceanview & Swim-Out Pools, Private Cabanas & Beachfront',
       'Daily Resort Activities, Water Sports & Heroes Weekend Festivities',
-      'Low Deposit: $60,760 JMD to Secure Your Room Today',
+      'Concluded National Heroes Weekend 2026 Getaway',
     ],
     exclusions: [
       'Personal motorized water sports',

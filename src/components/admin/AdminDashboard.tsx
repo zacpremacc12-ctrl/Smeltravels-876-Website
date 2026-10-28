@@ -1650,7 +1650,15 @@ export const AdminDashboard: React.FC = () => {
                           <label className="font-bold text-neutral-700 block mb-1">Availability Status</label>
                           <select
                             value={editingTrip.status}
-                            onChange={(e) => setEditingTrip({ ...editingTrip, status: e.target.value as TripStatus })}
+                            onChange={(e) => {
+                              const newStatus = e.target.value as TripStatus;
+                              setEditingTrip({
+                                ...editingTrip,
+                                status: newStatus,
+                                isPastTrip: newStatus === 'Past Trip',
+                                is2026Featured: newStatus === 'Past Trip' ? false : editingTrip.is2026Featured,
+                              });
+                            }}
                             className="w-full p-2 border border-neutral-300 rounded-xl bg-white font-bold text-neutral-900 focus:ring-2 focus:ring-amber-500/30 focus:outline-none"
                           >
                             <option value="Available">🟢 Available (Accepting Bookings & Deposits)</option>
@@ -1658,6 +1666,7 @@ export const AdminDashboard: React.FC = () => {
                             <option value="Coming Soon">🔵 Coming Soon (Pre-registration & Inquiries)</option>
                             <option value="Sold Out">🔴 Sold Out (Fully Booked)</option>
                             <option value="Closed">⚪ Closed (Registration Closed / Departed)</option>
+                            <option value="Past Trip">📸 Past Trip (Completed Tour / Recap)</option>
                           </select>
                         </div>
 
