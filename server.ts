@@ -548,6 +548,9 @@ app.post('/api/site-data', (req, res) => {
             customTripDestinations: Array.isArray(updates.settings.customTripDestinations)
               ? updates.settings.customTripDestinations
               : ((siteDataCache.settings && siteDataCache.settings.customTripDestinations) || []),
+            featuredHeroTrip: updates.settings.featuredHeroTrip !== undefined
+              ? updates.settings.featuredHeroTrip
+              : ((siteDataCache.settings && siteDataCache.settings.featuredHeroTrip) || null),
           }
         : siteDataCache.settings;
 

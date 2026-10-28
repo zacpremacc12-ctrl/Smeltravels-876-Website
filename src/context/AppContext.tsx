@@ -403,54 +403,10 @@ export function formatUrlHash(page: string, param?: string | null): string {
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<SiteSettings>(() => {
-    const loaded = getStoredItem('settings', INITIAL_SETTINGS);
-    const hasCanonical4 = Array.isArray(loaded.ambassadors) &&
-      loaded.ambassadors.length === 4 &&
-      loaded.ambassadors.some((a: Ambassador) => a.email === 'zbuchanan.smeltravels@gmail.com') &&
-      loaded.ambassadors.some((a: Ambassador) => a.email === 'jvirgo.smeltravels@gmail.com') &&
-      loaded.ambassadors.some((a: Ambassador) => a.email === 'sdavis.smeltravels@gmail.com') &&
-      loaded.ambassadors.some((a: Ambassador) => a.email === 'smeltravels876@gmail.com');
-
-    const customDests = Array.isArray(loaded.customTripDestinations) && loaded.customTripDestinations.length > 0
-      ? loaded.customTripDestinations
-      : WORLD_DESTINATIONS;
-
-    if (!hasCanonical4) {
-      return {
-        ...loaded,
-        ambassadorName: INITIAL_SETTINGS.ambassadorName,
-        ambassadorTitle: INITIAL_SETTINGS.ambassadorTitle,
-        ambassadorPhone: INITIAL_SETTINGS.ambassadorPhone,
-        ambassadorEmail: INITIAL_SETTINGS.ambassadorEmail,
-        ambassadors: INITIAL_SETTINGS.ambassadors,
-        requireAmbassadorSelection: true,
-        customTripDestinations: customDests,
-      };
-    }
-    const updatedAmbassadors = (loaded.ambassadors as Ambassador[]).map((a) => {
-      if (a.email === 'jvirgo.smeltravels@gmail.com' && a.phone !== '(876) 566-6923') {
-        return { ...a, phone: '(876) 566-6923' };
-      }
-      if (a.email === 'sdavis.smeltravels@gmail.com' && a.phone !== '(876) 276-1310') {
-        return { ...a, phone: '(876) 276-1310' };
-      }
-      return a;
-    });
-    return {
-      ...loaded,
-      ambassadors: updatedAmbassadors,
-      requireAmbassadorSelection: loaded.requireAmbassadorSelection ?? true,
-      customTripDestinations: customDests,
-    };
+    return getStoredItem('settings', INITIAL_SETTINGS);
   });
   const [trips, setTrips] = useState<TripPackage[]>(() => {
-    const loaded = getStoredItem('trips', INITIAL_TRIPS);
-    return loaded.map((t) => {
-      if (t.id === 'panama-2026' && (t.price === 140000 || t.deposit === 71050)) {
-        return { ...t, price: 152303, deposit: 83353 };
-      }
-      return t;
-    });
+    return getStoredItem('trips', INITIAL_TRIPS);
   });
   const [destinations, setDestinations] = useState<Destination[]>(() => getStoredItem('destinations', INITIAL_DESTINATIONS));
   const [bookings, setBookings] = useState<BookingSubmission[]>(() => getStoredItem('bookings', INITIAL_BOOKINGS));
@@ -508,17 +464,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Local Trips State (Jamaican Tours, Excursions, Weekend Getaways)
   const [localTrips, setLocalTrips] = useState<LocalTrip[]>(() => {
-    const stored = getStoredItem<LocalTrip[]>('local_trips', INITIAL_LOCAL_TRIPS);
-    const royaltonItem = INITIAL_LOCAL_TRIPS.find((t) => t.id === 'royalton-negril-flash-sale-2026') || INITIAL_LOCAL_TRIPS[0];
-    if (royaltonItem) {
-      const idx = stored.findIndex((t) => t.id === royaltonItem.id || t.slug === royaltonItem.slug);
-      if (idx === -1) {
-        const merged = [royaltonItem, ...stored];
-        setStoredItem('local_trips', merged);
-        return merged;
-      }
-    }
-    return stored;
+    return getStoredItem<LocalTrip[]>('local_trips', INITIAL_LOCAL_TRIPS);
   });
   const [localTripsPageSettings, setLocalTripsPageSettings] = useState<LocalTripsPageSettings>(() => {
     return getStoredItem('local_trips_settings', INITIAL_LOCAL_TRIPS_PAGE_SETTINGS);
@@ -895,6 +841,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch (e) {}
         setStoredItem('local_trips_settings', merged);
         return merged;
+      });
+    }
+
+    const wingoArray = parseAsArray<WingoRouteRate>(d.wingoRoutes);
+    if (wingoArray && wingoArray.length > 0) {
+      setWingoRoutes((prev) => {
+        try {
+          if (JSON.stringify(prev) === JSON.stringify(wingoArray)) return prev;
+        } catch (e) {}
+        setStoredItem('wingo_rates_database', wingoArray);
+        return wingoArray;
       });
     }
 
