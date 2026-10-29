@@ -254,7 +254,10 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
       {/* 6 Executive Live KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {/* Card 1: Total Bookings */}
-        <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs hover:border-blue-400 transition-all group">
+        <div
+          onClick={() => onNavigateTab('inquiries')}
+          className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs hover:border-blue-400 transition-all group cursor-pointer"
+        >
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Total Bookings</span>
             <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-105 transition-transform">
@@ -287,7 +290,10 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
         </div>
 
         {/* Card 3: Pending Bookings */}
-        <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs hover:border-amber-400 transition-all group">
+        <div
+          onClick={() => onNavigateTab('excel-orders')}
+          className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs hover:border-amber-400 transition-all group cursor-pointer"
+        >
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Pending Action</span>
             <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-105 transition-transform">
@@ -319,7 +325,10 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
         </div>
 
         {/* Card 5: Pending Inquiries */}
-        <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs hover:border-purple-400 transition-all group">
+        <div
+          onClick={() => onNavigateTab('inbox')}
+          className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs hover:border-purple-400 transition-all group cursor-pointer"
+        >
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Unread Inquiries</span>
             <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-105 transition-transform">

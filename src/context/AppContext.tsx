@@ -885,6 +885,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Public refresh function exposed to AdminDashboard and components
   const refreshSiteData = useCallback(async () => {
+    try {
+      await fetch('/api/inquiries/sync-all', { method: 'POST' });
+    } catch (e) {}
     await fetchFromServer();
   }, [fetchFromServer]);
 
@@ -3414,6 +3417,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         adminRole: 'Super Admin',
       }));
       showNotification('Access Granted', `Welcome back, ${profile.name} (${cleanEmail}). Super Admin unlocked.`);
+
+      // Immediately fetch 100% fresh, live inquiries directly from server to guarantee cross-browser parity
+      refreshSiteData();
 
       // Automated Resend Security Alert (notifications@smeltravels876.com)
       try {

@@ -88,6 +88,7 @@ export type TravelInterestType = 'ready_to_book' | 'more_info' | 'need_help';
 
 export type BookingStatus =
   | 'New'
+  | 'Custom Trip Request'
   | 'Contacted'
   | 'Pending'
   | 'Deposit Requested'

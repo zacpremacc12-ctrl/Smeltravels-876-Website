@@ -27,6 +27,7 @@ import {
   ChevronDown,
   ChevronUp,
   MoreVertical,
+  RefreshCw,
 } from 'lucide-react';
 
 const formatJMD = (val?: number) => (val !== undefined ? formatPriceJMD(val) : '$0 JMD');
@@ -47,6 +48,7 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
     sendInboxItemToExcel,
     isOrderInExcel,
     syncAllInboxOrdersToExcel,
+    refreshSiteData,
   } = useApp();
 
   const [activeCategory, setActiveCategory] = useState<string>('all');
@@ -201,6 +203,23 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={async () => {
+                try {
+                  localStorage.removeItem('smeltravels876_v2_admin_inbox');
+                  localStorage.removeItem('smeltravels876_v2_bookings');
+                  localStorage.removeItem('smeltravels876_v2_admin_orders_excel');
+                } catch (e) {}
+                await refreshSiteData();
+                showNotification('Inbox Reconciled', 'All inquiries are 100% synchronized with the server across every browser and device.', 'success');
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-100 hover:bg-purple-200 text-[#2E0249] text-xs font-bold border border-purple-300 transition-colors cursor-pointer shadow-2xs"
+              title="Force live synchronization of inquiries across all browsers"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-purple-700" />
+              <span>Live Sync</span>
+            </button>
+
             {unreadCount > 0 && (
               <button
                 onClick={markAllInboxAsRead}

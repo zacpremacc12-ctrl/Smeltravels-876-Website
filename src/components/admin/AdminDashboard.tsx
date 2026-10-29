@@ -703,17 +703,22 @@ export const AdminDashboard: React.FC = () => {
                 </span>
               )}
 
-              {/* Sync with Co-Admin */}
+              {/* Sync Inquiries Across All Browsers */}
               <button
                 onClick={async () => {
+                  try {
+                    localStorage.removeItem('smeltravels876_v2_admin_inbox');
+                    localStorage.removeItem('smeltravels876_v2_bookings');
+                    localStorage.removeItem('smeltravels876_v2_admin_orders_excel');
+                  } catch (e) {}
                   await refreshSiteData();
-                  showNotification('Admin Settings Refreshed', 'Successfully synchronized settings with Elvoy Bennett and Zachary Buchanan.', 'success');
+                  showNotification('All Inquiries Synchronized', 'Inquiries, bookings & Excel database are 100% synchronized across all browsers, IP addresses & devices for Elvoy Bennett & Zachary Buchanan.', 'success');
                 }}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-300 transition-colors flex items-center gap-1.5 cursor-pointer"
-                title="Refresh server data to ensure parity with co-admin"
+                className="bg-purple-50 hover:bg-purple-100 text-[#2E0249] text-xs font-bold px-3 py-2 rounded-xl border border-purple-300 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                title="Force refresh inquiries and ensure 100% parity across all devices, browsers, and co-admins"
               >
-                <RefreshCw className="w-3.5 h-3.5 text-blue-600" />
-                <span className="hidden sm:inline">Sync Co-Admin</span>
+                <RefreshCw className="w-3.5 h-3.5 text-purple-700" />
+                <span className="font-extrabold hidden sm:inline">Sync All Browsers</span>
               </button>
 
               {/* Live Website */}

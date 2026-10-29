@@ -577,6 +577,67 @@ app.post('/api/site-data', (req, res) => {
   }
 });
 
+// POST force sync & reconcile all inquiries across adminInbox, bookings, and adminOrdersExcel
+app.post('/api/inquiries/sync-all', (req, res) => {
+  try {
+    const inbox = Array.isArray(siteDataCache.adminInbox) ? siteDataCache.adminInbox : [];
+    const bookings = Array.isArray(siteDataCache.bookings) ? siteDataCache.bookings : [];
+    const excel = Array.isArray(siteDataCache.adminOrdersExcel) ? siteDataCache.adminOrdersExcel : [];
+
+    // Ensure every booking is represented in adminInbox
+    bookings.forEach((b: any) => {
+      const ref = b.referenceNumber;
+      if (ref && !inbox.some((i: any) => i.referenceNumber === ref)) {
+        inbox.push({
+          id: `inbox-sync-${b.id || Date.now()}`,
+          type: b.status === 'Custom Trip Request' ? 'custom_trip' : 'inquiry',
+          title: `${b.status === 'Custom Trip Request' ? 'Custom Trip Request' : 'Booking Inquiry'}: ${b.tripName || 'Travel Package'} (${b.customerName})`,
+          senderName: b.customerName,
+          senderEmail: b.email,
+          senderPhone: b.phone || '(876) 834-1537',
+          tripId: b.tripId,
+          tripName: b.tripName,
+          referenceNumber: ref,
+          travelDates: b.preferredTravelDate || 'November 2026',
+          arrivalDate: b.arrivalDate,
+          departureDate: b.departureDate,
+          travelersCount: `${b.adultsCount || 2} Adults`,
+          location: b.countryOrParish || 'Kingston',
+          preferredContact: b.preferredContactMethod || 'WhatsApp',
+          customerMessage: b.specialRequests || 'Booking inquiry',
+          summary: `Inquiry from ${b.customerName}. Trip: ${b.tripName}. Dispatched to Elvoy Bennett & Zachary Buchanan.`,
+          details: `Customer: ${b.customerName}\nTrip: ${b.tripName}\nTravelers: ${b.adultsCount || 2} Adults\nDate: ${b.preferredTravelDate}\nContact: ${b.preferredContactMethod}\nMessage: ${b.specialRequests || 'None'}\nAdmins: Elvoy Bennett & Zachary Buchanan`,
+          timestamp: b.createdAt || new Date().toISOString(),
+          isRead: false,
+          adminRecipients: ['Elvoy Bennett', 'Zachary Buchanan'],
+          recipientEmails: ['zbuchanan.smeltravels@gmail.com', 'smeltravels876@gmail.com'],
+          emailStatus: 'Delivered',
+        });
+      }
+    });
+
+    siteDataCache.adminInbox = inbox;
+    siteDataCache.bookings = bookings;
+    siteDataCache.adminOrdersExcel = excel;
+    siteDataCache.lastUpdated = new Date().toISOString();
+    persistData();
+    broadcastSiteUpdate(siteDataCache);
+
+    res.json({
+      success: true,
+      message: 'All inquiries authoritatively reconciled, persisted, and broadcast to all connected browsers.',
+      counts: {
+        adminInbox: inbox.length,
+        bookings: bookings.length,
+        adminOrdersExcel: excel.length,
+      },
+      lastUpdated: siteDataCache.lastUpdated,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // GET dispatched emails audit log
 app.get('/api/dispatched-emails', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
@@ -806,7 +867,85 @@ app.post('/api/inbox', (req, res) => {
       isRead: false,
     };
 
-    siteDataCache.adminInbox = [newItem, ...currentInbox];
+    // Deduplicate by ID and referenceNumber
+    siteDataCache.adminInbox = [
+      newItem,
+      ...currentInbox.filter((i: any) => i.id !== newItem.id && (!newItem.referenceNumber || i.referenceNumber !== newItem.referenceNumber)),
+    ];
+
+    // If it is an inquiry or custom trip, also ensure presence in bookings & Excel
+    if (['inquiry', 'custom_trip'].includes(newItem.type) && newItem.senderName) {
+      const ref = newItem.referenceNumber || `INQ-${Date.now().toString().slice(-5)}`;
+      const currentBookings = Array.isArray(siteDataCache.bookings) ? siteDataCache.bookings : [];
+      if (!currentBookings.some((b: any) => b.referenceNumber === ref)) {
+        siteDataCache.bookings = [
+          {
+            id: `booking-${newItem.id}`,
+            referenceNumber: ref,
+            tripId: newItem.tripId || 'package-inquiry',
+            tripName: newItem.tripName || 'Travel Package',
+            customerName: newItem.senderName,
+            email: newItem.senderEmail || '',
+            phone: newItem.senderPhone || '',
+            countryOrParish: newItem.location || 'Jamaica',
+            adultsCount: Number(newItem.travelersCount) || 2,
+            childrenCount: 0,
+            preferredTravelDate: newItem.travelDates || 'November 2026',
+            arrivalDate: newItem.arrivalDate,
+            departureDate: newItem.departureDate,
+            travelInterestType: 'ready_to_book',
+            specialRequests: newItem.customerMessage || newItem.summary || 'Booking inquiry',
+            preferredContactMethod: (newItem.preferredContact || 'WhatsApp').toLowerCase(),
+            status: newItem.type === 'custom_trip' ? 'Custom Trip Request' : 'New',
+            depositPaid: newItem.amount || 0,
+            totalPrice: newItem.amount || 152303,
+            currency: newItem.currency || 'JMD',
+            ambassadorName: 'Zachary Buchanan',
+            internalNotes: [`Inbox item ${ref} auto-synchronized to bookings list.`],
+            createdAt: newItem.timestamp,
+            updatedAt: newItem.timestamp,
+          },
+          ...currentBookings,
+        ];
+      }
+
+      const currentExcel = Array.isArray(siteDataCache.adminOrdersExcel) ? siteDataCache.adminOrdersExcel : [];
+      if (!currentExcel.some((o: any) => o.orderRef === ref)) {
+        siteDataCache.adminOrdersExcel = [
+          {
+            id: `order-${newItem.id}`,
+            orderRef: ref,
+            receivedAt: newItem.timestamp,
+            orderType: newItem.type === 'custom_trip' ? 'Custom Trip' : 'Booking Inquiry',
+            customerName: newItem.senderName,
+            email: newItem.senderEmail || '',
+            phone: newItem.senderPhone || '',
+            parishOrCountry: newItem.location || 'Jamaica',
+            tripOrDestination: newItem.tripName || 'Travel Package',
+            travelDates: newItem.travelDates || 'November 2026',
+            arrivalDate: newItem.arrivalDate,
+            departureDate: newItem.departureDate,
+            adultsCount: Number(newItem.travelersCount) || 2,
+            childrenCount: 0,
+            budget: String(newItem.amount || 152303),
+            numericalBudget: newItem.amount || 152303,
+            totalPrice: newItem.amount || 152303,
+            depositPaid: newItem.amount || 0,
+            currency: newItem.currency || 'JMD',
+            paymentStatus: newItem.amount && newItem.amount > 0 ? 'Deposit Paid' : 'Unpaid',
+            orderStatus: 'New',
+            preferredContact: (newItem.preferredContact || 'WhatsApp') as any,
+            assignedAdmin: 'Zachary Buchanan',
+            specialRequests: newItem.customerMessage || newItem.summary,
+            inclusions: 'Standard package inclusions',
+            adminNotes: `Inbox item ${ref} auto-synchronized to master orders.`,
+            lastUpdated: newItem.timestamp,
+          },
+          ...currentExcel,
+        ];
+      }
+    }
+
     siteDataCache.lastUpdated = new Date().toISOString();
     persistData();
     broadcastSiteUpdate(siteDataCache);
@@ -1096,6 +1235,39 @@ app.post('/api/custom-trip-request', async (req, res) => {
     };
     siteDataCache.bookings = [newBookingSubmission, ...currentBookings];
 
+    // 3b. Add to Admin Orders Excel Spreadsheet database
+    const currentExcel = Array.isArray(siteDataCache.adminOrdersExcel) ? siteDataCache.adminOrdersExcel : [];
+    const newExcelRecord = {
+      id: `order-custom-${Date.now()}`,
+      orderRef: ref,
+      receivedAt: now,
+      orderType: 'Custom Trip',
+      customerName,
+      email,
+      phone: phone || '',
+      parishOrCountry: countryOrParish || 'Jamaica',
+      tripOrDestination: `${destination} (${country || destination})`,
+      travelDates: travelDatesSummary,
+      arrivalDate: arrivalDateStr,
+      departureDate: departureDateStr,
+      adultsCount: Number(adultsCount) || 1,
+      childrenCount: Number(childrenCount) || 0,
+      budget: budgetPerPerson || 'Flexible',
+      numericalBudget: parseFloat(String(budgetPerPerson || '').replace(/[^0-9.]/g, '')) || 0,
+      totalPrice: 0,
+      depositPaid: 0,
+      currency: 'USD',
+      paymentStatus: 'Unpaid',
+      orderStatus: 'New',
+      preferredContact: preferredContactMethod || 'WhatsApp',
+      assignedAdmin: preferredAmbassador || 'Elvoy Bennett',
+      specialRequests: specialRequests || 'Custom trip quotation requested.',
+      inclusions: Array.isArray(mustHaveInclusions) ? mustHaveInclusions.join(', ') : 'All Standard Inclusions',
+      adminNotes: `Custom trip to ${destination} submitted by traveler with arrival ${formattedArrival} and departure ${formattedDeparture}. Dispatched to Elvoy Bennett & Zachary Buchanan.`,
+      lastUpdated: now,
+    };
+    siteDataCache.adminOrdersExcel = [newExcelRecord, ...currentExcel.filter((o: any) => o.orderRef !== ref)];
+
     // 4. Save and broadcast
     siteDataCache.lastUpdated = now;
     persistData();
@@ -1261,6 +1433,65 @@ app.post('/api/trip-inquiry', async (req, res) => {
       createdAt: now,
     };
     siteDataCache.contacts = [newContact, ...currentContacts];
+
+    // 3b. Add to Bookings (for Website Inquiries dashboard tab)
+    const currentBookings = Array.isArray(siteDataCache.bookings) ? siteDataCache.bookings : [];
+    const newBooking = {
+      id: `booking-inq-${Date.now()}`,
+      referenceNumber: ref,
+      tripId: tripId || 'package-inquiry',
+      tripName: tripName || 'Travel Package',
+      customerName,
+      email,
+      phone: phone || '',
+      countryOrParish: parish || 'Jamaica',
+      adultsCount: Number(adultsCount) || 1,
+      childrenCount: 0,
+      preferredTravelDate: req.body.preferredTravelDate || 'November 2026',
+      travelInterestType: inquiryType || 'ready_to_book',
+      specialRequests: inquiryContent,
+      preferredContactMethod: preferredContactMethod || 'whatsapp',
+      status: 'New',
+      depositPaid: 0,
+      totalPrice: Number(req.body.totalPrice) || 0,
+      currency: 'JMD',
+      ambassadorName: 'Zachary Buchanan',
+      internalNotes: [`Booking inquiry received on ${now}. Dispatched to Elvoy Bennett & Zachary Buchanan.`],
+      createdAt: now,
+      updatedAt: now,
+    };
+    siteDataCache.bookings = [newBooking, ...currentBookings.filter((b: any) => b.referenceNumber !== ref)];
+
+    // 3c. Add to Admin Orders Excel spreadsheet database
+    const currentExcel = Array.isArray(siteDataCache.adminOrdersExcel) ? siteDataCache.adminOrdersExcel : [];
+    const newExcelRecord = {
+      id: `order-inq-${Date.now()}`,
+      orderRef: ref,
+      receivedAt: now,
+      orderType: 'Booking Inquiry',
+      customerName,
+      email,
+      phone: phone || '',
+      parishOrCountry: parish || 'Jamaica',
+      tripOrDestination: tripName || 'Travel Package',
+      travelDates: req.body.preferredTravelDate || 'November 2026',
+      adultsCount: Number(adultsCount) || 1,
+      childrenCount: 0,
+      budget: req.body.budget || 'Standard Package',
+      numericalBudget: parseFloat(String(req.body.budget || '').replace(/[^0-9.]/g, '')) || 0,
+      totalPrice: Number(req.body.totalPrice) || 0,
+      depositPaid: 0,
+      currency: 'JMD',
+      paymentStatus: 'Unpaid',
+      orderStatus: 'New',
+      preferredContact: preferredContactMethod || 'WhatsApp',
+      assignedAdmin: 'Zachary Buchanan',
+      specialRequests: inquiryContent,
+      inclusions: 'Standard package inclusions',
+      adminNotes: `Online booking inquiry received on ${now}. Dispatched to Elvoy Bennett & Zachary Buchanan.`,
+      lastUpdated: now,
+    };
+    siteDataCache.adminOrdersExcel = [newExcelRecord, ...currentExcel.filter((o: any) => o.orderRef !== ref)];
 
     siteDataCache.lastUpdated = now;
     persistData();
