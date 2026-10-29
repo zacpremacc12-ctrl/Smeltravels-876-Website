@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "status": "Backend Not Running",
+  "error": "The SMELTRAVELS876 Node.js Express server is currently offline or unreachable on this server. On Hostinger, ensure the Node.js application is active in hPanel with startup file dist/server.cjs and port 3000.",
+  "isHostingerFallback": true
+}

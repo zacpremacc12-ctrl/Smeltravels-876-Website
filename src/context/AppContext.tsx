@@ -68,6 +68,7 @@ import {
   subscribeToSiteContent,
   syncAllBackends,
 } from '../lib/firebase';
+import { safeFetchJson } from '../lib/apiClient';
 
 interface AppContextType {
   settings: SiteSettings;
@@ -156,6 +157,7 @@ interface AppContextType {
   // Admin & View State
   isAdminLoggedIn: boolean;
   adminEmail: string | null;
+  adminSessionToken: string | null;
   currentAdminRole: AdminRole;
   loginAdmin: (role?: AdminRole) => void;
   loginAdminWithCredentials: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
@@ -843,7 +845,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const activeToken = tokenToUse || adminSessionToken;
     if (!activeToken) return;
     try {
-      const res = await fetch(`/api/admin/full-records?_t=${Date.now()}`, {
+      const result = await safeFetchJson<{
+        success: boolean;
+        adminInbox: any[];
+        bookings: any[];
+        adminOrdersExcel: any[];
+        customers: any[];
+      }>(`/api/admin/full-records?_t=${Date.now()}`, {
         cache: 'no-store',
         headers: {
           'Authorization': `Bearer ${activeToken}`,
@@ -851,7 +859,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           Pragma: 'no-cache',
         },
       });
-      if (res.status === 401) {
+      if (result.status === 401) {
         setAdminSessionToken(null);
         setIsAdminLoggedIn(false);
         try {
@@ -860,12 +868,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch {}
         return;
       }
-      const json = await res.json();
-      if (json && json.success) {
-        if (Array.isArray(json.adminInbox)) setAdminInbox(json.adminInbox);
-        if (Array.isArray(json.bookings)) setBookings(json.bookings);
-        if (Array.isArray(json.adminOrdersExcel)) setAdminOrdersExcel(json.adminOrdersExcel);
-        if (Array.isArray(json.customers)) setCustomers(json.customers);
+      if (result.ok && result.data && result.data.success) {
+        if (Array.isArray(result.data.adminInbox)) setAdminInbox(result.data.adminInbox);
+        if (Array.isArray(result.data.bookings)) setBookings(result.data.bookings);
+        if (Array.isArray(result.data.adminOrdersExcel)) setAdminOrdersExcel(result.data.adminOrdersExcel);
+        if (Array.isArray(result.data.customers)) setCustomers(result.data.customers);
       }
     } catch (err) {}
   }, [adminSessionToken]);
@@ -880,14 +887,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (adminSessionToken) {
         headers['Authorization'] = `Bearer ${adminSessionToken}`;
       }
-      const res = await fetch(`/api/site-data?_t=${Date.now()}`, {
+      const result = await safeFetchJson<{
+        success: boolean;
+        lastUpdated?: string;
+        data: any;
+      }>(`/api/site-data?_t=${Date.now()}`, {
         cache: 'no-store',
         headers,
       });
-      const json = await res.json();
-      if (json && json.success && json.data) {
-        if (json.lastUpdated) lastServerTimestampRef.current = json.lastUpdated;
-        applyFirestoreContent(json.data);
+      if (result.ok && result.data && result.data.success && result.data.data) {
+        if (result.data.lastUpdated) lastServerTimestampRef.current = result.data.lastUpdated;
+        applyFirestoreContent(result.data.data);
       }
     } catch (err) {
       // Quiet failover on network hiccups
@@ -902,7 +912,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let isCancelled = false;
     if (!adminSessionToken) return;
 
-    fetch('/api/admin/verify-token', {
+    safeFetchJson<{
+      success: boolean;
+      valid: boolean;
+      admin: { name: string; email: string; title: string; phone: string; role: string };
+    }>('/api/admin/verify-token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -910,15 +924,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       },
       body: JSON.stringify({ token: adminSessionToken }),
     })
-      .then((r) => r.json())
-      .then((data) => {
+      .then((result) => {
         if (isCancelled) return;
-        if (data && data.success && data.admin) {
+        if (result.ok && result.data && result.data.success && result.data.admin) {
           setIsAdminLoggedIn(true);
-          setAdminEmail(data.admin.email);
-          setCurrentAdminRole((data.admin.role || 'Super Admin') as AdminRole);
+          setAdminEmail(result.data.admin.email);
+          setCurrentAdminRole((result.data.admin.role || 'Super Admin') as AdminRole);
           fetchAdminRecords(adminSessionToken);
-        } else {
+        } else if (result.status === 401 || (result.ok && !result.data?.valid)) {
           setAdminSessionToken(null);
           setIsAdminLoggedIn(false);
           setAdminEmail(null);
@@ -3441,23 +3454,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const cleanPassword = (password || '').trim();
 
     try {
-      const res = await fetch('/api/admin/login', {
+      const result = await safeFetchJson<{
+        success: boolean;
+        token?: string;
+        admin?: any;
+        error?: string;
+        isHostingerFallback?: boolean;
+      }>('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: cleanEmail, password: cleanPassword }),
       });
-      const data = await res.json();
 
-      if (!res.ok || !data.success) {
-        showNotification('Access Denied', data.error || 'Invalid administrator email or password.', 'warning');
+      if (!result.ok || !result.data?.success) {
+        const errorMsg =
+          result.data?.error ||
+          result.error ||
+          'Invalid administrator email or password. Please verify your credentials.';
+        showNotification('Access Denied', errorMsg, 'warning');
         return {
           success: false,
-          error: data.error || 'Invalid administrator email or password. Please verify your credentials.',
+          error: errorMsg,
         };
       }
 
-      const token = data.token;
-      const adminInfo = data.admin;
+      const token = result.data.token!;
+      const adminInfo = result.data.admin;
 
       setAdminSessionToken(token);
       try {
@@ -4157,6 +4179,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         unsubscribeNewsletter,
         isAdminLoggedIn,
         adminEmail,
+        adminSessionToken,
         currentAdminRole,
         loginAdmin,
         loginAdminWithCredentials,

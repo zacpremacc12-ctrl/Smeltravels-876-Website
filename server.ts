@@ -81,7 +81,7 @@ function recordEmailLog(entry: {
   sender: string;
   recipient: string | string[];
   subject: string;
-  status: 'Delivered' | 'Queued' | 'Simulated' | 'Failed';
+  status: 'Accepted' | 'Queued' | 'Delivered' | 'Simulated' | 'Failed' | 'Bounced';
   messageId?: string;
   error?: string;
   htmlContent?: string;
@@ -546,6 +546,15 @@ interface AdminSession {
 
 const activeAdminSessions = new Map<string, AdminSession>();
 
+// Restore any active persistent sessions
+if (siteDataCache.adminSessions && typeof siteDataCache.adminSessions === 'object') {
+  for (const [token, sess] of Object.entries(siteDataCache.adminSessions)) {
+    if ((sess as any)?.expiresAt > Date.now()) {
+      activeAdminSessions.set(token, sess as AdminSession);
+    }
+  }
+}
+
 function getAdminSessionFromReq(req: express.Request): AdminSession | null {
   const authHeader = req.headers.authorization;
   let token = '';
@@ -561,6 +570,10 @@ function getAdminSessionFromReq(req: express.Request): AdminSession | null {
   if (!session) return null;
   if (Date.now() > session.expiresAt) {
     activeAdminSessions.delete(token);
+    if (siteDataCache.adminSessions && siteDataCache.adminSessions[token]) {
+      delete siteDataCache.adminSessions[token];
+      persistData();
+    }
     return null;
   }
   return session;
@@ -606,6 +619,10 @@ app.post('/api/admin/login', (req, res) => {
     };
     activeAdminSessions.set(token, session);
 
+    siteDataCache.adminSessions = siteDataCache.adminSessions || {};
+    siteDataCache.adminSessions[token] = session;
+    persistData();
+
     console.log(`[Admin Auth] Administrator ${profile.name} (${cleanEmail}) authenticated successfully.`);
 
     return res.json({
@@ -643,11 +660,15 @@ app.post('/api/admin/verify-token', (req, res) => {
   });
 });
 
-// POST Admin Logout: revokes session token from memory
+// POST Admin Logout: revokes session token from memory and persistent store
 app.post('/api/admin/logout', (req, res) => {
   const session = getAdminSessionFromReq(req) || (req.body?.token && activeAdminSessions.get(req.body.token));
   if (session) {
     activeAdminSessions.delete(session.token);
+    if (siteDataCache.adminSessions && siteDataCache.adminSessions[session.token]) {
+      delete siteDataCache.adminSessions[session.token];
+      persistData();
+    }
   }
   return res.json({ success: true, message: 'Logged out successfully.' });
 });
@@ -890,24 +911,25 @@ const ADMIN_AUTHORIZED_EMAILS = [
   'zacpremacc12@gmail.com',
 ];
 
-function isAuthorizedAdminRequest(req: express.Request): boolean {
-  const adminEmail = (req.headers['x-admin-email'] as string || '').trim().toLowerCase();
-  const authHeader = (req.headers['authorization'] as string || '').trim();
-
-  if (adminEmail && (ADMIN_AUTHORIZED_EMAILS.includes(adminEmail) || adminEmail.endsWith('@smeltravels876.com'))) {
+// Rate limiting for public submission / notification endpoints
+const ipRateLimitMap = new Map<string, { count: number; resetAt: number }>();
+function checkRateLimit(ip: string, maxRequests = 25, windowMs = 60000): boolean {
+  const now = Date.now();
+  const entry = ipRateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    ipRateLimitMap.set(ip, { count: 1, resetAt: now + windowMs });
     return true;
   }
-  if (authHeader.startsWith('Bearer ')) {
-    const token = authHeader.slice(7).trim();
-    if (
-      ADMIN_AUTHORIZED_EMAILS.some((e) => token.toLowerCase().includes(e.toLowerCase())) ||
-      token === 'admin-authenticated-session' ||
-      token.length >= 8
-    ) {
-      return true;
-    }
+  if (entry.count >= maxRequests) {
+    return false;
   }
-  return false;
+  entry.count += 1;
+  return true;
+}
+
+function isAuthorizedAdminRequest(req: express.Request): boolean {
+  const session = getAdminSessionFromReq(req);
+  return Boolean(session);
 }
 
 // GET Resend integration status and sender configurations
@@ -936,10 +958,17 @@ app.get('/api/resend/status', (req, res) => {
   });
 });
 
-// GET Resend delivery audit logs
+// GET Resend delivery audit logs (Strictly restricted to authenticated administrators)
 app.get('/api/resend/logs', (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  if (!isAuthorizedAdminRequest(req)) {
+    return res.status(401).json({
+      success: false,
+      status: 'Unauthorized',
+      error: 'Access denied: Viewing email delivery audit logs is restricted to authenticated SMELTRAVELS876 administrators.',
+    });
+  }
   res.json({
     success: true,
     logs: siteDataCache.dispatchedEmails || [],
@@ -1049,6 +1078,35 @@ app.post('/api/resend/send', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Both template "type" and recipient "to" are required.' });
     }
 
+    const isAdmin = isAuthorizedAdminRequest(req);
+    const ALLOWED_PUBLIC_TEMPLATES: EmailTemplateType[] = [
+      'inquiry_customer',
+      'inquiry_admin',
+      'booking_customer',
+      'booking_admin',
+      'custom_trip_customer',
+      'custom_trip_admin',
+      'welcome_account',
+      'security_alert',
+    ];
+
+    if (!isAdmin && !ALLOWED_PUBLIC_TEMPLATES.includes(type)) {
+      return res.status(403).json({
+        success: false,
+        status: 'Forbidden',
+        error: `Template type '${type}' is restricted to authenticated administrators.`,
+      });
+    }
+
+    const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+    if (!isAdmin && !checkRateLimit(clientIp, 20, 60000)) {
+      return res.status(429).json({
+        success: false,
+        status: 'Rate Limited',
+        error: 'Too many requests. Please wait a moment before sending another notification.',
+      });
+    }
+
     const result = await sendResendEmail({
       type,
       to,
@@ -1082,6 +1140,37 @@ app.post('/api/resend/send', async (req, res) => {
     const errorMsg = err?.message || 'Email dispatch failed';
     console.error('[Resend Send API Exception]:', errorMsg);
     return res.status(500).json({ success: false, status: 'Failed', error: errorMsg });
+  }
+});
+
+// POST Resend Webhook: receives delivery, bounce, and complaint updates from Resend
+app.post('/api/resend/webhook', (req, res) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  try {
+    const event = req.body;
+    const type = event?.type;
+    const emailId = event?.data?.email_id || event?.data?.id;
+
+    if (emailId && Array.isArray(siteDataCache.dispatchedEmails)) {
+      const idx = siteDataCache.dispatchedEmails.findIndex((e: any) => e.messageId === emailId);
+      if (idx >= 0) {
+        if (type === 'email.delivered') {
+          siteDataCache.dispatchedEmails[idx].status = 'Delivered';
+        } else if (type === 'email.bounced') {
+          siteDataCache.dispatchedEmails[idx].status = 'Bounced';
+          siteDataCache.dispatchedEmails[idx].error = event?.data?.bounce?.message || 'Email was bounced by recipient server';
+        } else if (type === 'email.complained') {
+          siteDataCache.dispatchedEmails[idx].status = 'Failed';
+          siteDataCache.dispatchedEmails[idx].error = 'Spam complaint registered';
+        }
+        siteDataCache.lastUpdated = new Date().toISOString();
+        persistData();
+        broadcastSiteUpdate(siteDataCache);
+      }
+    }
+    return res.json({ success: true, processed: true });
+  } catch (err: any) {
+    return res.status(400).json({ success: false, error: err.message });
   }
 });
 

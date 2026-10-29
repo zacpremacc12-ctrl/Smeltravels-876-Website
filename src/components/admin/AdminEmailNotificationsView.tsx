@@ -27,7 +27,7 @@ export interface EmailLogItem {
   sender: string;
   recipient: string | string[];
   subject: string;
-  status: 'Delivered' | 'Queued' | 'Simulated' | 'Failed';
+  status: 'Accepted' | 'Delivered' | 'Queued' | 'Simulated' | 'Failed' | 'Bounced';
   messageId?: string;
   error?: string;
   timestamp: string;
@@ -126,7 +126,7 @@ async function safeApiCall<T = any>(
 }
 
 export const AdminEmailNotificationsView: React.FC = () => {
-  const { adminEmail, showNotification } = useApp();
+  const { adminEmail, adminSessionToken, showNotification } = useApp();
 
   // Status state
   const [isConfigured, setIsConfigured] = useState<boolean>(true);
@@ -143,7 +143,7 @@ export const AdminEmailNotificationsView: React.FC = () => {
   const [previewEmail, setPreviewEmail] = useState<EmailLogItem | null>(null);
 
   // Test email state
-  const [testTo, setTestTo] = useState(adminEmail || 'zacpremacc12@gmail.com');
+  const [testTo, setTestTo] = useState(adminEmail || 'smeltravels876@gmail.com');
   const [testSenderChoice, setTestSenderChoice] = useState<'bookings' | 'notifications'>('bookings');
   const [testTemplateType, setTestTemplateType] = useState<string>('test_email');
   const [testCustomSubject, setTestCustomSubject] = useState('');
@@ -160,11 +160,27 @@ export const AdminEmailNotificationsView: React.FC = () => {
     channel?: string;
   } | null>(null);
 
-  // Fetch status and logs safely with admin headers
+  // Dynamic authenticated headers using real administrator session token
+  const authHeaders = useMemo(() => {
+    const token =
+      adminSessionToken ||
+      (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('smeltravels_admin_token') : null) ||
+      (typeof localStorage !== 'undefined' ? localStorage.getItem('smeltravels_admin_token') : null);
+
+    const headers: Record<string, string> = {
+      'x-admin-email': adminEmail || 'smeltravels876@gmail.com',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+  }, [adminEmail, adminSessionToken]);
+
+  // Fetch status and logs safely with real admin session headers
   const fetchStatus = async () => {
     try {
       const result = await safeApiCall<any>('/api/resend/status', {
-        headers: { 'x-admin-email': adminEmail || 'zacpremacc12@gmail.com' },
+        headers: authHeaders,
       });
       if (result.ok && result.data) {
         setIsConfigured(Boolean(result.data.configured));
@@ -182,10 +198,7 @@ export const AdminEmailNotificationsView: React.FC = () => {
     setLogsLoading(true);
     try {
       const result = await safeApiCall<any>('/api/resend/logs', {
-        headers: {
-          'x-admin-email': adminEmail || 'zacpremacc12@gmail.com',
-          'Authorization': 'Bearer admin-authenticated-session',
-        },
+        headers: authHeaders,
       });
       if (result.ok && result.data?.success && Array.isArray(result.data.logs)) {
         setLogs(result.data.logs);
@@ -202,7 +215,7 @@ export const AdminEmailNotificationsView: React.FC = () => {
     fetchLogs();
     const interval = setInterval(fetchLogs, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [authHeaders]);
 
   // Handle Test Email Dispatch with Administrator Security & Resilient Error Catching
   const handleSendTestEmail = async (e: React.FormEvent) => {
@@ -215,14 +228,11 @@ export const AdminEmailNotificationsView: React.FC = () => {
     setIsSendingTest(true);
     setTestResult(null);
 
-    const activeAdminEmail = adminEmail || 'zacpremacc12@gmail.com';
-
     const result = await safeApiCall<any>('/api/resend/test', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-admin-email': activeAdminEmail,
-        'Authorization': 'Bearer admin-authenticated-session',
+        ...authHeaders,
       },
       body: JSON.stringify({
         to: testTo.trim(),
@@ -236,7 +246,7 @@ export const AdminEmailNotificationsView: React.FC = () => {
     if (result.ok && result.data && result.data.success) {
       setTestResult({
         success: true,
-        status: result.data.status || 'Delivered',
+        status: result.data.status || 'Accepted',
         messageId: result.data.messageId,
         subject: result.data.subject,
         httpStatus: result.status,
@@ -244,7 +254,7 @@ export const AdminEmailNotificationsView: React.FC = () => {
       });
       showNotification(
         'Email Dispatched!',
-        `Test message sent to ${testTo} (${result.data.status}). Check inbox or logs below.`,
+        `Test message sent to ${testTo} (${result.data.status || 'Accepted'}). Check inbox or logs below.`,
         'success'
       );
       fetchLogs();
@@ -271,10 +281,7 @@ export const AdminEmailNotificationsView: React.FC = () => {
     try {
       const result = await safeApiCall<any>('/api/resend/logs', {
         method: 'DELETE',
-        headers: {
-          'x-admin-email': adminEmail || 'zacpremacc12@gmail.com',
-          'Authorization': 'Bearer admin-authenticated-session',
-        },
+        headers: authHeaders,
       });
       if (result.ok) {
         setLogs([]);
@@ -315,9 +322,9 @@ export const AdminEmailNotificationsView: React.FC = () => {
     });
   }, [logs, searchQuery, statusFilter, senderFilter]);
 
-  const deliveredCount = logs.filter((l) => l.status === 'Delivered').length;
+  const deliveredCount = logs.filter((l) => l.status === 'Delivered' || l.status === 'Accepted').length;
   const simulatedCount = logs.filter((l) => l.status === 'Simulated').length;
-  const failedCount = logs.filter((l) => l.status === 'Failed').length;
+  const failedCount = logs.filter((l) => l.status === 'Failed' || l.status === 'Bounced').length;
 
   return (
     <div className="space-y-6">
@@ -749,6 +756,8 @@ export const AdminEmailNotificationsView: React.FC = () => {
                             className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
                               log.status === 'Delivered'
                                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : log.status === 'Accepted' || log.status === 'Queued'
+                                ? 'bg-blue-50 text-blue-700 border border-blue-200'
                                 : log.status === 'Simulated'
                                 ? 'bg-amber-50 text-amber-700 border border-amber-200'
                                 : 'bg-rose-50 text-rose-700 border border-rose-200'
