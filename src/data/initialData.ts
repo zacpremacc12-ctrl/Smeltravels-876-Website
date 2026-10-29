@@ -1287,7 +1287,11 @@ export const INITIAL_MEDIA: MediaItem[] = [
   }
 ];
 
-export const INITIAL_CUSTOMERS: CustomerRecord[] = [
+// Authoritative Production Defaults (authoritative records are persisted centrally on the server)
+export const INITIAL_CUSTOMERS: CustomerRecord[] = [];
+
+// Demonstration archive preserved for reference/testing without populating production
+export const DEMO_SAMPLE_CUSTOMERS: CustomerRecord[] = [
   {
     id: 'cust-1',
     name: 'Kadeen Campbell',
@@ -1320,7 +1324,11 @@ export const INITIAL_CUSTOMERS: CustomerRecord[] = [
   }
 ];
 
-export const INITIAL_BOOKINGS: BookingSubmission[] = [
+// Authoritative Production Defaults (authoritative records are persisted centrally on the server)
+export const INITIAL_BOOKINGS: BookingSubmission[] = [];
+
+// Demonstration archive preserved for reference/testing without populating production
+export const DEMO_SAMPLE_BOOKINGS: BookingSubmission[] = [
   {
     id: 'book-shanice-54311',
     referenceNumber: 'INQ-54311',
@@ -1477,7 +1485,11 @@ export const INITIAL_BOOKINGS: BookingSubmission[] = [
   }
 ];
 
-export const INITIAL_ADMIN_INBOX: AdminInboxItem[] = [
+// Authoritative Production Defaults (authoritative records are persisted centrally on the server)
+export const INITIAL_ADMIN_INBOX: AdminInboxItem[] = [];
+
+// Demonstration archive preserved for reference/testing without populating production
+export const DEMO_SAMPLE_ADMIN_INBOX: AdminInboxItem[] = [
   {
     id: 'inbox-shanice-54311',
     type: 'inquiry',
@@ -1586,7 +1598,11 @@ export const INITIAL_ADMIN_INBOX: AdminInboxItem[] = [
   }
 ];
 
-export const INITIAL_ADMIN_ORDERS_EXCEL: AdminOrderExcelRecord[] = [
+// Authoritative Production Defaults (authoritative records are persisted centrally on the server)
+export const INITIAL_ADMIN_ORDERS_EXCEL: AdminOrderExcelRecord[] = [];
+
+// Demonstration archive preserved for reference/testing without populating production
+export const DEMO_SAMPLE_ADMIN_ORDERS_EXCEL: AdminOrderExcelRecord[] = [
   {
     id: 'order-shanice-54311',
     orderRef: 'INQ-54311',

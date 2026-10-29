@@ -677,8 +677,12 @@ export const AdminOrdersTable: React.FC = () => {
                 <tr>
                   <td colSpan={21} className="p-12 text-center text-neutral-400 bg-neutral-50/50">
                     <FileSpreadsheet className="w-10 h-10 mx-auto mb-2 text-neutral-300" />
-                    <p className="font-bold text-neutral-600">No orders match the selected filters</p>
-                    <p className="text-xs mt-1">Try clearing your search or reset filters above.</p>
+                    <p className="font-bold text-neutral-600">
+                      {adminOrdersExcel.length === 0 ? 'No customer inquiries have been received.' : 'No orders match the selected filters'}
+                    </p>
+                    <p className="text-xs mt-1">
+                      {adminOrdersExcel.length === 0 ? 'Confirmed customer inquiries and custom trip requests will automatically appear here live.' : 'Try clearing your search or reset filters above.'}
+                    </p>
                   </td>
                 </tr>
               ) : (

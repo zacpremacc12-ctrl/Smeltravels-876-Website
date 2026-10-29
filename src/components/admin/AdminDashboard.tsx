@@ -995,7 +995,7 @@ export const AdminDashboard: React.FC = () => {
                     ) : (
                       <tr>
                         <td colSpan={8} className="p-8 text-center text-neutral-500">
-                          No inquiries found matching current search criteria.
+                          {bookings.length === 0 ? 'No customer inquiries have been received.' : 'No inquiries found matching current search criteria.'}
                         </td>
                       </tr>
                     )}

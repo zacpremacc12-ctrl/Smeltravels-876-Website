@@ -21,7 +21,7 @@ export const AdminLoginLock: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
@@ -35,14 +35,16 @@ export const AdminLoginLock: React.FC = () => {
     }
 
     setIsLoading(true);
-    // Slight tick to simulate secure verification
-    setTimeout(() => {
-      const result = loginAdminWithCredentials(email, password);
+    try {
+      const result = await loginAdminWithCredentials(email, password);
       setIsLoading(false);
       if (!result.success) {
         setErrorMessage(result.error || 'Invalid credentials. Access denied.');
       }
-    }, 350);
+    } catch (err: any) {
+      setIsLoading(false);
+      setErrorMessage(err?.message || 'Login failed. Please verify credentials.');
+    }
   };
 
   const handleAutofillEmail = (adminEmail: string) => {

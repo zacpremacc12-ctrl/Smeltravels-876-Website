@@ -446,10 +446,12 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
               <Inbox className="w-7 h-7" />
             </div>
             <h3 className="text-base font-bold text-neutral-900 font-['Outfit',sans-serif]">
-              No Notifications Found
+              {adminInbox.length === 0 ? 'No customer inquiries have been received.' : 'No Notifications Found'}
             </h3>
             <p className="text-xs text-neutral-500 max-w-sm mx-auto">
-              {unreadOnly
+              {adminInbox.length === 0
+                ? 'Any genuine customer booking inquiries, custom trip briefs, and traveler messages will appear here in real-time across all devices.'
+                : unreadOnly
                 ? 'There are no unread notifications in this view. Switch off "Unread Only" to view older entries.'
                 : 'No inbox items match your current filters. Any new booking inquiries, deposits, reviews, or messages will show up here.'}
             </p>

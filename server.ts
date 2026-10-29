@@ -4,6 +4,7 @@ dotenv.config();
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import { createServer as createViteServer } from 'vite';
 import {
@@ -496,23 +497,256 @@ app.get('/api/site-version', (req, res) => {
   });
 });
 
-// GET all live site data (settings, trips, bookings, inbox, etc.) with cache-busting headers
+// --- AUTHORITATIVE ADMINISTRATOR AUTHENTICATION & ACCESS CONTROL ---
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Jjrrss5521';
+
+const ADMIN_PROFILES: Record<string, { name: string; title: string; phone: string; role: string }> = {
+  'smeltravels876@gmail.com': {
+    name: 'Elvoy Bennett',
+    title: 'CEO | SMELTRAVELS876',
+    phone: '(876) 834-1537',
+    role: 'Super Admin',
+  },
+  'zbuchanan.smeltravels@gmail.com': {
+    name: 'Zachary Buchanan',
+    title: 'Travel Ambassador',
+    phone: '(876) 848-9772',
+    role: 'Super Admin',
+  },
+  'zacpremacc12@gmail.com': {
+    name: 'Zachary Buchanan',
+    title: 'Travel Ambassador / Lead Admin',
+    phone: '(876) 848-9772',
+    role: 'Super Admin',
+  },
+  'jvirgo.smeltravels@gmail.com': {
+    name: 'Jada Virgo',
+    title: 'Travel Ambassador',
+    phone: '(876) 566-6923',
+    role: 'Super Admin',
+  },
+  'sdavis.smeltravels@gmail.com': {
+    name: 'Shenoya Davis',
+    title: 'Travel Ambassador',
+    phone: '(876) 276-1310',
+    role: 'Super Admin',
+  },
+};
+
+interface AdminSession {
+  token: string;
+  email: string;
+  name: string;
+  title: string;
+  phone: string;
+  role: string;
+  createdAt: number;
+  expiresAt: number;
+}
+
+const activeAdminSessions = new Map<string, AdminSession>();
+
+function getAdminSessionFromReq(req: express.Request): AdminSession | null {
+  const authHeader = req.headers.authorization;
+  let token = '';
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7).trim();
+  } else if (req.headers['x-admin-token']) {
+    token = String(req.headers['x-admin-token']).trim();
+  } else if (req.query.admin_token) {
+    token = String(req.query.admin_token).trim();
+  }
+  if (!token) return null;
+  const session = activeAdminSessions.get(token);
+  if (!session) return null;
+  if (Date.now() > session.expiresAt) {
+    activeAdminSessions.delete(token);
+    return null;
+  }
+  return session;
+}
+
+function requireAdminAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const session = getAdminSessionFromReq(req);
+  if (!session) {
+    return res.status(401).json({
+      success: false,
+      error: 'Unauthorized: Valid administrator credentials required.',
+    });
+  }
+  (req as any).adminSession = session;
+  next();
+}
+
+// POST Admin Login: verifies credentials against backend, issues signed session token
+app.post('/api/admin/login', (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const cleanPassword = String(password || '').trim();
+
+    const profile = ADMIN_PROFILES[cleanEmail];
+    if (!profile || cleanPassword !== ADMIN_PASSWORD) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid administrator email or password. Access denied.',
+      });
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const session: AdminSession = {
+      token,
+      email: cleanEmail,
+      name: profile.name,
+      title: profile.title,
+      phone: profile.phone,
+      role: profile.role,
+      createdAt: Date.now(),
+      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
+    };
+    activeAdminSessions.set(token, session);
+
+    console.log(`[Admin Auth] Administrator ${profile.name} (${cleanEmail}) authenticated successfully.`);
+
+    return res.json({
+      success: true,
+      token,
+      admin: {
+        name: session.name,
+        email: session.email,
+        title: session.title,
+        phone: session.phone,
+        role: session.role,
+      },
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST Admin Token Verification: allows seamless session restoration on page reload
+app.post('/api/admin/verify-token', (req, res) => {
+  const session = getAdminSessionFromReq(req) || (req.body?.token && activeAdminSessions.get(req.body.token));
+  if (!session || Date.now() > session.expiresAt) {
+    return res.status(401).json({ success: false, valid: false, error: 'Session expired or invalid.' });
+  }
+  return res.json({
+    success: true,
+    valid: true,
+    admin: {
+      name: session.name,
+      email: session.email,
+      title: session.title,
+      phone: session.phone,
+      role: session.role,
+    },
+  });
+});
+
+// POST Admin Logout: revokes session token from memory
+app.post('/api/admin/logout', (req, res) => {
+  const session = getAdminSessionFromReq(req) || (req.body?.token && activeAdminSessions.get(req.body.token));
+  if (session) {
+    activeAdminSessions.delete(session.token);
+  }
+  return res.json({ success: true, message: 'Logged out successfully.' });
+});
+
+// GET Authoritative Admin Records: provides real-time inquiries, bookings, Excel orders, and customer records
+app.get('/api/admin/full-records', requireAdminAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  return res.json({
+    success: true,
+    adminInbox: Array.isArray(siteDataCache.adminInbox) ? siteDataCache.adminInbox : [],
+    bookings: Array.isArray(siteDataCache.bookings) ? siteDataCache.bookings : [],
+    adminOrdersExcel: Array.isArray(siteDataCache.adminOrdersExcel) ? siteDataCache.adminOrdersExcel : [],
+    customers: Array.isArray(siteDataCache.customers) ? siteDataCache.customers : [],
+    dispatchedEmails: Array.isArray(siteDataCache.dispatchedEmails) ? siteDataCache.dispatchedEmails : [],
+    lastUpdated: siteDataCache.lastUpdated || new Date().toISOString(),
+  });
+});
+
+// GET Public or Admin Site Data: ensures customer records are never leaked to unauthenticated public visitors
 app.get('/api/site-data', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
   res.setHeader('Surrogate-Control', 'no-store');
-  res.json({
+
+  const session = getAdminSessionFromReq(req);
+  if (session) {
+    return res.json({
+      success: true,
+      data: siteDataCache,
+      lastUpdated: siteDataCache.lastUpdated || new Date().toISOString(),
+    });
+  }
+
+  // Public visitor view: strip administrative and customer data
+  const publicData = {
+    ...siteDataCache,
+    adminInbox: [],
+    bookings: [],
+    adminOrdersExcel: [],
+    customers: [],
+    dispatchedEmails: [],
+  };
+
+  return res.json({
     success: true,
-    data: siteDataCache,
+    data: publicData,
     lastUpdated: siteDataCache.lastUpdated || new Date().toISOString(),
+  });
+});
+
+// GET Traveler Inquiry Status: allows travelers to view only their own booking without exposing other customers
+app.get('/api/traveler/inquiry-status', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  const ref = String(req.query.ref || '').trim().toLowerCase();
+  const email = String(req.query.email || '').trim().toLowerCase();
+
+  if (!ref && !email) {
+    return res.status(400).json({ success: false, error: 'Reference number or email required.' });
+  }
+
+  const bookings = Array.isArray(siteDataCache.bookings) ? siteDataCache.bookings : [];
+  const orders = Array.isArray(siteDataCache.adminOrdersExcel) ? siteDataCache.adminOrdersExcel : [];
+
+  const matchedBooking = bookings.find((b: any) =>
+    (ref && (String(b.referenceNumber || '').toLowerCase() === ref || String(b.id || '').toLowerCase() === ref)) ||
+    (email && String(b.email || '').toLowerCase() === email)
+  );
+
+  const matchedOrder = orders.find((o: any) =>
+    (ref && (String(o.orderRef || '').toLowerCase() === ref || String(o.id || '').toLowerCase() === ref)) ||
+    (email && String(o.email || '').toLowerCase() === email)
+  );
+
+  if (!matchedBooking && !matchedOrder) {
+    return res.status(404).json({ success: false, error: 'No inquiry or booking found matching provided details.' });
+  }
+
+  return res.json({
+    success: true,
+    booking: matchedBooking || null,
+    order: matchedOrder || null,
   });
 });
 
 // POST update live site data - immediately persists and broadcasts to ALL users
 app.post('/api/site-data', (req, res) => {
   try {
-    const updates = req.body;
+    const updates = { ...(req.body || {}) };
+    const session = getAdminSessionFromReq(req);
+    // If not authenticated as admin, strip customer collections to protect data integrity
+    if (!session) {
+      delete updates.adminInbox;
+      delete updates.bookings;
+      delete updates.adminOrdersExcel;
+      delete updates.customers;
+      delete updates.dispatchedEmails;
+    }
     if (updates && typeof updates === 'object') {
       const mergedSettings = updates.settings && typeof updates.settings === 'object'
         ? {
@@ -1083,7 +1317,7 @@ app.post('/api/custom-trip-request', async (req, res) => {
     const formattedDeparture = formatReadable(departureDateStr);
     const travelDatesSummary = `Arrival: ${formattedArrival} · Departure: ${formattedDeparture}`;
 
-    const ref = `CUSTOM-${Math.floor(10000 + Math.random() * 90000)}`;
+    const ref = req.body.referenceNumber || `CUSTOM-${Math.floor(10000 + Math.random() * 90000)}`;
     const recipients = ['zbuchanan.smeltravels@gmail.com', 'smeltravels876@gmail.com'];
     const adminRecipients = ['Elvoy Bennett', 'Zachary Buchanan'];
     const now = new Date().toISOString();
@@ -1317,7 +1551,7 @@ app.post('/api/trip-inquiry', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Customer name and email are required.' });
     }
 
-    const ref = `INQ-${Math.floor(10000 + Math.random() * 90000)}`;
+    const ref = req.body.referenceNumber || `INQ-${Math.floor(10000 + Math.random() * 90000)}`;
     const recipients = ['zbuchanan.smeltravels@gmail.com', 'smeltravels876@gmail.com'];
     const adminRecipients = ['Elvoy Bennett', 'Zachary Buchanan'];
     const now = new Date().toISOString();
@@ -1397,10 +1631,17 @@ app.post('/api/trip-inquiry', async (req, res) => {
     const newInboxItem = {
       id: `inbox-inq-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       type: 'inquiry',
-      title: `Trip Inquiry: ${tripName || 'Travel Package'} (${stageLabel})`,
+      title: `Booking Inquiry: ${tripName || 'Travel Package'} (${customerName})`,
       senderName: customerName,
       senderEmail: email,
       senderPhone: phone || 'N/A',
+      location: parish || 'Jamaica',
+      preferredContact: preferredContactMethod || 'WhatsApp',
+      travelersCount: req.body.travelersCount || (adultsCount ? `${adultsCount} Adults` : '2 Adults'),
+      travelDates: req.body.travelDates || req.body.preferredTravelDate || 'November 2026',
+      arrivalDate: req.body.arrivalDate,
+      departureDate: req.body.departureDate,
+      customerMessage: inquiryContent,
       summary: `Inquiry from ${customerName} (${parish || 'Jamaica'}). Notified both Admins: Elvoy Bennett & Zachary Buchanan. Email dispatched to ${recipients.join(' & ')}.`,
       details: `Customer: ${customerName}\nEmail: ${email}\nPhone: ${phone || 'N/A'}\nParish: ${parish || 'Jamaica'}\nStage: ${stageLabel}\nTrip: ${tripName || 'Package'}\nInquiry: ${inquiryContent}\nPreferred Contact: ${preferredContactMethod || 'WhatsApp'}\nDesignated Admins: Elvoy Bennett & Zachary Buchanan\nAuto-Dispatched Emails: ${recipients.join(', ')}`,
       tripId: tripId || undefined,
@@ -1413,7 +1654,7 @@ app.post('/api/trip-inquiry', async (req, res) => {
       emailStatus: 'Delivered',
     };
 
-    siteDataCache.adminInbox = [newInboxItem, ...currentInbox];
+    siteDataCache.adminInbox = [newInboxItem, ...currentInbox.filter((i: any) => i.referenceNumber !== ref)];
 
     // 3. Add to Contacts / Inquiries record
     const currentContacts = Array.isArray(siteDataCache.contacts) ? siteDataCache.contacts : [];
@@ -1447,7 +1688,10 @@ app.post('/api/trip-inquiry', async (req, res) => {
       countryOrParish: parish || 'Jamaica',
       adultsCount: Number(adultsCount) || 1,
       childrenCount: 0,
-      preferredTravelDate: req.body.preferredTravelDate || 'November 2026',
+      travelDates: req.body.travelDates || req.body.preferredTravelDate || 'November 2026',
+      preferredTravelDate: req.body.travelDates || req.body.preferredTravelDate || 'November 2026',
+      arrivalDate: req.body.arrivalDate,
+      departureDate: req.body.departureDate,
       travelInterestType: inquiryType || 'ready_to_book',
       specialRequests: inquiryContent,
       preferredContactMethod: preferredContactMethod || 'whatsapp',
@@ -1474,7 +1718,9 @@ app.post('/api/trip-inquiry', async (req, res) => {
       phone: phone || '',
       parishOrCountry: parish || 'Jamaica',
       tripOrDestination: tripName || 'Travel Package',
-      travelDates: req.body.preferredTravelDate || 'November 2026',
+      travelDates: req.body.travelDates || req.body.preferredTravelDate || 'November 2026',
+      arrivalDate: req.body.arrivalDate,
+      departureDate: req.body.departureDate,
       adultsCount: Number(adultsCount) || 1,
       childrenCount: 0,
       budget: req.body.budget || 'Standard Package',

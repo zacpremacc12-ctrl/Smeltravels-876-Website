@@ -158,7 +158,7 @@ interface AppContextType {
   adminEmail: string | null;
   currentAdminRole: AdminRole;
   loginAdmin: (role?: AdminRole) => void;
-  loginAdminWithCredentials: (email: string, password: string) => { success: boolean; error?: string };
+  loginAdminWithCredentials: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logoutAdmin: () => void;
 
   // Admin Inbox
@@ -409,9 +409,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return getStoredItem('trips', INITIAL_TRIPS);
   });
   const [destinations, setDestinations] = useState<Destination[]>(() => getStoredItem('destinations', INITIAL_DESTINATIONS));
-  const [bookings, setBookings] = useState<BookingSubmission[]>(() => getStoredItem('bookings', INITIAL_BOOKINGS));
-  const [contactSubmissions, setContactSubmissions] = useState<ContactSubmission[]>(() => getStoredItem('contacts', []));
-  const [customers, setCustomers] = useState<CustomerRecord[]>(() => getStoredItem('customers', INITIAL_CUSTOMERS));
+  // Authoritative customer data: initialized cleanly in memory and populated exclusively from authoritative central database
+  const [bookings, setBookings] = useState<BookingSubmission[]>([]);
+  const [contactSubmissions, setContactSubmissions] = useState<ContactSubmission[]>([]);
+  const [customers, setCustomers] = useState<CustomerRecord[]>([]);
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>(() => getStoredItem('blog', INITIAL_BLOG_POSTS));
   const [offers, setOffers] = useState<OfferItem[]>(() => getStoredItem('offers', INITIAL_OFFERS));
   const [testimonials, setTestimonials] = useState<TestimonialItem[]>(() => getStoredItem('testimonials', INITIAL_TESTIMONIALS));
@@ -421,26 +422,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     { id: 'sub-1', firstName: 'Kadeen', email: 'kadeen.campbell@example.com', subscribedAt: '2026-08-10', isActive: true, source: 'Website Footer' }
   ]));
 
-  // Admin Inbox state
-  const [adminInbox, setAdminInbox] = useState<AdminInboxItem[]>(() => {
-    return getStoredItem('admin_inbox', INITIAL_ADMIN_INBOX);
-  });
+  // Admin Inbox state - authoritative live central records
+  const [adminInbox, setAdminInbox] = useState<AdminInboxItem[]>([]);
 
-  // Admin Order Excel Database state
-  const [adminOrdersExcel, setAdminOrdersExcel] = useState<AdminOrderExcelRecord[]>(() => {
-    const raw = getStoredItem('admin_orders_excel', INITIAL_ADMIN_ORDERS_EXCEL);
-    return raw.map((r: AdminOrderExcelRecord) => {
-      if (r.numericalBudget === undefined || r.numericalBudget === null) {
-        const parsed = parseFloat(String(r.budget || '').replace(/[^0-9.]/g, '')) || 0;
-        return {
-          ...r,
-          budget: parsed > 0 && isNaN(Number(r.budget)) ? String(parsed) : r.budget,
-          numericalBudget: parsed,
-        };
-      }
-      return r;
-    });
-  });
+  // Admin Order Excel Database state - authoritative live central records
+  const [adminOrdersExcel, setAdminOrdersExcel] = useState<AdminOrderExcelRecord[]>([]);
 
   // Bookmarked / Saved trips state
   const [savedTripIds, setSavedTripIds] = useState<string[]>(() => {
@@ -485,10 +471,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [pendingTripForBooking, setPendingTripForBooking] = useState<TripPackage | null>(null);
   const [authNotice, setAuthNotice] = useState<string | null>(null);
 
-  // Admin states
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => getStoredItem('admin_logged', false));
-  const [adminEmail, setAdminEmail] = useState<string | null>(() => getStoredItem('admin_email', null));
-  const [currentAdminRole, setCurrentAdminRole] = useState<AdminRole>(() => getStoredItem('admin_role', 'Super Admin'));
+  // Admin states - authenticated and verified via server token
+  const [adminSessionToken, setAdminSessionToken] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem('smeltravels_admin_token') || localStorage.getItem('smeltravels_admin_token') || null;
+    } catch {
+      return null;
+    }
+  });
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(false);
+  const [adminEmail, setAdminEmail] = useState<string | null>(null);
+  const [currentAdminRole, setCurrentAdminRole] = useState<AdminRole>('Super Admin');
 
   // Notification state
   const [activeNotification, setActiveNotification] = useState<{ title: string; message: string; type: 'success' | 'info' | 'warning' } | null>(null);
@@ -578,21 +571,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => { setStoredItem('settings', settings); }, [settings]);
   useEffect(() => { setStoredItem('trips', trips); }, [trips]);
   useEffect(() => { setStoredItem('destinations', destinations); }, [destinations]);
-  useEffect(() => { setStoredItem('bookings', bookings); }, [bookings]);
-  useEffect(() => { setStoredItem('contacts', contactSubmissions); }, [contactSubmissions]);
-  useEffect(() => { setStoredItem('customers', customers); }, [customers]);
-  useEffect(() => { setStoredItem('blog', blogPosts); }, [blogPosts]);
-  useEffect(() => { setStoredItem('offers', offers); }, [offers]);
-  useEffect(() => { setStoredItem('testimonials', testimonials); }, [testimonials]);
-  useEffect(() => { setStoredItem('faqs', faqs); }, [faqs]);
-  useEffect(() => { setStoredItem('media', mediaList); }, [mediaList]);
-  useEffect(() => { setStoredItem('subscribers', subscribers); }, [subscribers]);
-  useEffect(() => { setStoredItem('admin_inbox', adminInbox); }, [adminInbox]);
-  useEffect(() => { setStoredItem('admin_orders_excel', adminOrdersExcel); }, [adminOrdersExcel]);
-  useEffect(() => { setStoredItem('saved_trips', savedTripIds); }, [savedTripIds]);
-  useEffect(() => { setStoredItem('admin_logged', isAdminLoggedIn); }, [isAdminLoggedIn]);
-  useEffect(() => { setStoredItem('admin_email', adminEmail); }, [adminEmail]);
-  useEffect(() => { setStoredItem('admin_role', currentAdminRole); }, [currentAdminRole]);
+  // Note: Customer records (bookings, contacts, customers, adminInbox, adminOrdersExcel)
+  // and admin sessions are intentionally NOT stored in localStorage to prevent multi-browser desync and security exposure.
   useEffect(() => { setStoredItem('traveler_user', currentUser); }, [currentUser]);
   useEffect(() => { setStoredItem('departure_airports', departureAirports); }, [departureAirports]);
   useEffect(() => { setStoredItem('origin_pricing_routes', originPricingRoutes); }, [originPricingRoutes]);
@@ -675,7 +655,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         try {
           if (JSON.stringify(prev) === JSON.stringify(bookingsArray)) return prev;
         } catch (e) {}
-        setStoredItem('bookings', bookingsArray);
         return bookingsArray;
       });
     }
@@ -686,7 +665,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         try {
           if (JSON.stringify(prev) === JSON.stringify(contactsArray)) return prev;
         } catch (e) {}
-        setStoredItem('contacts', contactsArray);
         return contactsArray;
       });
     }
@@ -697,7 +675,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         try {
           if (JSON.stringify(prev) === JSON.stringify(customersArray)) return prev;
         } catch (e) {}
-        setStoredItem('customers', customersArray);
         return customersArray;
       });
     }
@@ -752,7 +729,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         try {
           if (JSON.stringify(prev) === JSON.stringify(adminInboxArray)) return prev;
         } catch (e) {}
-        setStoredItem('admin_inbox', adminInboxArray);
         return adminInboxArray;
       });
     }
@@ -763,7 +739,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         try {
           if (JSON.stringify(prev) === JSON.stringify(ordersExcelArray)) return prev;
         } catch (e) {}
-        setStoredItem('admin_orders_excel', ordersExcelArray);
         return ordersExcelArray;
       });
     }
@@ -863,15 +838,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const applyServerData = applyFirestoreContent;
   const lastServerTimestampRef = useRef<string>('');
 
-  // Primary fresh fetch from Express server cache with anti-cache headers
-  const fetchFromServer = useCallback(async () => {
+  // Authoritative admin records fetcher using verified server session token
+  const fetchAdminRecords = useCallback(async (tokenToUse?: string) => {
+    const activeToken = tokenToUse || adminSessionToken;
+    if (!activeToken) return;
     try {
-      const res = await fetch(`/api/site-data?_t=${Date.now()}`, {
+      const res = await fetch(`/api/admin/full-records?_t=${Date.now()}`, {
         cache: 'no-store',
         headers: {
+          'Authorization': `Bearer ${activeToken}`,
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           Pragma: 'no-cache',
         },
+      });
+      if (res.status === 401) {
+        setAdminSessionToken(null);
+        setIsAdminLoggedIn(false);
+        try {
+          sessionStorage.removeItem('smeltravels_admin_token');
+          localStorage.removeItem('smeltravels_admin_token');
+        } catch {}
+        return;
+      }
+      const json = await res.json();
+      if (json && json.success) {
+        if (Array.isArray(json.adminInbox)) setAdminInbox(json.adminInbox);
+        if (Array.isArray(json.bookings)) setBookings(json.bookings);
+        if (Array.isArray(json.adminOrdersExcel)) setAdminOrdersExcel(json.adminOrdersExcel);
+        if (Array.isArray(json.customers)) setCustomers(json.customers);
+      }
+    } catch (err) {}
+  }, [adminSessionToken]);
+
+  // Primary fresh fetch from Express server cache with anti-cache headers
+  const fetchFromServer = useCallback(async () => {
+    try {
+      const headers: Record<string, string> = {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+      };
+      if (adminSessionToken) {
+        headers['Authorization'] = `Bearer ${adminSessionToken}`;
+      }
+      const res = await fetch(`/api/site-data?_t=${Date.now()}`, {
+        cache: 'no-store',
+        headers,
       });
       const json = await res.json();
       if (json && json.success && json.data) {
@@ -881,7 +892,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (err) {
       // Quiet failover on network hiccups
     }
-  }, [applyFirestoreContent]);
+    if (adminSessionToken) {
+      await fetchAdminRecords(adminSessionToken);
+    }
+  }, [adminSessionToken, applyFirestoreContent, fetchAdminRecords]);
+
+  // Seamless Session Verification on Mount / Reload across all browsers
+  useEffect(() => {
+    let isCancelled = false;
+    if (!adminSessionToken) return;
+
+    fetch('/api/admin/verify-token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${adminSessionToken}`,
+      },
+      body: JSON.stringify({ token: adminSessionToken }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (isCancelled) return;
+        if (data && data.success && data.admin) {
+          setIsAdminLoggedIn(true);
+          setAdminEmail(data.admin.email);
+          setCurrentAdminRole((data.admin.role || 'Super Admin') as AdminRole);
+          fetchAdminRecords(adminSessionToken);
+        } else {
+          setAdminSessionToken(null);
+          setIsAdminLoggedIn(false);
+          setAdminEmail(null);
+          try {
+            sessionStorage.removeItem('smeltravels_admin_token');
+            localStorage.removeItem('smeltravels_admin_token');
+          } catch {}
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [adminSessionToken, fetchAdminRecords]);
 
   // Public refresh function exposed to AdminDashboard and components
   const refreshSiteData = useCallback(async () => {
@@ -3280,9 +3332,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showNotification('Unsubscribed', `${email} has been unsubscribed from travel updates.`, 'info');
   };
 
-  // Admin Auth - Email & Password Protected
+  // Authoritative Administrator Identity Profiles (Passwords are strictly checked and verified on server.ts)
   const REQUIRED_ADMIN_EMAIL = 'smeltravels876@gmail.com';
-  const REQUIRED_ADMIN_PASSWORD = 'Jjrrss5521';
   const ADMIN_AUTHORIZED_EMAILS = [
     'smeltravels876@gmail.com',
     'zbuchanan.smeltravels@gmail.com',
@@ -3385,75 +3436,92 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showNotification('Admin Authenticated', `Signed in to SMELTRAVELS876 as ${role}.`);
   };
 
-  const loginAdminWithCredentials = (email: string, password: string): { success: boolean; error?: string } => {
+  const loginAdminWithCredentials = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     const cleanEmail = (email || '').trim().toLowerCase();
     const cleanPassword = (password || '').trim();
 
-    const isMatchEmail = ADMIN_AUTHORIZED_EMAILS.includes(cleanEmail) || 
-      cleanEmail === REQUIRED_ADMIN_EMAIL.toLowerCase() ||
-      (settings.ambassadors || []).some(a => a.email && a.email.toLowerCase() === cleanEmail);
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, password: cleanPassword }),
+      });
+      const data = await res.json();
 
-    if (isMatchEmail && cleanPassword === REQUIRED_ADMIN_PASSWORD) {
-      const profile = ADMIN_PROFILES[cleanEmail] || {
-        name: cleanEmail.includes('smeltravels876') ? 'SMEL Travels 876 Admin' : 'Zachary Buchanan',
-        title: 'Executive Travel Operations',
-        phone: '(876) 848-9772',
-        role: 'Super Admin',
-      };
+      if (!res.ok || !data.success) {
+        showNotification('Access Denied', data.error || 'Invalid administrator email or password.', 'warning');
+        return {
+          success: false,
+          error: data.error || 'Invalid administrator email or password. Please verify your credentials.',
+        };
+      }
+
+      const token = data.token;
+      const adminInfo = data.admin;
+
+      setAdminSessionToken(token);
+      try {
+        sessionStorage.setItem('smeltravels_admin_token', token);
+        localStorage.setItem('smeltravels_admin_token', token);
+      } catch {}
 
       setIsAdminLoggedIn(true);
-      setAdminEmail(cleanEmail);
-      setCurrentAdminRole('Super Admin');
+      setAdminEmail(adminInfo.email);
+      setCurrentAdminRole((adminInfo.role || 'Super Admin') as AdminRole);
+
       setCurrentUser(prev => ({
-        id: prev?.id || `admin-user-${cleanEmail.replace(/[^a-z0-9]/gi, '-')}`,
-        name: profile.name,
-        email: cleanEmail,
-        phone: profile.phone,
+        id: prev?.id || `admin-user-${adminInfo.email.replace(/[^a-z0-9]/gi, '-')}`,
+        name: adminInfo.name,
+        email: adminInfo.email,
+        phone: adminInfo.phone,
         homeParishOrCountry: prev?.homeParishOrCountry || 'Kingston, Jamaica',
         memberSince: prev?.memberSince || '2026',
         firstDeposit: prev?.firstDeposit,
         deposits: prev?.deposits,
         isAdmin: true,
-        adminRole: 'Super Admin',
+        adminRole: (adminInfo.role || 'Super Admin') as AdminRole,
       }));
-      showNotification('Access Granted', `Welcome back, ${profile.name} (${cleanEmail}). Super Admin unlocked.`);
 
-      // Immediately fetch 100% fresh, live inquiries directly from server to guarantee cross-browser parity
-      refreshSiteData();
+      showNotification('Access Granted', `Welcome back, ${adminInfo.name} (${adminInfo.email}). Super Admin unlocked.`);
 
-      // Automated Resend Security Alert (notifications@smeltravels876.com)
-      try {
-        fetch('/api/resend/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'security_alert',
-            to: cleanEmail,
-            sender: 'SMELTRAVELS876 Security & Accounts <notifications@smeltravels876.com>',
-            data: {
-              customerName: profile.name,
-              email: cleanEmail,
-              time: new Date().toLocaleString('en-US', { timeZone: 'America/Jamaica' }),
-              device: typeof navigator !== 'undefined' ? `${navigator.userAgent.slice(0, 60)}...` : 'Administrator Console',
-            },
-          }),
-        }).catch((e) => console.warn('[Admin Login Resend Notice]:', e));
-      } catch (e) {}
+      // Immediately fetch authoritative admin records directly from server
+      await fetchAdminRecords(token);
 
       return { success: true };
-    } else {
-      showNotification('Access Denied', 'Invalid administrator email or password.', 'warning');
-      return { 
-        success: false, 
-        error: 'Invalid administrator email or password. Please verify your credentials.' 
-      };
+    } catch (err: any) {
+      showNotification('Connection Error', 'Could not reach administration server.', 'warning');
+      return { success: false, error: err.message || 'Connection error. Please try again.' };
     }
   };
 
-  const logoutAdmin = () => {
+  const logoutAdmin = async () => {
+    try {
+      if (adminSessionToken) {
+        await fetch('/api/admin/logout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${adminSessionToken}`,
+          },
+          body: JSON.stringify({ token: adminSessionToken }),
+        });
+      }
+    } catch {}
+
+    setAdminSessionToken(null);
     setIsAdminLoggedIn(false);
     setAdminEmail(null);
-    setCurrentUser(prev => prev ? { ...prev, isAdmin: false } : null);
+    try {
+      sessionStorage.removeItem('smeltravels_admin_token');
+      localStorage.removeItem('smeltravels_admin_token');
+    } catch {}
+
+    setAdminInbox([]);
+    setBookings([]);
+    setAdminOrdersExcel([]);
+    setCustomers([]);
+
+    setCurrentUser(prev => (prev?.isAdmin ? null : prev));
     showNotification('Admin Panel Locked', 'Safely signed out. Admin panel is password protected.', 'info');
   };
 
