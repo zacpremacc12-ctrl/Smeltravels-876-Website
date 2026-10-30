@@ -1651,13 +1651,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showNotification('Inbox Updated', 'All inbox notifications marked as read.');
   };
 
-  const deleteInboxItem = (id: string) => {
-    setAdminInbox(prev => {
-      const updated = prev.filter(item => item.id !== id);
-      syncToLiveServer({ adminInbox: updated });
-      return updated;
-    });
-    showNotification('Item Removed', 'Notification dismissed from inbox.', 'info');
+  const deleteInboxItem = async (id: string) => {
+    const targetItem = adminInbox.find(item => item.id === id);
+    const ref = targetItem?.referenceNumber;
+
+    // Optimistically purge matching item and reference across all 3 state arrays
+    setAdminInbox(prev => prev.filter(item => item.id !== id && (!ref || item.referenceNumber !== ref)));
+    if (ref) {
+      setBookings(prev => prev.filter(b => b.referenceNumber !== ref && b.id !== id));
+      setAdminOrdersExcel(prev => prev.filter(o => o.orderRef !== ref && o.id !== id));
+    }
+
+    try {
+      const headers: Record<string, string> = {};
+      if (adminSessionToken) {
+        headers['Authorization'] = `Bearer ${adminSessionToken}`;
+      }
+      const purgeKey = ref || id;
+      await safeFetchJson(`/api/admin/inquiry/${encodeURIComponent(purgeKey)}`, {
+        method: 'DELETE',
+        headers,
+      });
+      await safeFetchJson(`/api/inbox/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers,
+      }).catch(() => {});
+    } catch (e) {
+      console.warn('[deleteInboxItem purge warning]:', e);
+    }
+
+    showNotification('Inquiry Permanently Purged', 'Record permanently deleted from server database and all synchronized views.', 'info');
   };
 
   const unreadInboxCount = adminInbox.filter(i => !i.isRead).length;
@@ -1765,13 +1788,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showNotification('Payment Schedule Saved', `Installment deadlines and amounts updated for ${orderIdOrRef}.`, 'success');
   };
 
-  const deleteAdminOrderExcel = (id: string) => {
-    setAdminOrdersExcel(prev => {
-      const updated = prev.filter(order => order.id !== id);
-      syncToLiveServer({ adminOrdersExcel: updated });
-      return updated;
-    });
-    showNotification('Order Removed', 'Row deleted from Excel database.', 'info');
+  const deleteAdminOrderExcel = async (id: string) => {
+    const targetOrder = adminOrdersExcel.find(order => order.id === id);
+    const ref = targetOrder?.orderRef;
+
+    // Optimistically purge matching order and reference across all 3 state arrays
+    setAdminOrdersExcel(prev => prev.filter(order => order.id !== id && (!ref || order.orderRef !== ref)));
+    if (ref) {
+      setAdminInbox(prev => prev.filter(i => i.referenceNumber !== ref && i.id !== id));
+      setBookings(prev => prev.filter(b => b.referenceNumber !== ref && b.id !== id));
+    }
+
+    try {
+      const headers: Record<string, string> = {};
+      if (adminSessionToken) {
+        headers['Authorization'] = `Bearer ${adminSessionToken}`;
+      }
+      const purgeKey = ref || id;
+      await safeFetchJson(`/api/admin/inquiry/${encodeURIComponent(purgeKey)}`, {
+        method: 'DELETE',
+        headers,
+      });
+      await safeFetchJson(`/api/admin/orders/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers,
+      }).catch(() => {});
+    } catch (e) {
+      console.warn('[deleteAdminOrderExcel purge warning]:', e);
+    }
+
+    showNotification('Order Row Permanently Purged', 'Row and all matching inquiry records permanently purged from database.', 'info');
   };
 
   const batchUpdateAdminOrdersExcel = (orders: AdminOrderExcelRecord[]) => {
@@ -3799,13 +3845,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const deleteBooking = (id: string) => {
-    setBookings(prev => {
-      const updated = prev.filter(b => b.id !== id);
-      syncToLiveServer({ bookings: updated });
-      return updated;
-    });
-    showNotification('Inquiry Removed', 'Booking inquiry deleted from records.', 'info');
+  const deleteBooking = async (id: string) => {
+    const targetBooking = bookings.find(b => b.id === id);
+    const ref = targetBooking?.referenceNumber;
+
+    // Optimistically purge matching booking and reference across all 3 state arrays
+    setBookings(prev => prev.filter(b => b.id !== id && (!ref || b.referenceNumber !== ref)));
+    if (ref) {
+      setAdminInbox(prev => prev.filter(i => i.referenceNumber !== ref && i.id !== id));
+      setAdminOrdersExcel(prev => prev.filter(o => o.orderRef !== ref && o.id !== id));
+    }
+
+    try {
+      const headers: Record<string, string> = {};
+      if (adminSessionToken) {
+        headers['Authorization'] = `Bearer ${adminSessionToken}`;
+      }
+      const purgeKey = ref || id;
+      await safeFetchJson(`/api/admin/inquiry/${encodeURIComponent(purgeKey)}`, {
+        method: 'DELETE',
+        headers,
+      });
+      await safeFetchJson(`/api/bookings/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers,
+      }).catch(() => {});
+    } catch (e) {
+      console.warn('[deleteBooking purge warning]:', e);
+    }
+
+    showNotification('Booking Inquiries Purged', 'Booking inquiry deleted across all database tables.', 'info');
   };
 
   const saveTrip = (trip: TripPackage) => {

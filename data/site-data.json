@@ -4454,60 +4454,6 @@
       "lastUpdated": "2026-10-29T11:27:47.788Z"
     },
     {
-      "id": "order-inq-1793273234336",
-      "orderRef": "INQ-83908",
-      "receivedAt": "2026-10-29T11:27:14.319Z",
-      "orderType": "Booking Inquiry",
-      "customerName": "Akeem Thompson",
-      "email": "akeem.t@gmail.com",
-      "phone": "(876) 555-4321",
-      "parishOrCountry": "St. Catherine, Jamaica",
-      "tripOrDestination": "Panama Experience 2026",
-      "travelDates": "November 2026",
-      "adultsCount": 1,
-      "childrenCount": 0,
-      "budget": "Standard Package",
-      "numericalBudget": 0,
-      "totalPrice": 0,
-      "depositPaid": 0,
-      "currency": "JMD",
-      "paymentStatus": "Unpaid",
-      "orderStatus": "New",
-      "preferredContact": "WhatsApp",
-      "assignedAdmin": "Zachary Buchanan",
-      "specialRequests": "Confirming flight details and deposit options for November 2026.",
-      "inclusions": "Standard package inclusions",
-      "adminNotes": "Online booking inquiry received on 2026-10-29T11:27:14.319Z. Dispatched to Elvoy Bennett & Zachary Buchanan.",
-      "lastUpdated": "2026-10-29T11:27:14.319Z"
-    },
-    {
-      "id": "order-inq-1793273174814",
-      "orderRef": "INQ-82560",
-      "receivedAt": "2026-10-29T11:26:14.798Z",
-      "orderType": "Booking Inquiry",
-      "customerName": "Akeem Thompson",
-      "email": "akeem.t@gmail.com",
-      "phone": "(876) 555-4321",
-      "parishOrCountry": "St. Catherine, Jamaica",
-      "tripOrDestination": "Panama Experience 2026",
-      "travelDates": "November 2026",
-      "adultsCount": 1,
-      "childrenCount": 0,
-      "budget": "Standard Package",
-      "numericalBudget": 0,
-      "totalPrice": 0,
-      "depositPaid": 0,
-      "currency": "JMD",
-      "paymentStatus": "Unpaid",
-      "orderStatus": "New",
-      "preferredContact": "WhatsApp",
-      "assignedAdmin": "Zachary Buchanan",
-      "specialRequests": "Confirming flight details and deposit options for November 2026.",
-      "inclusions": "Standard package inclusions",
-      "adminNotes": "Online booking inquiry received on 2026-10-29T11:26:14.798Z. Dispatched to Elvoy Bennett & Zachary Buchanan.",
-      "lastUpdated": "2026-10-29T11:26:14.798Z"
-    },
-    {
       "id": "order-shanice-54311",
       "orderRef": "INQ-54311",
       "receivedAt": "2026-09-10T22:54:00.000Z",
@@ -5023,59 +4969,6 @@
       "updatedAt": "2026-10-29T11:27:47.788Z"
     },
     {
-      "id": "booking-inq-1793273234336",
-      "referenceNumber": "INQ-83908",
-      "tripId": "package-inquiry",
-      "tripName": "Panama Experience 2026",
-      "customerName": "Akeem Thompson",
-      "email": "akeem.t@gmail.com",
-      "phone": "(876) 555-4321",
-      "countryOrParish": "St. Catherine, Jamaica",
-      "adultsCount": 1,
-      "childrenCount": 0,
-      "travelDates": "November 2026",
-      "preferredTravelDate": "November 2026",
-      "travelInterestType": "ready_to_book",
-      "specialRequests": "Confirming flight details and deposit options for November 2026.",
-      "preferredContactMethod": "WhatsApp",
-      "status": "New",
-      "depositPaid": 0,
-      "totalPrice": 0,
-      "currency": "JMD",
-      "ambassadorName": "Zachary Buchanan",
-      "internalNotes": [
-        "Booking inquiry received on 2026-10-29T11:27:14.319Z. Dispatched to Elvoy Bennett & Zachary Buchanan."
-      ],
-      "createdAt": "2026-10-29T11:27:14.319Z",
-      "updatedAt": "2026-10-29T11:27:14.319Z"
-    },
-    {
-      "id": "booking-inq-1793273174814",
-      "referenceNumber": "INQ-82560",
-      "tripId": "package-inquiry",
-      "tripName": "Panama Experience 2026",
-      "customerName": "Akeem Thompson",
-      "email": "akeem.t@gmail.com",
-      "phone": "(876) 555-4321",
-      "countryOrParish": "St. Catherine, Jamaica",
-      "adultsCount": 1,
-      "childrenCount": 0,
-      "preferredTravelDate": "November 2026",
-      "travelInterestType": "ready_to_book",
-      "specialRequests": "Confirming flight details and deposit options for November 2026.",
-      "preferredContactMethod": "WhatsApp",
-      "status": "New",
-      "depositPaid": 0,
-      "totalPrice": 0,
-      "currency": "JMD",
-      "ambassadorName": "Zachary Buchanan",
-      "internalNotes": [
-        "Booking inquiry received on 2026-10-29T11:26:14.798Z. Dispatched to Elvoy Bennett & Zachary Buchanan."
-      ],
-      "createdAt": "2026-10-29T11:26:14.798Z",
-      "updatedAt": "2026-10-29T11:26:14.798Z"
-    },
-    {
       "id": "book-shanice-54311",
       "referenceNumber": "INQ-54311",
       "tripId": "panama-2026",
@@ -5274,57 +5167,6 @@
       "emailStatus": "Delivered"
     },
     {
-      "id": "inbox-inq-1793273234336-122",
-      "type": "inquiry",
-      "title": "Booking Inquiry: Panama Experience 2026 (Akeem Thompson)",
-      "senderName": "Akeem Thompson",
-      "senderEmail": "akeem.t@gmail.com",
-      "senderPhone": "(876) 555-4321",
-      "location": "St. Catherine, Jamaica",
-      "preferredContact": "WhatsApp",
-      "travelersCount": "2 Adults",
-      "travelDates": "November 2026",
-      "customerMessage": "Confirming flight details and deposit options for November 2026.",
-      "summary": "Inquiry from Akeem Thompson (St. Catherine, Jamaica). Notified both Admins: Elvoy Bennett & Zachary Buchanan. Email dispatched to zbuchanan.smeltravels@gmail.com & smeltravels876@gmail.com.",
-      "details": "Customer: Akeem Thompson\nEmail: akeem.t@gmail.com\nPhone: (876) 555-4321\nParish: St. Catherine, Jamaica\nStage: Trip Inquiry\nTrip: Panama Experience 2026\nInquiry: Confirming flight details and deposit options for November 2026.\nPreferred Contact: WhatsApp\nDesignated Admins: Elvoy Bennett & Zachary Buchanan\nAuto-Dispatched Emails: zbuchanan.smeltravels@gmail.com, smeltravels876@gmail.com",
-      "tripName": "Panama Experience 2026",
-      "referenceNumber": "INQ-83908",
-      "timestamp": "2026-10-29T11:27:14.319Z",
-      "isRead": false,
-      "adminRecipients": [
-        "Elvoy Bennett",
-        "Zachary Buchanan"
-      ],
-      "recipientEmails": [
-        "zbuchanan.smeltravels@gmail.com",
-        "smeltravels876@gmail.com"
-      ],
-      "emailStatus": "Delivered"
-    },
-    {
-      "id": "inbox-inq-1793273174814-440",
-      "type": "inquiry",
-      "title": "Trip Inquiry: Panama Experience 2026 (Trip Inquiry)",
-      "senderName": "Akeem Thompson",
-      "senderEmail": "akeem.t@gmail.com",
-      "senderPhone": "(876) 555-4321",
-      "summary": "Inquiry from Akeem Thompson (St. Catherine, Jamaica). Notified both Admins: Elvoy Bennett & Zachary Buchanan. Email dispatched to zbuchanan.smeltravels@gmail.com & smeltravels876@gmail.com.",
-      "details": "Customer: Akeem Thompson\nEmail: akeem.t@gmail.com\nPhone: (876) 555-4321\nParish: St. Catherine, Jamaica\nStage: Trip Inquiry\nTrip: Panama Experience 2026\nInquiry: Confirming flight details and deposit options for November 2026.\nPreferred Contact: WhatsApp\nDesignated Admins: Elvoy Bennett & Zachary Buchanan\nAuto-Dispatched Emails: zbuchanan.smeltravels@gmail.com, smeltravels876@gmail.com",
-      "tripName": "Panama Experience 2026",
-      "referenceNumber": "INQ-82560",
-      "timestamp": "2026-10-29T11:26:14.798Z",
-      "isRead": false,
-      "adminRecipients": [
-        "Elvoy Bennett",
-        "Zachary Buchanan"
-      ],
-      "recipientEmails": [
-        "zbuchanan.smeltravels@gmail.com",
-        "smeltravels876@gmail.com"
-      ],
-      "emailStatus": "Delivered"
-    },
-    {
       "id": "inbox-shanice-54311",
       "type": "inquiry",
       "title": "Booking Inquiry: Panama Experience 2026 (Shanice Campbell)",
@@ -5501,38 +5343,7 @@
       "emailStatus": "Delivered"
     }
   ],
-  "contacts": [
-    {
-      "id": "contact-1793273234336",
-      "referenceNumber": "INQ-83908",
-      "name": "Akeem Thompson",
-      "email": "akeem.t@gmail.com",
-      "phone": "(876) 555-4321",
-      "countryOrParish": "St. Catherine, Jamaica",
-      "tripId": "",
-      "tripName": "Panama Experience 2026",
-      "subject": "[Trip Inquiry] Panama Experience 2026 - Trip Inquiry",
-      "message": "Confirming flight details and deposit options for November 2026.",
-      "preferredContactMethod": "WhatsApp",
-      "status": "New",
-      "createdAt": "2026-10-29T11:27:14.319Z"
-    },
-    {
-      "id": "contact-1793273174814",
-      "referenceNumber": "INQ-82560",
-      "name": "Akeem Thompson",
-      "email": "akeem.t@gmail.com",
-      "phone": "(876) 555-4321",
-      "countryOrParish": "St. Catherine, Jamaica",
-      "tripId": "",
-      "tripName": "Panama Experience 2026",
-      "subject": "[Trip Inquiry] Panama Experience 2026 - Trip Inquiry",
-      "message": "Confirming flight details and deposit options for November 2026.",
-      "preferredContactMethod": "WhatsApp",
-      "status": "New",
-      "createdAt": "2026-10-29T11:26:14.798Z"
-    }
-  ],
+  "contacts": [],
   "dispatchedEmails": [
     {
       "templateType": "security_alert",
@@ -5677,7 +5488,7 @@
       "timestamp": "2026-10-29T01:29:22.361Z"
     }
   ],
-  "lastUpdated": "2026-10-30T11:27:52.719Z",
+  "lastUpdated": "2026-10-30T11:57:00.015Z",
   "adminSessions": {
     "239c33c713d518e4c74209d19e57302389fa862059b7636778f7694dbab3de46": {
       "token": "239c33c713d518e4c74209d19e57302389fa862059b7636778f7694dbab3de46",
@@ -5709,5 +5520,17 @@
       "createdAt": 1793359672546,
       "expiresAt": 1793964472546
     }
-  }
+  },
+  "deletedInquiryRefs": [
+    "INQ-83908",
+    "inq-83908",
+    "INQ-82560",
+    "inq-82560",
+    "booking-inq-1793273234336",
+    "booking-inq-1793273174814",
+    "inbox-inq-1793273234336-122",
+    "inbox-inq-1793273174814-440",
+    "contact-1793273234336",
+    "contact-1793273174814"
+  ]
 }

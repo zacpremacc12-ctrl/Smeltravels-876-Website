@@ -40,6 +40,47 @@ try {
   console.error('[Server] Failed to read initial site-data.json, starting fresh', err);
 }
 
+// Ensure persistent tombstone registry exists for deleted inquiries so they can NEVER resurrect
+if (!Array.isArray(siteDataCache.deletedInquiryRefs)) {
+  siteDataCache.deletedInquiryRefs = [];
+}
+
+// Authoritative list of purged test inquiries requested for removal
+const KNOWN_PURGED_TEST_REFS = [
+  'INQ-83908',
+  'INQ-82560',
+  'booking-inq-1793273234336',
+  'booking-inq-1793273174814',
+  'inbox-inq-1793273234336-122',
+  'inbox-inq-1793273174814-440',
+  'contact-1793273234336',
+  'contact-1793273174814',
+];
+for (const ref of KNOWN_PURGED_TEST_REFS) {
+  if (!siteDataCache.deletedInquiryRefs.includes(ref)) {
+    siteDataCache.deletedInquiryRefs.push(ref);
+  }
+  const refLower = ref.toLowerCase();
+  if (!siteDataCache.deletedInquiryRefs.includes(refLower)) {
+    siteDataCache.deletedInquiryRefs.push(refLower);
+  }
+}
+
+// Clean any tombstoned entries from memory on startup
+const startupTombstones = new Set(siteDataCache.deletedInquiryRefs.map((r: any) => String(r).toLowerCase()));
+siteDataCache.adminInbox = (Array.isArray(siteDataCache.adminInbox) ? siteDataCache.adminInbox : []).filter(
+  (i: any) => !startupTombstones.has(String(i.id || '').toLowerCase()) && !startupTombstones.has(String(i.referenceNumber || '').toLowerCase())
+);
+siteDataCache.bookings = (Array.isArray(siteDataCache.bookings) ? siteDataCache.bookings : []).filter(
+  (b: any) => !startupTombstones.has(String(b.id || '').toLowerCase()) && !startupTombstones.has(String(b.referenceNumber || '').toLowerCase())
+);
+siteDataCache.adminOrdersExcel = (Array.isArray(siteDataCache.adminOrdersExcel) ? siteDataCache.adminOrdersExcel : []).filter(
+  (o: any) => !startupTombstones.has(String(o.id || '').toLowerCase()) && !startupTombstones.has(String(o.orderRef || '').toLowerCase())
+);
+siteDataCache.contacts = (Array.isArray(siteDataCache.contacts) ? siteDataCache.contacts : []).filter(
+  (c: any) => !startupTombstones.has(String(c.id || '').toLowerCase()) && !startupTombstones.has(String(c.referenceNumber || '').toLowerCase())
+);
+
 // Atomic file persistence to prevent file corruption on unexpected crashes or concurrent writes
 const persistData = () => {
   try {
@@ -54,6 +95,9 @@ const persistData = () => {
     }
   }
 };
+
+// Persist initial startup tombstoned state immediately to disk
+persistData();
 
 // Connected clients for Server-Sent Events (Real-time live feed for all users)
 const sseClients = new Set<express.Response>();
@@ -768,6 +812,27 @@ app.post('/api/site-data', (req, res) => {
       delete updates.customers;
       delete updates.dispatchedEmails;
     }
+
+    // Never accept or re-insert items that were deleted and tombstoned
+    const activeTombstones = new Set(
+      (Array.isArray(siteDataCache.deletedInquiryRefs) ? siteDataCache.deletedInquiryRefs : []).map((r: any) => String(r).toLowerCase())
+    );
+    if (Array.isArray(updates.adminInbox)) {
+      updates.adminInbox = updates.adminInbox.filter(
+        (i: any) => !activeTombstones.has(String(i.id || '').toLowerCase()) && !activeTombstones.has(String(i.referenceNumber || '').toLowerCase())
+      );
+    }
+    if (Array.isArray(updates.bookings)) {
+      updates.bookings = updates.bookings.filter(
+        (b: any) => !activeTombstones.has(String(b.id || '').toLowerCase()) && !activeTombstones.has(String(b.referenceNumber || '').toLowerCase())
+      );
+    }
+    if (Array.isArray(updates.adminOrdersExcel)) {
+      updates.adminOrdersExcel = updates.adminOrdersExcel.filter(
+        (o: any) => !activeTombstones.has(String(o.id || '').toLowerCase()) && !activeTombstones.has(String(o.orderRef || '').toLowerCase())
+      );
+    }
+
     if (updates && typeof updates === 'object') {
       const mergedSettings = updates.settings && typeof updates.settings === 'object'
         ? {
@@ -835,14 +900,28 @@ app.post('/api/site-data', (req, res) => {
 // POST force sync & reconcile all inquiries across adminInbox, bookings, and adminOrdersExcel
 app.post('/api/inquiries/sync-all', (req, res) => {
   try {
-    const inbox = Array.isArray(siteDataCache.adminInbox) ? siteDataCache.adminInbox : [];
-    const bookings = Array.isArray(siteDataCache.bookings) ? siteDataCache.bookings : [];
-    const excel = Array.isArray(siteDataCache.adminOrdersExcel) ? siteDataCache.adminOrdersExcel : [];
+    const tombstones = new Set(
+      (Array.isArray(siteDataCache.deletedInquiryRefs) ? siteDataCache.deletedInquiryRefs : []).map((r: any) => String(r).toLowerCase())
+    );
 
-    // Ensure every booking is represented in adminInbox
+    // Filter out any tombstoned/deleted items before sync
+    let inbox = (Array.isArray(siteDataCache.adminInbox) ? siteDataCache.adminInbox : []).filter(
+      (i: any) => !tombstones.has(String(i.id || '').toLowerCase()) && !tombstones.has(String(i.referenceNumber || '').toLowerCase())
+    );
+    let bookings = (Array.isArray(siteDataCache.bookings) ? siteDataCache.bookings : []).filter(
+      (b: any) => !tombstones.has(String(b.id || '').toLowerCase()) && !tombstones.has(String(b.referenceNumber || '').toLowerCase())
+    );
+    let excel = (Array.isArray(siteDataCache.adminOrdersExcel) ? siteDataCache.adminOrdersExcel : []).filter(
+      (o: any) => !tombstones.has(String(o.id || '').toLowerCase()) && !tombstones.has(String(o.orderRef || '').toLowerCase())
+    );
+
+    // Ensure every genuine active booking (not deleted) is represented in adminInbox
     bookings.forEach((b: any) => {
       const ref = b.referenceNumber;
-      if (ref && !inbox.some((i: any) => i.referenceNumber === ref)) {
+      if (!ref || tombstones.has(String(ref).toLowerCase()) || tombstones.has(String(b.id || '').toLowerCase())) {
+        return; // NEVER restore deleted/tombstoned inquiries!
+      }
+      if (!inbox.some((i: any) => i.referenceNumber === ref || i.id === b.id || i.id === `inbox-sync-${b.id}`)) {
         inbox.push({
           id: `inbox-sync-${b.id || Date.now()}`,
           type: b.status === 'Custom Trip Request' ? 'custom_trip' : 'inquiry',
@@ -880,11 +959,12 @@ app.post('/api/inquiries/sync-all', (req, res) => {
 
     res.json({
       success: true,
-      message: 'All inquiries authoritatively reconciled, persisted, and broadcast to all connected browsers.',
+      message: 'All inquiries authoritatively reconciled, persisted, and broadcast to all connected browsers without reviving deleted items.',
       counts: {
         adminInbox: inbox.length,
         bookings: bookings.length,
         adminOrdersExcel: excel.length,
+        tombstones: siteDataCache.deletedInquiryRefs.length,
       },
       lastUpdated: siteDataCache.lastUpdated,
     });
@@ -1182,6 +1262,16 @@ app.post('/api/inbox', (req, res) => {
       return res.status(400).json({ success: false, error: 'Missing required notification fields' });
     }
 
+    const tombstones = new Set(
+      (Array.isArray(siteDataCache.deletedInquiryRefs) ? siteDataCache.deletedInquiryRefs : []).map(r => String(r).toLowerCase())
+    );
+    if (
+      (item.id && tombstones.has(String(item.id).toLowerCase())) ||
+      (item.referenceNumber && tombstones.has(String(item.referenceNumber).toLowerCase()))
+    ) {
+      return res.status(400).json({ success: false, error: 'This inquiry was previously deleted by an administrator and cannot be resurrected.' });
+    }
+
     const currentInbox = Array.isArray(siteDataCache.adminInbox) ? siteDataCache.adminInbox : [];
     const newItem = {
       ...item,
@@ -1296,19 +1386,205 @@ app.patch('/api/inbox/:id/read', (req, res) => {
   }
 });
 
-// DELETE inbox item
-app.delete('/api/inbox/:id', (req, res) => {
-  try {
-    const { id } = req.params;
-    const currentInbox = Array.isArray(siteDataCache.adminInbox) ? siteDataCache.adminInbox : [];
-    siteDataCache.adminInbox = currentInbox.filter((item: any) => item.id !== id);
-    siteDataCache.lastUpdated = new Date().toISOString();
-    persistData();
-    broadcastSiteUpdate(siteDataCache);
-    res.json({ success: true });
-  } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
+/**
+ * Authoritative unified purge function:
+ * Permanently removes any record matching the given ID or reference number across:
+ *  1. siteDataCache.adminInbox
+ *  2. siteDataCache.bookings
+ *  3. siteDataCache.adminOrdersExcel
+ *  4. siteDataCache.contacts
+ * And registers all alias identifiers in siteDataCache.deletedInquiryRefs (tombstones)
+ * to permanently prevent re-insertion across all sessions, browsers, devices, and re-syncs.
+ */
+function purgeInquiryRecord(idOrRef: string): {
+  success: boolean;
+  purgedIdOrRef: string;
+  inboxRemoved: number;
+  bookingsRemoved: number;
+  ordersRemoved: number;
+  contactsRemoved: number;
+  totalPurged: number;
+  tombstonesTotal: number;
+} {
+  const target = String(idOrRef || '').trim();
+  if (!target) {
+    return {
+      success: false,
+      purgedIdOrRef: '',
+      inboxRemoved: 0,
+      bookingsRemoved: 0,
+      ordersRemoved: 0,
+      contactsRemoved: 0,
+      totalPurged: 0,
+      tombstonesTotal: (siteDataCache.deletedInquiryRefs || []).length,
+    };
   }
+
+  if (!Array.isArray(siteDataCache.deletedInquiryRefs)) {
+    siteDataCache.deletedInquiryRefs = [];
+  }
+
+  const targetLower = target.toLowerCase();
+  const aliases = new Set<string>([target, targetLower]);
+
+  // Extract reference codes like INQ-83908, CUSTOM-95501, ST-2026-8812
+  const refCodeMatch = target.match(/(?:INQ|CUSTOM|ST)-[A-Z0-9-]+/i);
+  if (refCodeMatch) {
+    aliases.add(refCodeMatch[0]);
+    aliases.add(refCodeMatch[0].toLowerCase());
+  }
+
+  const inbox = Array.isArray(siteDataCache.adminInbox) ? siteDataCache.adminInbox : [];
+  inbox.forEach((item: any) => {
+    const id = String(item.id || '');
+    const ref = String(item.referenceNumber || '');
+    if (
+      id.toLowerCase() === targetLower ||
+      ref.toLowerCase() === targetLower ||
+      (ref && targetLower.includes(ref.toLowerCase())) ||
+      (id && targetLower.includes(id.toLowerCase()))
+    ) {
+      if (id) aliases.add(id);
+      if (ref) aliases.add(ref);
+    }
+  });
+
+  const bookings = Array.isArray(siteDataCache.bookings) ? siteDataCache.bookings : [];
+  bookings.forEach((b: any) => {
+    const id = String(b.id || '');
+    const ref = String(b.referenceNumber || '');
+    if (
+      id.toLowerCase() === targetLower ||
+      ref.toLowerCase() === targetLower ||
+      (ref && targetLower.includes(ref.toLowerCase())) ||
+      (id && targetLower.includes(id.toLowerCase()))
+    ) {
+      if (id) aliases.add(id);
+      if (ref) aliases.add(ref);
+    }
+  });
+
+  const orders = Array.isArray(siteDataCache.adminOrdersExcel) ? siteDataCache.adminOrdersExcel : [];
+  orders.forEach((o: any) => {
+    const id = String(o.id || '');
+    const ref = String(o.orderRef || '');
+    if (
+      id.toLowerCase() === targetLower ||
+      ref.toLowerCase() === targetLower ||
+      (ref && targetLower.includes(ref.toLowerCase())) ||
+      (id && targetLower.includes(id.toLowerCase()))
+    ) {
+      if (id) aliases.add(id);
+      if (ref) aliases.add(ref);
+    }
+  });
+
+  const contacts = Array.isArray(siteDataCache.contacts) ? siteDataCache.contacts : [];
+  contacts.forEach((c: any) => {
+    const id = String(c.id || '');
+    const ref = String(c.referenceNumber || '');
+    if (
+      id.toLowerCase() === targetLower ||
+      ref.toLowerCase() === targetLower ||
+      (ref && targetLower.includes(ref.toLowerCase())) ||
+      (id && targetLower.includes(id.toLowerCase()))
+    ) {
+      if (id) aliases.add(id);
+      if (ref) aliases.add(ref);
+    }
+  });
+
+  const aliasList = Array.from(aliases);
+  const isMatch = (itemRef?: string, itemId?: string) => {
+    const r = String(itemRef || '').toLowerCase();
+    const id = String(itemId || '').toLowerCase();
+    return aliasList.some((a) => {
+      const al = a.toLowerCase();
+      return (r && (r === al || al.includes(r))) || (id && (id === al || al.includes(id)));
+    });
+  };
+
+  const initialInboxLen = inbox.length;
+  const initialBookingsLen = bookings.length;
+  const initialOrdersLen = orders.length;
+  const initialContactsLen = contacts.length;
+
+  siteDataCache.adminInbox = inbox.filter((i: any) => !isMatch(i.referenceNumber, i.id));
+  siteDataCache.bookings = bookings.filter((b: any) => !isMatch(b.referenceNumber, b.id));
+  siteDataCache.adminOrdersExcel = orders.filter((o: any) => !isMatch(o.orderRef, o.id));
+  siteDataCache.contacts = contacts.filter((c: any) => !isMatch(c.referenceNumber, c.id));
+
+  // Store all aliases into permanent tombstone registry
+  for (const a of aliasList) {
+    if (!siteDataCache.deletedInquiryRefs.includes(a)) {
+      siteDataCache.deletedInquiryRefs.push(a);
+    }
+    const al = a.toLowerCase();
+    if (!siteDataCache.deletedInquiryRefs.includes(al)) {
+      siteDataCache.deletedInquiryRefs.push(al);
+    }
+  }
+
+  const inboxRemoved = initialInboxLen - siteDataCache.adminInbox.length;
+  const bookingsRemoved = initialBookingsLen - siteDataCache.bookings.length;
+  const ordersRemoved = initialOrdersLen - siteDataCache.adminOrdersExcel.length;
+  const contactsRemoved = initialContactsLen - siteDataCache.contacts.length;
+  const totalPurged = inboxRemoved + bookingsRemoved + ordersRemoved + contactsRemoved;
+
+  siteDataCache.lastUpdated = new Date().toISOString();
+  persistData();
+  broadcastSiteUpdate(siteDataCache);
+
+  console.log(`[Server] Permanently purged '${target}' from production database (Inbox: -${inboxRemoved}, Bookings: -${bookingsRemoved}, Orders: -${ordersRemoved}, Contacts: -${contactsRemoved})`);
+
+  return {
+    success: true,
+    purgedIdOrRef: target,
+    inboxRemoved,
+    bookingsRemoved,
+    ordersRemoved,
+    contactsRemoved,
+    totalPurged,
+    tombstonesTotal: siteDataCache.deletedInquiryRefs.length,
+  };
+}
+
+// DELETE Authoritative purge endpoint for Administrators
+app.delete('/api/admin/inquiry/:idOrRef', (req, res) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+
+  const { idOrRef } = req.params;
+  const result = purgeInquiryRecord(idOrRef);
+  return res.json({
+    success: true,
+    message: `Inquiry '${idOrRef}' permanently purged from all database tables.`,
+    ...result,
+  });
+});
+
+// DELETE inbox item (permanently purges across inbox, bookings, and excel orders)
+app.delete('/api/inbox/:id', (req, res) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  const { id } = req.params;
+  const result = purgeInquiryRecord(id);
+  res.json({ success: true, ...result });
+});
+
+// DELETE booking (permanently purges across bookings, inbox, and excel orders)
+app.delete('/api/bookings/:id', (req, res) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  const { id } = req.params;
+  const result = purgeInquiryRecord(id);
+  res.json({ success: true, ...result });
+});
+
+// DELETE admin order (permanently purges across excel orders, bookings, and inbox)
+app.delete('/api/admin/orders/:id', (req, res) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  const { id } = req.params;
+  const result = purgeInquiryRecord(id);
+  res.json({ success: true, ...result });
 });
 
 // POST custom trip request (any traveler creating their dream trip to any country)

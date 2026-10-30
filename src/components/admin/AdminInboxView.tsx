@@ -55,6 +55,7 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
   const [unreadOnly, setUnreadOnly] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedItemForModal, setSelectedItemForModal] = useState<AdminInboxItem | null>(null);
+  const [deleteConfirmItem, setDeleteConfirmItem] = useState<AdminInboxItem | null>(null);
 
   // States for redesigned inquiry card interactive features
   const [expandedNotifications, setExpandedNotifications] = useState<Record<string, boolean>>({});
@@ -910,6 +911,16 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
                       <span className="hidden sm:inline">{isItemRead ? 'Mark Unread' : 'Mark Read'}</span>
                     </button>
 
+                    {/* Direct Quick Delete */}
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirmItem(item)}
+                      className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer border border-rose-200"
+                      title="Permanently Delete Inquiry from All Databases"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+
                     {/* More Options Dropdown */}
                     <div className="relative">
                       <button
@@ -946,14 +957,12 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
                             type="button"
                             onClick={() => {
                               setOpenMenuId(null);
-                              if (window.confirm('Delete this notification from admin inbox?')) {
-                                deleteInboxItem(item.id);
-                              }
+                              setDeleteConfirmItem(item);
                             }}
                             className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer font-medium"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
-                            <span>Delete Card</span>
+                            <span>Permanently Delete</span>
                           </button>
                         </div>
                       )}
@@ -1128,6 +1137,45 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
                   Close
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PERMANENT DELETE CONFIRMATION MODAL */}
+      {deleteConfirmItem && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 border border-neutral-200 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div className="text-center space-y-1">
+              <h4 className="font-bold text-neutral-900 text-base">Permanently Purge Inquiry?</h4>
+              <p className="text-xs text-neutral-600">
+                Are you sure you want to permanently delete this inquiry record ({deleteConfirmItem.referenceNumber ? `#${deleteConfirmItem.referenceNumber}` : deleteConfirmItem.senderName})?
+              </p>
+              <p className="text-[11px] text-rose-700 font-semibold bg-rose-50 p-2.5 rounded-xl border border-rose-200 text-left mt-2">
+                ⚠️ This will permanently purge the record from all database stores (Inbox, Bookings, Orders Spreadsheet) and register a permanent tombstone so it can NEVER reappear on any browser, device, or refresh.
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmItem(null)}
+                className="px-4 py-2 rounded-xl border border-neutral-300 text-neutral-700 text-xs font-bold hover:bg-neutral-100 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  deleteInboxItem(deleteConfirmItem.id);
+                  setDeleteConfirmItem(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs cursor-pointer"
+              >
+                Permanently Delete
+              </button>
             </div>
           </div>
         </div>
