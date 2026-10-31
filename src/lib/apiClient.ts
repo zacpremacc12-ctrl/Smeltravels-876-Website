@@ -67,16 +67,20 @@ export async function safeFetchJson<T = any>(
     // Attempt to parse JSON cleanly
     try {
       const data = trimmed ? (JSON.parse(trimmed) as T) : null;
-      const isOk = res.ok && (!(data as any)?.success === false ? false : true);
+      const hasBusinessError = (data as any)?.success === false;
+      const isOk = res.ok && !hasBusinessError;
+      const errorMsg = !isOk
+        ? ((data as any)?.error || (data as any)?.message || `HTTP ${res.status}: Request failed`)
+        : undefined;
 
       return {
-        ok: res.ok,
+        ok: isOk,
         status: res.status,
         statusText: res.statusText,
         isHtml: false,
         contentType,
         data,
-        error: !res.ok ? ((data as any)?.error || `HTTP ${res.status}: Request failed`) : undefined,
+        error: errorMsg,
       };
     } catch (parseErr: any) {
       return {

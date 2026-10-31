@@ -24,19 +24,25 @@ import {
   EmailTemplateType,
 } from './src/server/resendService';
 
-const currentFilename = typeof __filename !== 'undefined'
-  ? __filename
-  : (typeof import.meta !== 'undefined' && (import.meta as any)?.url ? fileURLToPath((import.meta as any).url) : process.cwd());
-const currentDirname = typeof __dirname !== 'undefined'
-  ? __dirname
-  : path.dirname(currentFilename);
+const currentFilename = typeof __filename !== 'undefined' ? __filename : process.cwd();
+const currentDirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(currentFilename);
 
 const app = express();
 
-// Support dynamic ports, string ports, and unix sockets passed by Hostinger reverse proxies (default to 3000)
-const rawPort = (process.env.PORT && process.env.PORT !== '8080') ? process.env.PORT : 3000;
+// Support dynamic ports, string ports, and unix sockets passed by hosting providers (Hostinger, cPanel, Cloud, etc.)
+// In Google AI Studio preview containers, NGINX reverse-proxy listens on PORT=8080 and proxies traffic to 3000.
+// If process.env.K_SERVICE is set, DEFAULT_APP_PORT is 3000, and PORT is 8080, we are inside AI Studio dev container -> listen on 3000.
+// On Hostinger or other production hosting, the Node.js process MUST listen directly on process.env.PORT (even if 8080 or a unix socket).
+const isAIStudioDevContainer = Boolean(
+  process.env.K_SERVICE &&
+  process.env.DEFAULT_APP_PORT === '3000' &&
+  process.env.PORT === '8080'
+);
+const rawPort = isAIStudioDevContainer
+  ? 3000
+  : (process.env.PORT || 3000);
 const isSocket = typeof rawPort === 'string' && (rawPort.startsWith('/') || rawPort.startsWith('\\\\'));
-const PORT = isSocket ? rawPort : Number(rawPort) || 3000;
+const PORT = isSocket ? rawPort : (Number(rawPort) || 3000);
 
 app.use(express.json({ limit: '15mb' }));
 
@@ -49,9 +55,14 @@ const rootCandidates = [
 const PROJECT_ROOT = rootCandidates.find(r => fs.existsSync(path.join(r, 'data')) || fs.existsSync(path.join(r, 'package.json'))) || process.cwd();
 const DATA_DIR = path.join(PROJECT_ROOT, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'site-data.json');
+const DATA_TEMPLATE_FILE = path.join(DATA_DIR, 'site-data.template.json');
+const BACKUP_DIR = path.join(DATA_DIR, 'backups');
 
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+if (!fs.existsSync(BACKUP_DIR)) {
+  fs.mkdirSync(BACKUP_DIR, { recursive: true });
 }
 
 // In-memory cache synced with data/site-data.json
@@ -61,10 +72,19 @@ try {
   if (fs.existsSync(DATA_FILE)) {
     const raw = fs.readFileSync(DATA_FILE, 'utf-8');
     siteDataCache = JSON.parse(raw);
-    console.log('[Server] Loaded live store from data/site-data.json');
+    console.log('[Server] Loaded authoritative live store from data/site-data.json');
+    // Safety snapshot: automatically preserve current data prior to any server mutations
+    try {
+      const snapPath = path.join(BACKUP_DIR, `site-data-startup-${Date.now()}.json`);
+      fs.writeFileSync(snapPath, raw, 'utf-8');
+    } catch {}
+  } else if (fs.existsSync(DATA_TEMPLATE_FILE)) {
+    const raw = fs.readFileSync(DATA_TEMPLATE_FILE, 'utf-8');
+    siteDataCache = JSON.parse(raw);
+    console.log('[Server] Initialized store from data/site-data.template.json (clean install)');
   }
 } catch (err) {
-  console.error('[Server] Failed to read initial site-data.json, starting fresh', err);
+  console.error('[Server] Failed to read initial site data, preserving empty cache:', err);
 }
 
 // Ensure persistent tombstone registry exists for deleted inquiries so they can NEVER resurrect
@@ -569,7 +589,7 @@ app.get('/api/site-version', (req, res) => {
 });
 
 // --- AUTHORITATIVE ADMINISTRATOR AUTHENTICATION & ACCESS CONTROL ---
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Jjrrss5521';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 
 const ADMIN_PROFILES: Record<string, { name: string; title: string; phone: string; role: string }> = {
   'smeltravels876@gmail.com': {
@@ -668,6 +688,14 @@ app.post('/api/admin/login', (req, res) => {
     const { email, password } = req.body || {};
     const cleanEmail = String(email || '').trim().toLowerCase();
     const cleanPassword = String(password || '').trim();
+
+    if (!ADMIN_PASSWORD) {
+      console.error('[Admin Auth] ADMIN_PASSWORD environment variable is not configured.');
+      return res.status(500).json({
+        success: false,
+        error: 'Administrator authentication is not configured on the server. Please configure ADMIN_PASSWORD in your server environment variables or Hostinger hPanel.',
+      });
+    }
 
     const profile = ADMIN_PROFILES[cleanEmail];
     if (!profile || cleanPassword !== ADMIN_PASSWORD) {
@@ -2152,9 +2180,9 @@ app.post('/api/trip-inquiry', async (req, res) => {
 });
 
 // --- WIPAY JAMAICA LIVE DEVELOPER API GATEWAY ---
-const WIPAY_ACCOUNT_NUMBER = '2397990892';
-const WIPAY_API_KEY = 'qxhk2m4kvg';
-const WIPAY_ENDPOINT = 'https://jm.wipayfinancial.com/plugins/payments/request';
+const WIPAY_ACCOUNT_NUMBER = process.env.WIPAY_ACCOUNT_NUMBER || '';
+const WIPAY_API_KEY = process.env.WIPAY_API_KEY || '';
+const WIPAY_ENDPOINT = process.env.WIPAY_ENDPOINT || 'https://jm.wipayfinancial.com/plugins/payments/request';
 
 app.post('/api/wipay/create-payment', async (req, res) => {
   try {
@@ -2178,6 +2206,14 @@ app.post('/api/wipay/create-payment', async (req, res) => {
     const depositAmount = Number(total || deposit || 0);
     if (!depositAmount || depositAmount <= 0) {
       return res.status(400).json({ success: false, error: 'A valid deposit total is required.' });
+    }
+
+    if (!WIPAY_ACCOUNT_NUMBER || !WIPAY_API_KEY) {
+      console.error('[WiPay Server] WIPAY_ACCOUNT_NUMBER or WIPAY_API_KEY is not configured.');
+      return res.status(500).json({
+        success: false,
+        error: 'WiPay payment gateway credentials are not configured in environment variables. Please set WIPAY_ACCOUNT_NUMBER and WIPAY_API_KEY in server environment.',
+      });
     }
 
     const orderId = order_id || `ST-${Date.now()}`;

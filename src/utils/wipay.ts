@@ -3,8 +3,7 @@
  * Merchant Account & Live API Key Configuration
  */
 
-export const WIPAY_ACCOUNT_NUMBER = '2397990892';
-export const WIPAY_API_KEY = 'qxhk2m4kvg';
+export const WIPAY_ACCOUNT_NUMBER = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_WIPAY_ACCOUNT_NUMBER) || '';
 export const WIPAY_ENDPOINT = 'https://jm.wipayfinancial.com/plugins/payments/request';
 export const WIPAY_MASTER_LINK = 'https://jm.wipayfinancial.com/to_me/smeltravels';
 export const WIPAY_ME_USERNAME = 'smeltravels';
@@ -32,23 +31,9 @@ export interface WiPayPaymentResponse {
 }
 
 /**
- * Performs secure HTTP POST request directly to the WiPay Jamaica live endpoint:
- * https://jm.wipayfinancial.com/plugins/payments/request
- * 
- * Required structural fields:
- * {
- *   "account_number": WIPAY_ACCOUNT_NUMBER,
- *   "api_key": WIPAY_API_KEY,
- *   "total": trip.deposit,
- *   "country_code": "JM",
- *   "currency": "JMD",
- *   "environment": "live",
- *   "fee_structure": "client_pay",
- *   "method": "credit_card",
- *   "order_id": "ST-" + Date.now(),
- *   "origin": "Smeltravels876",
- *   "response_url": window.location.origin + "/booking-success"
- * }
+ * Initiates WiPay Jamaica live payment request through the secure server backend proxy.
+ * Server holds the secret API credentials (WIPAY_ACCOUNT_NUMBER and WIPAY_API_KEY) in environment variables.
+ * Falls back to verified WiPay Me master checkout link if backend is unreachable.
  */
 export async function createWiPayPaymentRequest(
   payload: WiPayPaymentRequestPayload
@@ -58,7 +43,7 @@ export async function createWiPayPaymentRequest(
     payload.responseUrl ||
     (typeof window !== 'undefined' ? `${window.location.origin}/booking-success` : 'https://smeltravels876.com/booking-success');
 
-  // Try server proxy first to avoid browser CORS/adblocker restrictions
+  // Request payment session via server-side proxy
   try {
     const proxyRes = await safeFetchJson<any>('/api/wipay/create-payment', {
       method: 'POST',
@@ -91,70 +76,22 @@ export async function createWiPayPaymentRequest(
         order_id: proxyRes.data.order_id || orderId,
       };
     }
+
+    if (proxyRes.error) {
+      console.warn('[WiPay Proxy Notice]:', proxyRes.error);
+    }
   } catch (err) {
-    console.warn('[WiPay Proxy Warning] Trying direct endpoint fallback...', err);
+    console.warn('[WiPay Proxy Exception]:', err);
   }
 
-  // Direct client POST to WiPay Jamaica Live endpoint
-  try {
-    const totalFormatted = Number(payload.deposit).toFixed(2);
-    const postBody = new URLSearchParams({
-      account_number: WIPAY_ACCOUNT_NUMBER,
-      api_key: WIPAY_API_KEY,
-      total: totalFormatted,
-      country_code: 'JM',
-      currency: 'JMD',
-      environment: 'live',
-      fee_structure: 'customer_pay', // WiPay backend API accepts customer_pay for client_pay structure
-      method: 'credit_card',
-      order_id: orderId,
-      origin: 'Smeltravels876',
-      response_url: responseUrl,
-    });
-
-    const res = await fetch(WIPAY_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: postBody.toString(),
-    });
-
-    const data = await res.json();
-
-    if (data.url && !data.url.includes('status=error')) {
-      return {
-        success: true,
-        url: data.url,
-        transaction_id: data.transaction_id || `WP-TXN-${Date.now()}`,
-        order_id: orderId,
-      };
-    }
-
-    if (data.message && data.message !== 'OK') {
-      return {
-        success: false,
-        error: data.message,
-      };
-    }
-
-    return {
-      success: !!data.url,
-      url: data.url,
-      transaction_id: data.transaction_id,
-      order_id: orderId,
-    };
-  } catch (directErr: any) {
-    console.error('[WiPay Direct Request Error]:', directErr);
-    // Graceful fallback to verified WiPay Me link
-    const fallbackUrl = `${WIPAY_MASTER_LINK}?total=${payload.deposit}&client_note=${encodeURIComponent(payload.tripTitle).replace(/%20/g, '+')}`;
-    return {
-      success: true,
-      url: fallbackUrl,
-      order_id: orderId,
-    };
-  }
+  // Graceful fallback to verified WiPay Me link (no secret API key exposed to browser)
+  const cleanTitle = encodeURIComponent((payload.tripTitle || 'Smeltravels876 Trip Deposit').trim()).replace(/%20/g, '+');
+  const fallbackUrl = `${WIPAY_MASTER_LINK}?total=${Math.max(0, Math.round(payload.deposit))}&client_note=${cleanTitle}`;
+  return {
+    success: true,
+    url: fallbackUrl,
+    order_id: orderId,
+  };
 }
 
 export interface WiPayLinkParams {

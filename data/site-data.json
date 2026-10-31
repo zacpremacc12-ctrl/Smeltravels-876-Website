@@ -69,8 +69,8 @@
       "officeDepositAddress": "12 Trafalgar Road, Suite 4B, Kingston 10, Jamaica",
       "cardGatewayProvider": "WiPay Caribbean / NCB eCommerce",
       "cardGatewayMerchantId": "MERCHANT-876-SMEL",
-      "wipayAccountNumber": "2397990892",
-      "wipayApiKey": "qxhk2m4kvg",
+      "wipayAccountNumber": "",
+      "wipayApiKey": "",
       "wipayMasterLink": "https://jm.wipayfinancial.com/to_me/smeltravels",
       "wipayMeUsername": "smeltravels",
       "paymentInstructions": "Deposits directly credit the official SMELTRAVELS876 corporate operational account. Upload your transfer receipt or WhatsApp confirmation for real-time verification."
@@ -5500,7 +5500,7 @@
       "timestamp": "2026-10-29T01:29:22.361Z"
     }
   ],
-  "lastUpdated": "2026-10-31T12:15:49.915Z",
+  "lastUpdated": "2026-10-31T12:53:01.323Z",
   "adminSessions": {
     "239c33c713d518e4c74209d19e57302389fa862059b7636778f7694dbab3de46": {
       "token": "239c33c713d518e4c74209d19e57302389fa862059b7636778f7694dbab3de46",
@@ -5551,6 +5551,16 @@
       "role": "Super Admin",
       "createdAt": 1793448930653,
       "expiresAt": 1794053730653
+    },
+    "9297f82b1b2bfc3ae83e71c7cd86ad9ff59815d4fcf2f88cc06eee6446dc1ea2": {
+      "token": "9297f82b1b2bfc3ae83e71c7cd86ad9ff59815d4fcf2f88cc06eee6446dc1ea2",
+      "email": "zacpremacc12@gmail.com",
+      "name": "Zachary Buchanan",
+      "title": "Travel Ambassador / Lead Admin",
+      "phone": "(876) 848-9772",
+      "role": "Super Admin",
+      "createdAt": 1793451181306,
+      "expiresAt": 1794055981306
     }
   },
   "deletedInquiryRefs": [

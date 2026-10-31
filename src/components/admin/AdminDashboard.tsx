@@ -3727,8 +3727,8 @@ export const AdminDashboard: React.FC = () => {
                       <label className="font-bold text-neutral-700 block mb-1">WiPay Account Number (10 Digits)</label>
                       <input
                         type="text"
-                        placeholder="2397990892"
-                        value={localSettings.companyBanking?.wipayAccountNumber || '2397990892'}
+                        placeholder="Configure via WIPAY_ACCOUNT_NUMBER env"
+                        value={localSettings.companyBanking?.wipayAccountNumber || ''}
                         onChange={(e) => updateBankingField('wipayAccountNumber', e.target.value)}
                         className="w-full p-2.5 border border-neutral-300 rounded-xl font-mono text-xs bg-white font-bold"
                       />
@@ -3737,9 +3737,9 @@ export const AdminDashboard: React.FC = () => {
                     <div>
                       <label className="font-bold text-neutral-700 block mb-1">WiPay Live Developer API Key</label>
                       <input
-                        type="text"
-                        placeholder="qxhk2m4kvg"
-                        value={localSettings.companyBanking?.wipayApiKey || 'qxhk2m4kvg'}
+                        type="password"
+                        placeholder="Configure via WIPAY_API_KEY env"
+                        value={localSettings.companyBanking?.wipayApiKey || ''}
                         onChange={(e) => updateBankingField('wipayApiKey', e.target.value)}
                         className="w-full p-2.5 border border-neutral-300 rounded-xl font-mono text-xs bg-white font-bold text-purple-900"
                       />

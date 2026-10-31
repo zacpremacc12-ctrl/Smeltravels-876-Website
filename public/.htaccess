@@ -3,37 +3,30 @@
 # ==============================================================================
 # Domain: smeltravels876.com
 # Purpose:
-# 1. Route all /api/* requests to the Node.js Express backend (Port 3000)
-# 2. Never return HTML (index.html or Apache 404 HTML) for API endpoints
-# 3. Serve React SPA index.html for all frontend page navigation
-# 4. Enforce strict security headers and proper MIME types
+# 1. Allow Hostinger Node.js Express application to handle /api/* requests
+# 2. Never rewrite /api/* requests to index.html (return real HTTP status)
+# 3. Serve physical static assets directly from disk
+# 4. Route Single Page Application (SPA) client routes to index.html
+# 5. Enforce security headers and proper MIME types
 # ==============================================================================
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
 
-  # 1. Hostinger Reverse Proxy to Node.js Express backend
-  # When mod_proxy is loaded, forwards all API traffic to Node.js on port 3000
-  <IfModule mod_proxy.c>
-    RewriteCond %{REQUEST_URI} ^/api/ [NC]
-    RewriteRule ^api/(.*)$ http://127.0.0.1:3000/api/$1 [P,L]
-  </IfModule>
-
-  # 2. API Fallback Protection: NEVER rewrite /api/ to index.html!
-  # If mod_proxy is not active and Node.js hasn't handled the request,
-  # serve api-fallback.json so the browser receives clean JSON instead of HTML
-  RewriteCond %{REQUEST_URI} ^/api/ [NC]
-  RewriteRule ^api/.* /api-fallback.json [L]
-
-  # 3. Standard Static Files
-  # If the requested physical asset exists on disk (images, css, js), serve directly
+  # 1. Direct Static Assets
+  # If the requested physical asset exists on disk (images, css, js, icons), serve directly
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
 
-  # 4. Single Page Application (SPA) Client Routing
-  # All remaining client routes (e.g. /#destinations, /admin, etc.) are served index.html
+  # 2. Do NOT rewrite /api/ requests to index.html
+  # Any API call must be handled by the Node.js Express backend or return 404
+  RewriteCond %{REQUEST_URI} ^/api/ [NC]
+  RewriteRule ^ - [L]
+
+  # 3. Single Page Application (SPA) Client Routing
+  # All frontend client navigation routes are served index.html
   RewriteCond %{REQUEST_URI} !^/api/ [NC]
   RewriteRule ^ index.html [L]
 </IfModule>
@@ -51,10 +44,3 @@
   AddType text/javascript .js .mjs
   AddType text/css .css
 </IfModule>
-
-<FilesMatch "api-fallback\.json$">
-  <IfModule mod_headers.c>
-    Header set Content-Type "application/json; charset=utf-8"
-    Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
-  </IfModule>
-</FilesMatch>
