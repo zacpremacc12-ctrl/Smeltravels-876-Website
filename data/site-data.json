@@ -5348,6 +5348,18 @@
     {
       "templateType": "security_alert",
       "sender": "SMELTRAVELS876 Security & Accounts <notifications@smeltravels876.com>",
+      "recipient": "test@example.com",
+      "subject": "Security Alert: New Sign-in to Your SMELTRAVELS876 Account",
+      "status": "Failed",
+      "error": "Invalid or revoked RESEND_API_KEY. Please verify your Resend API Key in your Resend account dashboard.",
+      "htmlContent": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>Security Alert: New Sign-in to Your SMELTRAVELS876 Account</title>\n  <style>\n    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FAF9F6; margin: 0; padding: 20px; color: #1E293B; }\n    .wrapper { max-width: 620px; margin: 0 auto; background: #FFFFFF; border-radius: 18px; overflow: hidden; border: 1px solid #E2E8F0; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); }\n    .header { background: linear-gradient(135deg, #2E0249 0%, #190028 100%); padding: 32px 28px; text-align: center; color: #FFFFFF; position: relative; }\n    .logo-badge { display: inline-block; background: rgba(255, 199, 44, 0.15); border: 1px solid rgba(255, 199, 44, 0.4); color: #FFC72C; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; padding: 4px 14px; border-radius: 9999px; margin-bottom: 12px; }\n    .brand-title { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: 0.5px; color: #FFC72C; }\n    .brand-tagline { margin: 8px 0 0 0; font-size: 13px; color: #E2E8F0; font-weight: 500; }\n    .sender-ribbon { background-color: #F1F5F9; padding: 10px 24px; border-bottom: 1px solid #E2E8F0; font-size: 11px; font-weight: 600; color: #475569; display: flex; justify-content: space-between; }\n    .content { padding: 32px 28px; }\n    .card { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 14px; padding: 20px; margin: 20px 0; }\n    .table-details { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }\n    .table-details td { padding: 8px 0; border-bottom: 1px dashed #E2E8F0; }\n    .table-details td:last-child { text-align: right; font-weight: 700; color: #1E293B; }\n    .table-details td:first-child { color: #64748B; }\n    .btn { display: inline-block; background: #2E0249; color: #FFC72C !important; font-size: 14px; font-weight: 800; text-decoration: none; padding: 14px 28px; border-radius: 12px; margin: 16px 0; text-align: center; letter-spacing: 0.3px; border: 1px solid rgba(255,199,44,0.3); }\n    .footer { background-color: #0F172A; padding: 26px 24px; text-align: center; font-size: 12px; color: #94A3B8; line-height: 1.6; }\n    .footer a { color: #FFC72C; text-decoration: none; }\n  </style>\n</head>\n<body>\n  <!-- Preheader text for inbox preview -->\n  <div style=\"display:none;font-size:1px;color:#333333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;\">\n    New login detected for test@example.com on 2026-10-31 07:00.\n  </div>\n\n  <div class=\"wrapper\">\n    <!-- Header -->\n    <div class=\"header\">\n      <div class=\"logo-badge\">Official Transactional Notification</div>\n      <h1 class=\"brand-title\">SMELTRAVELS876</h1>\n      <p class=\"brand-tagline\">Luxury Group Travel & Curated Jamaican Experiences</p>\n    </div>\n\n    <!-- Sender Channel Ribbon -->\n    <div class=\"sender-ribbon\">\n      <span>Official Sender: <strong>notifications@smeltravels876.com</strong></span>\n      <span>Verified Domain: <strong>smeltravels876.com</strong></span>\n    </div>\n\n    <!-- Main Content Body -->\n    <div class=\"content\">\n      \n        <div style=\"display: inline-block; background-color: #FEF3C7; color: #92400E; font-size: 11px; font-weight: bold; padding: 4px 12px; border-radius: 9999px; margin-bottom: 12px;\">\n          Account Security Notification\n        </div>\n        <h2 style=\"margin: 0 0 10px 0; font-size: 20px; color: #2E0249; font-weight: 800;\">\n          New Sign-in Detected\n        </h2>\n        <p style=\"font-size: 14px; line-height: 1.6; color: #1E293B; margin: 0 0 16px 0;\">\n          Hello Test Customer, we detected a successful sign-in to your SMELTRAVELS876 account on <strong>2026-10-31 07:00 (Jamaica Time)</strong>.\n        </p>\n\n        <div class=\"card\">\n          <table class=\"table-details\">\n            <tr><td>Account:</td><td>test@example.com</td></tr>\n            <tr><td>Time &amp; Date:</td><td>2026-10-31 07:00</td></tr>\n            <tr><td>Device / Client:</td><td>Chrome on MacOS</td></tr>\n            <tr><td>Portal:</td><td>SMELTRAVELS876 Web Application</td></tr>\n          </table>\n        </div>\n\n        <p style=\"font-size: 12px; color: #64748B; line-height: 1.5;\">\n          If this was you, no action is needed. If you did not sign in at this time, please contact our security team immediately via WhatsApp at <a href=\"https://wa.me/18768341537\" style=\"color: #2563EB;\">(876) 834-1537</a> or reply to this notification.\n        </p>\n      \n    </div>\n\n    <!-- Footer -->\n    <div class=\"footer\">\n      <p style=\"margin: 0 0 8px 0; color: #F1F5F9; font-weight: 700;\">\n        SMELTRAVELS876 LIMITED • Kingston, Jamaica\n      </p>\n      <p style=\"margin: 0 0 12px 0;\">\n        Direct Assistance: <a href=\"tel:(876) 834-1537\">(876) 834-1537</a> | \n        WhatsApp Concierge: <a href=\"https://wa.me/18768341537\">Chat on WhatsApp</a> | \n        Web: <a href=\"https://smeltravels876.com\">smeltravels876.com</a>\n      </p>\n      <p style=\"margin: 0; font-size: 11px; color: #64748B;\">\n        This automated transactional notification was delivered by the official Resend API on behalf of SMELTRAVELS876.<br/>\n        &copy; 2026 SMELTRAVELS876. All rights reserved.\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
+      "customerName": "Test Customer",
+      "id": "email-1793448949915-207",
+      "timestamp": "2026-10-31T12:15:49.915Z"
+    },
+    {
+      "templateType": "security_alert",
+      "sender": "SMELTRAVELS876 Security & Accounts <notifications@smeltravels876.com>",
       "recipient": "zacpremacc12@gmail.com",
       "subject": "Security Notification Service Test",
       "status": "Accepted",
@@ -5488,7 +5500,7 @@
       "timestamp": "2026-10-29T01:29:22.361Z"
     }
   ],
-  "lastUpdated": "2026-10-30T11:57:00.015Z",
+  "lastUpdated": "2026-10-31T12:15:49.915Z",
   "adminSessions": {
     "239c33c713d518e4c74209d19e57302389fa862059b7636778f7694dbab3de46": {
       "token": "239c33c713d518e4c74209d19e57302389fa862059b7636778f7694dbab3de46",
@@ -5519,6 +5531,26 @@
       "role": "Super Admin",
       "createdAt": 1793359672546,
       "expiresAt": 1793964472546
+    },
+    "bb2630148de01aa925d6ef8a96f033a77fcbf751d5655fb3ced9754790a3c22a": {
+      "token": "bb2630148de01aa925d6ef8a96f033a77fcbf751d5655fb3ced9754790a3c22a",
+      "email": "zbuchanan.smeltravels@gmail.com",
+      "name": "Zachary Buchanan",
+      "title": "Travel Ambassador",
+      "phone": "(876) 848-9772",
+      "role": "Super Admin",
+      "createdAt": 1793448451184,
+      "expiresAt": 1794053251184
+    },
+    "a286b019dede7e0f0af297ec9d277bdbd744a229b3a0195ed22363e71c27a7ea": {
+      "token": "a286b019dede7e0f0af297ec9d277bdbd744a229b3a0195ed22363e71c27a7ea",
+      "email": "zacpremacc12@gmail.com",
+      "name": "Zachary Buchanan",
+      "title": "Travel Ambassador / Lead Admin",
+      "phone": "(876) 848-9772",
+      "role": "Super Admin",
+      "createdAt": 1793448930653,
+      "expiresAt": 1794053730653
     }
   },
   "deletedInquiryRefs": [

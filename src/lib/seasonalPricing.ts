@@ -17,6 +17,7 @@ import {
 } from '../data/originPricingData';
 import { DEFAULT_CHEAPEST_DATE_FINDER_SETTINGS } from '../data/cheapestDateFinderDefaults';
 import { normalizeTravelStyle } from './pricingEngine';
+import { safeFetchJson } from './apiClient';
 
 /**
  * Returns applicable travel season and multiplier factors based on departure date.
@@ -706,7 +707,7 @@ export async function findCheapestDateOptions(
   // 3. Try to fetch Skyscanner quotes if backend endpoint or API key is configured
   let skyscannerQuotesMap: Record<string, { priceUSD: number; source: FlightPriceSource }> = {};
   try {
-    const res = await fetch('/api/skyscanner/flight-pricing', {
+    const res = await safeFetchJson<{ quotes?: Record<string, any> }>('/api/skyscanner/flight-pricing', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -719,11 +720,8 @@ export async function findCheapestDateOptions(
         adultsCount,
       }),
     });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.quotes && typeof data.quotes === 'object') {
-        skyscannerQuotesMap = data.quotes;
-      }
+    if (res.ok && res.data?.quotes && typeof res.data.quotes === 'object') {
+      skyscannerQuotesMap = res.data.quotes;
     }
   } catch {
     // Graceful offline fallback — Skyscanner integration unavailable or network isolated

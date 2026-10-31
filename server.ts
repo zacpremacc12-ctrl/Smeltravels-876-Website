@@ -1,11 +1,20 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+// Global crash guards: prevent unhandled promise rejections or external API errors from crashing the Node.js server
+process.on('uncaughtException', (err) => {
+  console.error('[SMELTRAVELS876 Server] Uncaught exception:', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[SMELTRAVELS876 Server] Unhandled rejection at:', promise, 'reason:', reason);
+});
+
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
+import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import {
   sendResendEmail,
@@ -15,12 +24,30 @@ import {
   EmailTemplateType,
 } from './src/server/resendService';
 
+const currentFilename = typeof __filename !== 'undefined'
+  ? __filename
+  : (typeof import.meta !== 'undefined' && (import.meta as any)?.url ? fileURLToPath((import.meta as any).url) : process.cwd());
+const currentDirname = typeof __dirname !== 'undefined'
+  ? __dirname
+  : path.dirname(currentFilename);
+
 const app = express();
-const PORT = Number(process.env.PORT) || 3000;
+
+// Support dynamic ports, string ports, and unix sockets passed by Hostinger reverse proxies (default to 3000)
+const rawPort = (process.env.PORT && process.env.PORT !== '8080') ? process.env.PORT : 3000;
+const isSocket = typeof rawPort === 'string' && (rawPort.startsWith('/') || rawPort.startsWith('\\\\'));
+const PORT = isSocket ? rawPort : Number(rawPort) || 3000;
 
 app.use(express.json({ limit: '15mb' }));
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+// Resolve project root reliably across all Hostinger root configs
+const rootCandidates = [
+  process.cwd(),
+  path.resolve(currentDirname, '..'),
+  currentDirname,
+];
+const PROJECT_ROOT = rootCandidates.find(r => fs.existsSync(path.join(r, 'data')) || fs.existsSync(path.join(r, 'package.json'))) || process.cwd();
+const DATA_DIR = path.join(PROJECT_ROOT, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'site-data.json');
 
 if (!fs.existsSync(DATA_DIR)) {
@@ -2699,23 +2726,48 @@ app.all('/api/*', (req, res) => {
 
 // --- VITE / STATIC SERVING ---
 async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
+  const isBundled = typeof currentFilename !== 'undefined' && currentFilename.endsWith('server.cjs');
+  const candidateDirs = [
+    path.join(PROJECT_ROOT, 'dist'),
+    path.join(process.cwd(), 'dist'),
+    process.cwd(),
+    path.resolve(currentDirname, 'dist'),
+    path.resolve(currentDirname),
+    path.resolve(currentDirname, '..', 'dist'),
+  ];
+  const distPath = candidateDirs.find((dir) => fs.existsSync(path.join(dir, 'index.html')));
+  const isProduction = process.env.NODE_ENV === 'production' || isBundled || (Boolean(distPath) && !process.argv.includes('--dev'));
+
+  if (!isProduction) {
+    console.log('[SMELTRAVELS876] Starting in Vite Development mode...');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    const finalDist = distPath || path.join(PROJECT_ROOT, 'dist');
+    console.log(`[SMELTRAVELS876] Starting in Production mode. Serving SPA assets from: ${finalDist}`);
+    app.use(express.static(finalDist));
     app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      const indexPath = path.join(finalDist, 'index.html');
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(404).send('SMELTRAVELS876: Production frontend build not found. Please run "npm run build".');
+      }
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[SMELTRAVELS876] Server running on http://0.0.0.0:${PORT}`);
-  });
+  const onListen = () => {
+    console.log(`[SMELTRAVELS876] Express backend listening on ${isSocket ? PORT : `http://0.0.0.0:${PORT}`}`);
+  };
+
+  if (isSocket) {
+    app.listen(PORT, onListen);
+  } else {
+    app.listen(PORT as number, '0.0.0.0', onListen);
+  }
 }
 
 startServer();

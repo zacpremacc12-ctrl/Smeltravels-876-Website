@@ -9,6 +9,8 @@ export const WIPAY_ENDPOINT = 'https://jm.wipayfinancial.com/plugins/payments/re
 export const WIPAY_MASTER_LINK = 'https://jm.wipayfinancial.com/to_me/smeltravels';
 export const WIPAY_ME_USERNAME = 'smeltravels';
 
+import { safeFetchJson } from '../lib/apiClient';
+
 export interface WiPayPaymentRequestPayload {
   deposit: number;
   tripTitle: string;
@@ -58,7 +60,7 @@ export async function createWiPayPaymentRequest(
 
   // Try server proxy first to avoid browser CORS/adblocker restrictions
   try {
-    const proxyRes = await fetch('/api/wipay/create-payment', {
+    const proxyRes = await safeFetchJson<any>('/api/wipay/create-payment', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -81,16 +83,13 @@ export async function createWiPayPaymentRequest(
       }),
     });
 
-    if (proxyRes.ok) {
-      const data = await proxyRes.json();
-      if (data.url) {
-        return {
-          success: true,
-          url: data.url,
-          transaction_id: data.transaction_id,
-          order_id: data.order_id || orderId,
-        };
-      }
+    if (proxyRes.ok && proxyRes.data?.url) {
+      return {
+        success: true,
+        url: proxyRes.data.url,
+        transaction_id: proxyRes.data.transaction_id,
+        order_id: proxyRes.data.order_id || orderId,
+      };
     }
   } catch (err) {
     console.warn('[WiPay Proxy Warning] Trying direct endpoint fallback...', err);

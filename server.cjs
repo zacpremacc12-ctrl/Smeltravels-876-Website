@@ -1,3 +1,3 @@
-// SMELTRAVELS876 Production Entry Point for Hostinger / Passenger / PM2
-// Delegates to the compiled bundle in dist/server.cjs
+// SMELTRAVELS876 - Hostinger CommonJS Entry Point
+// Bridges Hostinger / LiteSpeed / cPanel Node.js runners executing CommonJS
 require('./dist/server.cjs');

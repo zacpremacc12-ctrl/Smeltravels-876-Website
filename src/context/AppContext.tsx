@@ -1013,17 +1013,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // 5. Resilient Polling Fallback (Guarantees sync even on strict VPNs or proxy networks where SSE or WebSockets are buffered/blocked)
     const pollInterval = setInterval(async () => {
       if (isCleanedUp) return;
-      try {
-        const res = await fetch(`/api/site-version?_t=${Date.now()}`, {
+        const res = await safeFetchJson<{ lastUpdated?: string }>(`/api/site-version?_t=${Date.now()}`, {
           cache: 'no-store',
           headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
         });
-        const v = await res.json();
-        if (v && v.lastUpdated && v.lastUpdated !== lastServerTimestampRef.current) {
-          lastServerTimestampRef.current = v.lastUpdated;
+        if (res.ok && res.data?.lastUpdated && res.data.lastUpdated !== lastServerTimestampRef.current) {
+          lastServerTimestampRef.current = res.data.lastUpdated;
           fetchFromServer();
         }
-      } catch (e) {}
     }, 6000);
 
     // 6. Instant Refresh on Tab Focus / Visibility / Network Reconnect
@@ -1502,12 +1499,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setWingoRoutes(routesToSave);
       setStoredItem('wingo_rates_database', routesToSave);
 
-      const resp = await fetch('/api/wingo/rates', {
+      const resp = await safeFetchJson<{ success?: boolean }>('/api/wingo/rates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ routes: routesToSave }),
       });
-      const data = await resp.json();
+      const data = resp.data;
 
       await syncToLiveServer({ wingoRoutes: routesToSave });
 

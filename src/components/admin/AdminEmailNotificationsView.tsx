@@ -36,94 +36,9 @@ export interface EmailLogItem {
   customerName?: string;
 }
 
-export interface SafeApiResponse<T = any> {
-  ok: boolean;
-  status: number;
-  statusText: string;
-  isHtml: boolean;
-  contentType: string;
-  data: T | null;
-  rawText?: string;
-  error?: string;
-}
-
-// Resilient API caller that safely inspects HTTP status and Content-Type before parsing JSON
-async function safeApiCall<T = any>(
-  input: RequestInfo | URL,
-  init?: RequestInit
-): Promise<SafeApiResponse<T>> {
-  try {
-    const res = await fetch(input, init);
-    const contentType = (res.headers.get('content-type') || '').toLowerCase();
-    const isHtml = contentType.includes('text/html');
-
-    if (isHtml) {
-      const htmlText = await res.text();
-      let diagnostic = `The web server returned an HTML webpage (HTTP ${res.status} ${res.statusText || ''}) instead of JSON.`;
-      if (res.status === 404) {
-        diagnostic = `Backend route not reachable (HTTP 404 HTML). On Hostinger, this indicates Apache/LiteSpeed is serving a fallback page instead of forwarding API requests to your Node.js Express server.`;
-      } else if (res.status === 502 || res.status === 503 || res.status === 504) {
-        diagnostic = `Hostinger Gateway Error (HTTP ${res.status}). The Node.js application process is currently stopped or unreachable by Hostinger's reverse proxy.`;
-      } else if (htmlText.includes('<!DOCTYPE') || htmlText.includes('<html')) {
-        diagnostic = `Hostinger served the Single Page Application index.html page for an API call. Verify that your .htaccess file has the /api/ rewrite exclusion.`;
-      }
-
-      console.warn('[SMELTRAVELS876 Resend Diagnostic]: HTML response received from API', {
-        status: res.status,
-        url: typeof input === 'string' ? input : (input as any).url,
-        preview: htmlText.slice(0, 150),
-      });
-
-      return {
-        ok: false,
-        status: res.status,
-        statusText: res.statusText,
-        isHtml: true,
-        contentType,
-        data: null,
-        rawText: htmlText.slice(0, 200),
-        error: diagnostic,
-      };
-    }
-
-    // Try parsing JSON safely
-    try {
-      const data = await res.json();
-      return {
-        ok: res.ok,
-        status: res.status,
-        statusText: res.statusText,
-        isHtml: false,
-        contentType,
-        data,
-        error: !res.ok ? (data?.error || `HTTP ${res.status}: Request failed`) : undefined,
-      };
-    } catch (parseErr: any) {
-      const text = await res.text().catch(() => '');
-      return {
-        ok: false,
-        status: res.status,
-        statusText: res.statusText,
-        isHtml: false,
-        contentType,
-        data: null,
-        rawText: text.slice(0, 200),
-        error: `Invalid JSON response from server (HTTP ${res.status}). ${parseErr?.message || ''}`,
-      };
-    }
-  } catch (netErr: any) {
-    console.error('[SMELTRAVELS876 Network Diagnostic]:', netErr);
-    return {
-      ok: false,
-      status: 0,
-      statusText: 'Network Error',
-      isHtml: false,
-      contentType: '',
-      data: null,
-      error: `Network connection failed: ${netErr?.message || 'Unable to reach the SMELTRAVELS876 server'}.`,
-    };
-  }
-}
+import { safeFetchJson, SafeApiResponse } from '../../lib/apiClient';
+const safeApiCall = safeFetchJson;
+export type { SafeApiResponse };
 
 export const AdminEmailNotificationsView: React.FC = () => {
   const { adminEmail, adminSessionToken, showNotification } = useApp();
