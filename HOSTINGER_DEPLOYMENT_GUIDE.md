@@ -38,12 +38,12 @@ When configuring your Node.js application in Hostinger hPanel (**Websites > Mana
 
 | Setting | Exact Value to Enter | Notes |
 | :--- | :--- | :--- |
-| **Framework** | **Express** (or **Other**) | Hostinger detects and runs Express natively |
-| **Node.js Version** | **22.x** (or **20.x LTS**) | Tested and fully compatible |
+| **Framework** | **Other** (or **Express**) | Hostinger detects and runs Node.js natively |
+| **Node.js Version** | **22** (or **20 LTS**) | Tested and fully compatible |
 | **Application Root** | `/` (or root where files are placed) | Root folder containing `package.json` |
-| **Application Startup File** | `dist/server.cjs` (or `server.cjs`) | Root `server.cjs`, `server.js`, and `app.js` bridge to `dist/server.cjs` |
-| **Build Command** | `npm run build` | Compiles Vite frontend & bundles Express backend |
-| **Output Directory** | `dist` | Contains compiled frontend and bundled server |
+| **Build Command** | `npm run build` | Compiles Vite frontend & bundles Express server |
+| **Output Directory** | `dist` | Contains compiled frontend and `server.cjs` |
+| **Application Startup File** | `server.cjs` (or `dist/server.cjs`) | When Output directory is `dist`, use `server.cjs`. If from root, use `dist/server.cjs` |
 | **Run / Start Script** | `npm start` (or `node dist/server.cjs`) | Starts production Express server |
 
 ---

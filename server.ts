@@ -146,13 +146,21 @@ const persistData = () => {
 // Persist initial startup tombstoned state immediately to disk
 persistData();
 
-// Connected clients for Server-Sent Events (Real-time live feed for all users)
+// Never transmit customer information or administrator sessions over a public SSE stream.
+// EventSource does not send the x-admin-token header used by this app for admin auth.
+const toPublicSiteData = (source: Record<string, any>) => {
+  const { adminSessions, adminInbox, adminOrdersExcel, bookings, customers,
+    dispatchedEmails, contacts, emailLogs, paymentLogs, ...publicFields } = source;
+  return publicFields;
+};
+
+// Connected clients for Server-Sent Events (public site content only)
 const sseClients = new Set<express.Response>();
 
-const broadcastSiteUpdate = (data: any) => {
+const broadcastSiteUpdate = (_data: any) => {
   const payload = JSON.stringify({
     type: 'SITE_DATA_UPDATE',
-    data,
+    data: toPublicSiteData(siteDataCache),
     lastUpdated: siteDataCache.lastUpdated,
   });
   const message = `data: ${payload}\n\n`;
@@ -554,7 +562,7 @@ app.get('/api/site-stream', (req, res) => {
   res.write(
     `data: ${JSON.stringify({
       type: 'INIT',
-      data: siteDataCache,
+      data: toPublicSiteData(siteDataCache),
       lastUpdated: siteDataCache.lastUpdated || new Date().toISOString(),
     })}\n\n`
   );
@@ -798,20 +806,13 @@ app.get('/api/site-data', (req, res) => {
   if (session) {
     return res.json({
       success: true,
-      data: siteDataCache,
+      data: (({adminSessions, ...rest}) => rest)(siteDataCache),
       lastUpdated: siteDataCache.lastUpdated || new Date().toISOString(),
     });
   }
 
   // Public visitor view: strip administrative and customer data
-  const publicData = {
-    ...siteDataCache,
-    adminInbox: [],
-    bookings: [],
-    adminOrdersExcel: [],
-    customers: [],
-    dispatchedEmails: [],
-  };
+  const publicData = toPublicSiteData(siteDataCache);
 
   return res.json({
     success: true,
@@ -2806,4 +2807,7 @@ async function startServer() {
   }
 }
 
-startServer();
+startServer().catch((error) => {
+  console.error('[SMELTRAVELS876] Fatal startup error:', error);
+  process.exitCode = 1;
+});
