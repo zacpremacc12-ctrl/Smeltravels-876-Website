@@ -29,7 +29,12 @@ const currentDirname = typeof __dirname !== 'undefined' ? __dirname : path.dirna
 
 const app = express();
 
-// Support dynamic ports, string ports, and unix sockets passed by hosting providers (Hostinger, cPanel, Cloud, etc.)
+// Support dynamic ports, CLI arguments (--port / --host), and hosting provider env vars (Hostinger, cPanel, Cloud Run)
+const portArgIdx = process.argv.indexOf('--port');
+const cliPort = portArgIdx !== -1 && process.argv[portArgIdx + 1] ? process.argv[portArgIdx + 1] : undefined;
+const hostArgIdx = process.argv.indexOf('--host');
+const cliHost = hostArgIdx !== -1 && process.argv[hostArgIdx + 1] ? process.argv[hostArgIdx + 1] : '0.0.0.0';
+
 // In Google AI Studio preview containers, NGINX reverse-proxy listens on PORT=8080 and proxies traffic to 3000.
 // If process.env.K_SERVICE is set, DEFAULT_APP_PORT is 3000, and PORT is 8080, we are inside AI Studio dev container -> listen on 3000.
 // On Hostinger or other production hosting, the Node.js process MUST listen directly on process.env.PORT (even if 8080 or a unix socket).
@@ -38,9 +43,7 @@ const isAIStudioDevContainer = Boolean(
   process.env.DEFAULT_APP_PORT === '3000' &&
   process.env.PORT === '8080'
 );
-const rawPort = isAIStudioDevContainer
-  ? 3000
-  : (process.env.PORT || 3000);
+const rawPort = cliPort || (isAIStudioDevContainer ? 3000 : (process.env.PORT || 3000));
 const isSocket = typeof rawPort === 'string' && (rawPort.startsWith('/') || rawPort.startsWith('\\\\'));
 const PORT = isSocket ? rawPort : (Number(rawPort) || 3000);
 
@@ -2773,7 +2776,7 @@ async function startServer() {
     path.resolve(currentDirname, '..', 'dist'),
   ];
   const distPath = candidateDirs.find((dir) => fs.existsSync(path.join(dir, 'index.html')));
-  const isProduction = process.env.NODE_ENV === 'production' || isBundled || (Boolean(distPath) && !process.argv.includes('--dev'));
+  const isProduction = isBundled || process.env.NODE_ENV === 'production';
 
   if (!isProduction) {
     console.log('[SMELTRAVELS876] Starting in Vite Development mode...');
@@ -2782,6 +2785,22 @@ async function startServer() {
       appType: 'spa',
     });
     app.use(vite.middlewares);
+    app.use('*', async (req, res, next) => {
+      const url = req.originalUrl;
+      if (url.startsWith('/api/')) return next();
+      try {
+        const indexHtmlPath = path.resolve(PROJECT_ROOT, 'index.html');
+        if (!fs.existsSync(indexHtmlPath)) {
+          return res.status(404).send('index.html not found in project root.');
+        }
+        let template = fs.readFileSync(indexHtmlPath, 'utf-8');
+        template = await vite.transformIndexHtml(url, template);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+      } catch (e: any) {
+        vite.ssrFixStacktrace(e);
+        next(e);
+      }
+    });
   } else {
     const finalDist = distPath || path.join(PROJECT_ROOT, 'dist');
     console.log(`[SMELTRAVELS876] Starting in Production mode. Serving SPA assets from: ${finalDist}`);
@@ -2797,13 +2816,13 @@ async function startServer() {
   }
 
   const onListen = () => {
-    console.log(`[SMELTRAVELS876] Express backend listening on ${isSocket ? PORT : `http://0.0.0.0:${PORT}`}`);
+    console.log(`[SMELTRAVELS876] Express backend listening on ${isSocket ? PORT : `http://${cliHost}:${PORT}`}`);
   };
 
   if (isSocket) {
     app.listen(PORT, onListen);
   } else {
-    app.listen(PORT as number, '0.0.0.0', onListen);
+    app.listen(PORT as number, cliHost, onListen);
   }
 }
 
