@@ -49,6 +49,27 @@ const PORT = isSocket ? rawPort : (Number(rawPort) || 3000);
 
 app.use(express.json({ limit: '15mb' }));
 
+// Cross-browser compatibility headers & preflight handler for /api/*
+app.use('/api', (req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Admin-Token, Accept, Origin, Cache-Control, Pragma');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+  next();
+});
+
 // Resolve project root reliably across all Hostinger root configs
 const rootCandidates = [
   process.cwd(),
@@ -2821,8 +2842,10 @@ async function startServer() {
 
   if (isSocket) {
     app.listen(PORT, onListen);
-  } else {
+  } else if (cliPort) {
     app.listen(PORT as number, cliHost, onListen);
+  } else {
+    app.listen(PORT as number, onListen);
   }
 }
 

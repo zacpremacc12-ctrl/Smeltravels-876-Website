@@ -43,7 +43,7 @@ When configuring your Node.js application in Hostinger hPanel (**Websites > Mana
 | **Application Root** | `/` (or root where files are placed) | Root folder containing `package.json` |
 | **Build Command** | `npm run build` | Compiles Vite frontend & bundles Express server |
 | **Output Directory** | `dist` | Contains compiled frontend and `server.cjs` |
-| **Application Startup File** | `server.cjs` (or `dist/server.cjs`) | When Output directory is `dist`, use `server.cjs`. If from root, use `dist/server.cjs` |
+| **Application Startup File** | `server.cjs` (or `server.js`, `app.js`, `dist/server.cjs`) | All entry files bridge cleanly to the compiled server bundle |
 | **Run / Start Script** | `npm start` (or `node dist/server.cjs`) | Starts production Express server |
 
 ---

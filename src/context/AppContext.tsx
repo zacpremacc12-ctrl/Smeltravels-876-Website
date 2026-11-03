@@ -3497,7 +3497,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const cleanPassword = (password || '').trim();
 
     try {
-      const result = await safeFetchJson<{
+      let result = await safeFetchJson<{
         success: boolean;
         token?: string;
         admin?: any;
@@ -3508,6 +3508,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: cleanEmail, password: cleanPassword }),
       });
+
+      // If Hostinger reverse proxy is waking up the Node.js process (cold start 502/503/504), retry once
+      if (!result.ok && (result.status === 502 || result.status === 503 || result.status === 504 || result.status === 0)) {
+        await new Promise((r) => setTimeout(r, 1200));
+        result = await safeFetchJson<{
+          success: boolean;
+          token?: string;
+          admin?: any;
+          error?: string;
+          isHostingerFallback?: boolean;
+        }>('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: cleanEmail, password: cleanPassword }),
+        });
+      }
 
       if (!result.ok || !result.data?.success) {
         const errorMsg =

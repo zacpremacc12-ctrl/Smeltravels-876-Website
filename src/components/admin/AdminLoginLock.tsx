@@ -20,6 +20,28 @@ export const AdminLoginLock: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'unreachable'>('checking');
+
+  const checkServerHealth = async () => {
+    setServerStatus('checking');
+    try {
+      const res = await fetch('/api/health', { cache: 'no-store' });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.status === 'ok') {
+        setServerStatus('online');
+        return true;
+      }
+      setServerStatus('unreachable');
+      return false;
+    } catch {
+      setServerStatus('unreachable');
+      return false;
+    }
+  };
+
+  React.useEffect(() => {
+    checkServerHealth();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +62,9 @@ export const AdminLoginLock: React.FC = () => {
       setIsLoading(false);
       if (!result.success) {
         setErrorMessage(result.error || 'Invalid credentials. Access denied.');
+        if (result.error && (result.error.includes('503') || result.error.includes('unreachable'))) {
+          setServerStatus('unreachable');
+        }
       }
     } catch (err: any) {
       setIsLoading(false);
@@ -58,7 +83,42 @@ export const AdminLoginLock: React.FC = () => {
       <div className="absolute -top-32 -left-32 w-96 h-96 bg-[#2E0249] rounded-full blur-3xl opacity-50 pointer-events-none" />
       <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-purple-900 rounded-full blur-3xl opacity-40 pointer-events-none" />
 
-      <div className="w-full max-w-md bg-[#1C1226] border border-purple-900/60 rounded-3xl p-6 sm:p-8 shadow-2xl relative z-10 text-white">
+      <div className="w-full max-w-md bg-[#1C1226] border border-purple-900/60 rounded-3xl p-6 sm:p-8 shadow-2xl relative z-10 text-white backdrop-blur-md">
+        {/* Live Backend Connection Status Pill */}
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-purple-900/40">
+          <div className="flex items-center gap-2">
+            <span
+              className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                serverStatus === 'online'
+                  ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]'
+                  : serverStatus === 'checking'
+                  ? 'bg-amber-400 animate-pulse'
+                  : 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]'
+              }`}
+            />
+            <span className="text-[11px] font-semibold text-neutral-300">
+              {serverStatus === 'online'
+                ? 'Backend API: Online'
+                : serverStatus === 'checking'
+                ? 'Checking backend...'
+                : 'Backend: Stopped / 503'}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={async () => {
+              const ok = await checkServerHealth();
+              if (ok && errorMessage && errorMessage.includes('503')) {
+                setErrorMessage(null);
+              }
+            }}
+            className="text-[10px] text-purple-300 hover:text-white px-2 py-0.5 rounded bg-purple-950/60 border border-purple-800/50 hover:bg-purple-900 transition-colors"
+          >
+            Recheck API
+          </button>
+        </div>
+
         {/* Header Badge */}
         <div className="flex flex-col items-center text-center mb-6">
           <div className="relative mb-3">
@@ -84,35 +144,62 @@ export const AdminLoginLock: React.FC = () => {
 
         {/* Error Alert */}
         {errorMessage && (
-          <div className="mb-5 p-3.5 rounded-2xl bg-rose-950/80 border border-rose-600/60 text-rose-200 text-xs flex items-start gap-2.5 animate-in fade-in">
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-            <div className="font-medium">{errorMessage}</div>
+          <div className="mb-5 p-3.5 rounded-2xl bg-rose-950/80 border border-rose-600/60 text-rose-200 text-xs flex flex-col gap-2 animate-in fade-in">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+              <div className="font-medium leading-relaxed">{errorMessage}</div>
+            </div>
+            {(errorMessage.includes('Hostinger Gateway') || errorMessage.includes('503') || errorMessage.includes('unreachable')) && (
+              <div className="mt-1 pt-2 border-t border-rose-800/60 flex items-center justify-between text-[11px] text-rose-300">
+                <span>Node.js process may be starting up on Hostinger.</span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const ok = await checkServerHealth();
+                    if (ok) {
+                      setErrorMessage(null);
+                    }
+                  }}
+                  className="px-2.5 py-1 bg-rose-900/90 hover:bg-rose-800 text-white rounded-lg font-bold border border-rose-500/50 transition-colors"
+                >
+                  Test Reconnect
+                </button>
+              </div>
+            )}
           </div>
         )}
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-4" id="admin-login-form">
           <div>
-            <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
               <label className="text-xs font-bold text-neutral-300">
                 Administrator Email
               </label>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => handleAutofillEmail('zacpremacc12@gmail.com')}
+                  className="text-[10px] bg-purple-900/70 hover:bg-purple-800 text-[#FFC72C] px-2 py-0.5 rounded border border-[#FFC72C]/40 font-bold transition-colors"
+                  title="Autofill zacpremacc12@gmail.com (Lead Admin)"
+                >
+                  Zachary (Lead)
+                </button>
                 <button
                   type="button"
                   onClick={() => handleAutofillEmail('smeltravels876@gmail.com')}
-                  className="text-[10px] bg-purple-900/60 hover:bg-purple-800 text-[#FFC72C] px-2 py-0.5 rounded border border-[#FFC72C]/30 font-semibold"
-                  title="Autofill smeltravels876@gmail.com"
+                  className="text-[10px] bg-purple-900/50 hover:bg-purple-800 text-purple-200 px-2 py-0.5 rounded border border-purple-700/50 font-semibold transition-colors"
+                  title="Autofill smeltravels876@gmail.com (CEO)"
                 >
-                  smeltravels876@gmail.com
+                  Elvoy (CEO)
                 </button>
                 <button
                   type="button"
                   onClick={() => handleAutofillEmail('zbuchanan.smeltravels@gmail.com')}
-                  className="text-[10px] bg-purple-900/60 hover:bg-purple-800 text-purple-200 px-2 py-0.5 rounded border border-purple-700/50 font-semibold"
+                  className="text-[10px] bg-purple-900/50 hover:bg-purple-800 text-purple-300 px-1.5 py-0.5 rounded border border-purple-800/40 text-[9px] font-medium transition-colors"
                   title="Autofill zbuchanan.smeltravels@gmail.com"
                 >
-                  Zachary Buchanan
+                  zbuchanan
                 </button>
               </div>
             </div>
