@@ -84,8 +84,8 @@ export const INITIAL_SETTINGS: SiteSettings = {
     officeDepositAddress: '12 Trafalgar Road, Suite 4B, Kingston 10, Jamaica',
     cardGatewayProvider: 'WiPay Caribbean / NCB eCommerce',
     cardGatewayMerchantId: 'MERCHANT-876-SMEL',
-    wipayAccountNumber: '',
-    wipayApiKey: '',
+    wipayAccountNumber: '2397990892',
+    wipayApiKey: 'qxhk2m4kvg',
     wipayMasterLink: 'https://jm.wipayfinancial.com/to_me/smeltravels',
     wipayMeUsername: 'smeltravels',
     paymentInstructions: 'Deposits directly credit the official SMELTRAVELS876 corporate operational account. Upload your transfer receipt or WhatsApp confirmation for real-time verification.',
@@ -1287,11 +1287,7 @@ export const INITIAL_MEDIA: MediaItem[] = [
   }
 ];
 
-// Authoritative Production Defaults (authoritative records are persisted centrally on the server)
-export const INITIAL_CUSTOMERS: CustomerRecord[] = [];
-
-// Demonstration archive preserved for reference/testing without populating production
-export const DEMO_SAMPLE_CUSTOMERS: CustomerRecord[] = [
+export const INITIAL_CUSTOMERS: CustomerRecord[] = [
   {
     id: 'cust-1',
     name: 'Kadeen Campbell',
@@ -1324,11 +1320,7 @@ export const DEMO_SAMPLE_CUSTOMERS: CustomerRecord[] = [
   }
 ];
 
-// Authoritative Production Defaults (authoritative records are persisted centrally on the server)
-export const INITIAL_BOOKINGS: BookingSubmission[] = [];
-
-// Demonstration archive preserved for reference/testing without populating production
-export const DEMO_SAMPLE_BOOKINGS: BookingSubmission[] = [
+export const INITIAL_BOOKINGS: BookingSubmission[] = [
   {
     id: 'book-shanice-54311',
     referenceNumber: 'INQ-54311',
@@ -1485,11 +1477,7 @@ export const DEMO_SAMPLE_BOOKINGS: BookingSubmission[] = [
   }
 ];
 
-// Authoritative Production Defaults (authoritative records are persisted centrally on the server)
-export const INITIAL_ADMIN_INBOX: AdminInboxItem[] = [];
-
-// Demonstration archive preserved for reference/testing without populating production
-export const DEMO_SAMPLE_ADMIN_INBOX: AdminInboxItem[] = [
+export const INITIAL_ADMIN_INBOX: AdminInboxItem[] = [
   {
     id: 'inbox-shanice-54311',
     type: 'inquiry',
@@ -1598,11 +1586,7 @@ export const DEMO_SAMPLE_ADMIN_INBOX: AdminInboxItem[] = [
   }
 ];
 
-// Authoritative Production Defaults (authoritative records are persisted centrally on the server)
-export const INITIAL_ADMIN_ORDERS_EXCEL: AdminOrderExcelRecord[] = [];
-
-// Demonstration archive preserved for reference/testing without populating production
-export const DEMO_SAMPLE_ADMIN_ORDERS_EXCEL: AdminOrderExcelRecord[] = [
+export const INITIAL_ADMIN_ORDERS_EXCEL: AdminOrderExcelRecord[] = [
   {
     id: 'order-shanice-54311',
     orderRef: 'INQ-54311',

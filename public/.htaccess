@@ -2,32 +2,33 @@
 # SMELTRAVELS876 - Hostinger Apache / LiteSpeed Web Server Configuration
 # ==============================================================================
 # Domain: smeltravels876.com
-# Purpose:
-# 1. Allow Hostinger Node.js Express application to handle /api/* requests
-# 2. Never rewrite /api/* requests to index.html (return real HTTP status)
-# 3. Serve physical static assets directly from disk
-# 4. Route Single Page Application (SPA) client routes to index.html
-# 5. Enforce security headers and proper MIME types
+# Purpose: Protect API routes from being intercepted by SPA HTML fallback,
+#          enable Node.js reverse proxying, and enforce security headers.
 # ==============================================================================
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
 
-  # 1. Direct Static Assets
-  # If the requested physical asset exists on disk (images, css, js, icons), serve directly
+  # 1. Hostinger Reverse Proxy (if Apache proxy module is enabled on Hostinger VPS/Cloud)
+  # Uncomment the following line if your Hostinger Apache proxies directly to Node.js on port 3000:
+  # RewriteRule ^api/(.*)$ http://127.0.0.1:3000/api/$1 [P,L]
+
+  # 2. DO NOT REWRITE /api/ REQUESTS TO index.html UNDER ANY CIRCUMSTANCES!
+  # If a request to /api/* reaches Apache without being handled by the Node.js application,
+  # stop rewriting immediately. This prevents Hostinger from returning an HTML webpage (index.html)
+  # which breaks JSON parsers in the browser with "Unexpected token '<'".
+  RewriteCond %{REQUEST_URI} ^/api/ [NC]
+  RewriteRule ^api/ - [L]
+
+  # 3. Standard Static Files
+  # If the requested file or directory physically exists on disk, serve it directly
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
 
-  # 2. Do NOT rewrite /api/ requests to index.html
-  # Any API call must be handled by the Node.js Express backend or return 404
-  RewriteCond %{REQUEST_URI} ^/api/ [NC]
-  RewriteRule ^ - [L]
-
-  # 3. Single Page Application (SPA) Client Routing
-  # All frontend client navigation routes are served index.html
-  RewriteCond %{REQUEST_URI} !^/api/ [NC]
+  # 4. Single Page Application (SPA) Client Routing
+  # All remaining client routes (e.g. /admin, /destinations, /trips) are served index.html
   RewriteRule ^ index.html [L]
 </IfModule>
 

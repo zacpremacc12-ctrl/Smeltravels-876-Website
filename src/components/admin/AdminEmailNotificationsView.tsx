@@ -27,7 +27,7 @@ export interface EmailLogItem {
   sender: string;
   recipient: string | string[];
   subject: string;
-  status: 'Accepted' | 'Delivered' | 'Queued' | 'Simulated' | 'Failed' | 'Bounced';
+  status: 'Delivered' | 'Queued' | 'Simulated' | 'Failed';
   messageId?: string;
   error?: string;
   timestamp: string;
@@ -36,12 +36,97 @@ export interface EmailLogItem {
   customerName?: string;
 }
 
-import { safeFetchJson, SafeApiResponse } from '../../lib/apiClient';
-const safeApiCall = safeFetchJson;
-export type { SafeApiResponse };
+export interface SafeApiResponse<T = any> {
+  ok: boolean;
+  status: number;
+  statusText: string;
+  isHtml: boolean;
+  contentType: string;
+  data: T | null;
+  rawText?: string;
+  error?: string;
+}
+
+// Resilient API caller that safely inspects HTTP status and Content-Type before parsing JSON
+async function safeApiCall<T = any>(
+  input: RequestInfo | URL,
+  init?: RequestInit
+): Promise<SafeApiResponse<T>> {
+  try {
+    const res = await fetch(input, init);
+    const contentType = (res.headers.get('content-type') || '').toLowerCase();
+    const isHtml = contentType.includes('text/html');
+
+    if (isHtml) {
+      const htmlText = await res.text();
+      let diagnostic = `The web server returned an HTML webpage (HTTP ${res.status} ${res.statusText || ''}) instead of JSON.`;
+      if (res.status === 404) {
+        diagnostic = `Backend route not reachable (HTTP 404 HTML). On Hostinger, this indicates Apache/LiteSpeed is serving a fallback page instead of forwarding API requests to your Node.js Express server.`;
+      } else if (res.status === 502 || res.status === 503 || res.status === 504) {
+        diagnostic = `Hostinger Gateway Error (HTTP ${res.status}). The Node.js application process is currently stopped or unreachable by Hostinger's reverse proxy.`;
+      } else if (htmlText.includes('<!DOCTYPE') || htmlText.includes('<html')) {
+        diagnostic = `Hostinger served the Single Page Application index.html page for an API call. Verify that your .htaccess file has the /api/ rewrite exclusion.`;
+      }
+
+      console.warn('[SMELTRAVELS876 Resend Diagnostic]: HTML response received from API', {
+        status: res.status,
+        url: typeof input === 'string' ? input : (input as any).url,
+        preview: htmlText.slice(0, 150),
+      });
+
+      return {
+        ok: false,
+        status: res.status,
+        statusText: res.statusText,
+        isHtml: true,
+        contentType,
+        data: null,
+        rawText: htmlText.slice(0, 200),
+        error: diagnostic,
+      };
+    }
+
+    // Try parsing JSON safely
+    try {
+      const data = await res.json();
+      return {
+        ok: res.ok,
+        status: res.status,
+        statusText: res.statusText,
+        isHtml: false,
+        contentType,
+        data,
+        error: !res.ok ? (data?.error || `HTTP ${res.status}: Request failed`) : undefined,
+      };
+    } catch (parseErr: any) {
+      const text = await res.text().catch(() => '');
+      return {
+        ok: false,
+        status: res.status,
+        statusText: res.statusText,
+        isHtml: false,
+        contentType,
+        data: null,
+        rawText: text.slice(0, 200),
+        error: `Invalid JSON response from server (HTTP ${res.status}). ${parseErr?.message || ''}`,
+      };
+    }
+  } catch (netErr: any) {
+    console.error('[SMELTRAVELS876 Network Diagnostic]:', netErr);
+    return {
+      ok: false,
+      status: 0,
+      statusText: 'Network Error',
+      isHtml: false,
+      contentType: '',
+      data: null,
+      error: `Network connection failed: ${netErr?.message || 'Unable to reach the SMELTRAVELS876 server'}.`,
+    };
+  }
+}
 
 export const AdminEmailNotificationsView: React.FC = () => {
-  const { adminEmail, adminSessionToken, showNotification } = useApp();
+  const { adminEmail, showNotification } = useApp();
 
   // Status state
   const [isConfigured, setIsConfigured] = useState<boolean>(true);
@@ -58,7 +143,7 @@ export const AdminEmailNotificationsView: React.FC = () => {
   const [previewEmail, setPreviewEmail] = useState<EmailLogItem | null>(null);
 
   // Test email state
-  const [testTo, setTestTo] = useState(adminEmail || 'smeltravels876@gmail.com');
+  const [testTo, setTestTo] = useState(adminEmail || 'zacpremacc12@gmail.com');
   const [testSenderChoice, setTestSenderChoice] = useState<'bookings' | 'notifications'>('bookings');
   const [testTemplateType, setTestTemplateType] = useState<string>('test_email');
   const [testCustomSubject, setTestCustomSubject] = useState('');
@@ -75,27 +160,11 @@ export const AdminEmailNotificationsView: React.FC = () => {
     channel?: string;
   } | null>(null);
 
-  // Dynamic authenticated headers using real administrator session token
-  const authHeaders = useMemo(() => {
-    const token =
-      adminSessionToken ||
-      (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('smeltravels_admin_token') : null) ||
-      (typeof localStorage !== 'undefined' ? localStorage.getItem('smeltravels_admin_token') : null);
-
-    const headers: Record<string, string> = {
-      'x-admin-email': adminEmail || 'smeltravels876@gmail.com',
-    };
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-    return headers;
-  }, [adminEmail, adminSessionToken]);
-
-  // Fetch status and logs safely with real admin session headers
+  // Fetch status and logs safely with admin headers
   const fetchStatus = async () => {
     try {
       const result = await safeApiCall<any>('/api/resend/status', {
-        headers: authHeaders,
+        headers: { 'x-admin-email': adminEmail || 'zacpremacc12@gmail.com' },
       });
       if (result.ok && result.data) {
         setIsConfigured(Boolean(result.data.configured));
@@ -113,7 +182,10 @@ export const AdminEmailNotificationsView: React.FC = () => {
     setLogsLoading(true);
     try {
       const result = await safeApiCall<any>('/api/resend/logs', {
-        headers: authHeaders,
+        headers: {
+          'x-admin-email': adminEmail || 'zacpremacc12@gmail.com',
+          'Authorization': 'Bearer admin-authenticated-session',
+        },
       });
       if (result.ok && result.data?.success && Array.isArray(result.data.logs)) {
         setLogs(result.data.logs);
@@ -130,7 +202,7 @@ export const AdminEmailNotificationsView: React.FC = () => {
     fetchLogs();
     const interval = setInterval(fetchLogs, 10000);
     return () => clearInterval(interval);
-  }, [authHeaders]);
+  }, []);
 
   // Handle Test Email Dispatch with Administrator Security & Resilient Error Catching
   const handleSendTestEmail = async (e: React.FormEvent) => {
@@ -143,11 +215,14 @@ export const AdminEmailNotificationsView: React.FC = () => {
     setIsSendingTest(true);
     setTestResult(null);
 
+    const activeAdminEmail = adminEmail || 'zacpremacc12@gmail.com';
+
     const result = await safeApiCall<any>('/api/resend/test', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...authHeaders,
+        'x-admin-email': activeAdminEmail,
+        'Authorization': 'Bearer admin-authenticated-session',
       },
       body: JSON.stringify({
         to: testTo.trim(),
@@ -161,7 +236,7 @@ export const AdminEmailNotificationsView: React.FC = () => {
     if (result.ok && result.data && result.data.success) {
       setTestResult({
         success: true,
-        status: result.data.status || 'Accepted',
+        status: result.data.status || 'Delivered',
         messageId: result.data.messageId,
         subject: result.data.subject,
         httpStatus: result.status,
@@ -169,7 +244,7 @@ export const AdminEmailNotificationsView: React.FC = () => {
       });
       showNotification(
         'Email Dispatched!',
-        `Test message sent to ${testTo} (${result.data.status || 'Accepted'}). Check inbox or logs below.`,
+        `Test message sent to ${testTo} (${result.data.status}). Check inbox or logs below.`,
         'success'
       );
       fetchLogs();
@@ -196,7 +271,10 @@ export const AdminEmailNotificationsView: React.FC = () => {
     try {
       const result = await safeApiCall<any>('/api/resend/logs', {
         method: 'DELETE',
-        headers: authHeaders,
+        headers: {
+          'x-admin-email': adminEmail || 'zacpremacc12@gmail.com',
+          'Authorization': 'Bearer admin-authenticated-session',
+        },
       });
       if (result.ok) {
         setLogs([]);
@@ -237,9 +315,9 @@ export const AdminEmailNotificationsView: React.FC = () => {
     });
   }, [logs, searchQuery, statusFilter, senderFilter]);
 
-  const deliveredCount = logs.filter((l) => l.status === 'Delivered' || l.status === 'Accepted').length;
+  const deliveredCount = logs.filter((l) => l.status === 'Delivered').length;
   const simulatedCount = logs.filter((l) => l.status === 'Simulated').length;
-  const failedCount = logs.filter((l) => l.status === 'Failed' || l.status === 'Bounced').length;
+  const failedCount = logs.filter((l) => l.status === 'Failed').length;
 
   return (
     <div className="space-y-6">
@@ -671,8 +749,6 @@ export const AdminEmailNotificationsView: React.FC = () => {
                             className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
                               log.status === 'Delivered'
                                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : log.status === 'Accepted' || log.status === 'Queued'
-                                ? 'bg-blue-50 text-blue-700 border border-blue-200'
                                 : log.status === 'Simulated'
                                 ? 'bg-amber-50 text-amber-700 border border-amber-200'
                                 : 'bg-rose-50 text-rose-700 border border-rose-200'

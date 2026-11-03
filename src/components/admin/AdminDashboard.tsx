@@ -214,7 +214,6 @@ export const AdminDashboard: React.FC = () => {
   const [inquirySearch, setInquirySearch] = useState('');
   const [inquiryFilterStatus, setInquiryFilterStatus] = useState<string>('All');
   const [selectedInquiry, setSelectedInquiry] = useState<BookingInquiry | null>(null);
-  const [deleteConfirmBooking, setDeleteConfirmBooking] = useState<BookingInquiry | null>(null);
 
   // Tab Bar Horizontal Scroll & Slide Across Arrow Controls
   const tabsContainerRef = useRef<HTMLDivElement>(null);
@@ -980,9 +979,13 @@ export const AdminDashboard: React.FC = () => {
                               <Eye className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => setDeleteConfirmBooking(b)}
+                              onClick={() => {
+                                if (window.confirm(`Delete booking inquiry ${b.referenceNumber}?`)) {
+                                  deleteBooking(b.id);
+                                }
+                              }}
                               className="p-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors"
-                              title="Permanently purge inquiry"
+                              title="Delete inquiry"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -992,7 +995,7 @@ export const AdminDashboard: React.FC = () => {
                     ) : (
                       <tr>
                         <td colSpan={8} className="p-8 text-center text-neutral-500">
-                          {bookings.length === 0 ? 'No customer inquiries have been received.' : 'No inquiries found matching current search criteria.'}
+                          No inquiries found matching current search criteria.
                         </td>
                       </tr>
                     )}
@@ -1106,61 +1109,6 @@ export const AdminDashboard: React.FC = () => {
                       className="px-4 py-2 bg-neutral-200 hover:bg-neutral-300 text-neutral-800 rounded-xl text-xs font-bold transition-colors cursor-pointer"
                     >
                       Close
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Permanent Purge Confirmation Modal */}
-            {deleteConfirmBooking && (
-              <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-rose-200">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 shrink-0">
-                      <Trash2 className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-bold text-neutral-900 font-['Outfit',sans-serif]">
-                        Permanently Purge Inquiry?
-                      </h3>
-                      <p className="text-xs text-neutral-500">
-                        Reference: <span className="font-mono font-bold text-purple-900">{deleteConfirmBooking.referenceNumber}</span>
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 space-y-1">
-                    <p className="font-semibold">Authoritative & Irreversible Action:</p>
-                    <p>
-                      This will permanently purge traveler <strong>{deleteConfirmBooking.customerName}</strong> ({deleteConfirmBooking.tripName}) across all views:
-                    </p>
-                    <ul className="list-disc pl-4 space-y-0.5 text-[11px] text-amber-800">
-                      <li>Website Inquiries Table</li>
-                      <li>Admin Staff Inbox</li>
-                      <li>Master Excel Database</li>
-                    </ul>
-                    <p className="pt-1 text-[11px] text-neutral-600">
-                      The record will be added to the persistent tombstone registry so it will never resurrect on page reload, cache sync, or another device.
-                    </p>
-                  </div>
-
-                  <div className="flex items-center justify-end gap-2 pt-2">
-                    <button
-                      onClick={() => setDeleteConfirmBooking(null)}
-                      className="px-4 py-2 rounded-xl border border-neutral-300 text-neutral-700 text-xs font-bold hover:bg-neutral-100 cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={() => {
-                        const targetId = deleteConfirmBooking.id;
-                        deleteBooking(targetId);
-                        setDeleteConfirmBooking(null);
-                      }}
-                      className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs cursor-pointer transition-colors"
-                    >
-                      Permanently Purge
                     </button>
                   </div>
                 </div>
@@ -3727,8 +3675,8 @@ export const AdminDashboard: React.FC = () => {
                       <label className="font-bold text-neutral-700 block mb-1">WiPay Account Number (10 Digits)</label>
                       <input
                         type="text"
-                        placeholder="Configure via WIPAY_ACCOUNT_NUMBER env"
-                        value={localSettings.companyBanking?.wipayAccountNumber || ''}
+                        placeholder="2397990892"
+                        value={localSettings.companyBanking?.wipayAccountNumber || '2397990892'}
                         onChange={(e) => updateBankingField('wipayAccountNumber', e.target.value)}
                         className="w-full p-2.5 border border-neutral-300 rounded-xl font-mono text-xs bg-white font-bold"
                       />
@@ -3737,9 +3685,9 @@ export const AdminDashboard: React.FC = () => {
                     <div>
                       <label className="font-bold text-neutral-700 block mb-1">WiPay Live Developer API Key</label>
                       <input
-                        type="password"
-                        placeholder="Configure via WIPAY_API_KEY env"
-                        value={localSettings.companyBanking?.wipayApiKey || ''}
+                        type="text"
+                        placeholder="qxhk2m4kvg"
+                        value={localSettings.companyBanking?.wipayApiKey || 'qxhk2m4kvg'}
                         onChange={(e) => updateBankingField('wipayApiKey', e.target.value)}
                         className="w-full p-2.5 border border-neutral-300 rounded-xl font-mono text-xs bg-white font-bold text-purple-900"
                       />

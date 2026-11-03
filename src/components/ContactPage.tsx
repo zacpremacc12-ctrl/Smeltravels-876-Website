@@ -251,20 +251,16 @@ export const ContactPage: React.FC = () => {
     showNotification('Ambassador Removed', `${amb.name} was removed from the website.`, 'info');
   };
 
-  const handleAdminUnlock = async (e: React.FormEvent) => {
+  const handleAdminUnlock = (e: React.FormEvent) => {
     e.preventDefault();
     setAdminUnlockError(null);
-    try {
-      const res = await loginAdminWithCredentials(adminEmailInput, adminPasswordInput);
-      if (res.success) {
-        setAdminUnlockOpen(false);
-        setAdminPasswordInput('');
-        showNotification('Admin Controls Unlocked', 'You can now edit ambassador names, emails, and phone numbers directly.');
-      } else {
-        setAdminUnlockError(res.error || 'Invalid admin credentials.');
-      }
-    } catch (err: any) {
-      setAdminUnlockError(err?.message || 'Authentication error.');
+    const res = loginAdminWithCredentials(adminEmailInput, adminPasswordInput);
+    if (res.success) {
+      setAdminUnlockOpen(false);
+      setAdminPasswordInput('');
+      showNotification('Admin Controls Unlocked', 'You can now edit ambassador names, emails, and phone numbers directly.');
+    } else {
+      setAdminUnlockError(res.error || 'Invalid admin credentials.');
     }
   };
 
@@ -1144,6 +1140,7 @@ export const ContactPage: React.FC = () => {
                     type="button"
                     onClick={() => {
                       setAdminEmailInput('smeltravels876@gmail.com');
+                      setAdminPasswordInput('Jjrrss5521');
                     }}
                     className="text-xs text-purple-700 hover:text-purple-900 font-semibold underline cursor-pointer"
                   >
