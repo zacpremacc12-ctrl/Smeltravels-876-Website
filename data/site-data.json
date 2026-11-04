@@ -51,6 +51,11 @@
       }
     ],
     "requireAmbassadorSelection": true,
+    "adminNotificationEmails": [
+      "zacpremacc12@gmail.com",
+      "zbuchanan.smeltravels@gmail.com",
+      "smeltravels876@gmail.com"
+    ],
     "ambassadorDiscountPercentage": 10,
     "whatsappNumber": "18768341537",
     "whatsappMessageTemplate": "Hi SMELTRAVELS876! I am interested in exploring upcoming group trips and travel packages.",
@@ -4425,6 +4430,116 @@
   ],
   "adminOrdersExcel": [
     {
+      "id": "order-contact-1793751935583",
+      "orderRef": "CONT-57292",
+      "receivedAt": "2026-11-04T00:25:35.581Z",
+      "orderType": "Contact Order",
+      "customerName": "Romaine Edwards",
+      "email": "romaine@example.com",
+      "phone": "(876) 777-1234",
+      "parishOrCountry": "Montego Bay",
+      "tripOrDestination": "General Inquiries & Travel Planning",
+      "travelDates": "Flexible",
+      "adultsCount": 1,
+      "childrenCount": 0,
+      "budget": "General Inquiry",
+      "numericalBudget": 0,
+      "totalPrice": 0,
+      "depositPaid": 0,
+      "currency": "JMD",
+      "paymentStatus": "Unpaid",
+      "orderStatus": "New",
+      "preferredContact": "whatsapp",
+      "assignedAdmin": "Zachary Buchanan",
+      "specialRequests": "Do you assist with German visa appointment scheduling?",
+      "inclusions": "General Communication",
+      "adminNotes": "Website contact message received on 2026-11-04T00:25:35.581Z. Dispatched to zacpremacc12@gmail.com, zbuchanan.smeltravels@gmail.com, smeltravels876@gmail.com.",
+      "lastUpdated": "2026-11-04T00:25:35.581Z"
+    },
+    {
+      "id": "order-custom-1793751929852",
+      "orderRef": "CUSTOM-20578",
+      "receivedAt": "2026-11-04T00:25:29.850Z",
+      "orderType": "Custom Trip",
+      "customerName": "Shanice Miller",
+      "email": "shanice@example.com",
+      "phone": "(876) 888-2345",
+      "parishOrCountry": "Jamaica",
+      "tripOrDestination": "Japan & South Korea (Japan)",
+      "travelDates": "Flexible: Spring 2027 (4 December 2026 - 14 December 2026)",
+      "arrivalDate": "2026-12-04",
+      "departureDate": "2026-12-14",
+      "adultsCount": 2,
+      "childrenCount": 0,
+      "budget": "$4,000 USD",
+      "numericalBudget": 4000,
+      "totalPrice": 0,
+      "depositPaid": 0,
+      "currency": "USD",
+      "paymentStatus": "Unpaid",
+      "orderStatus": "New",
+      "preferredContact": "whatsapp",
+      "assignedAdmin": "Elvoy Bennett",
+      "specialRequests": "Custom trip quotation requested.",
+      "inclusions": "Bullet Train Pass, 5-Star Tokyo Hotel",
+      "adminNotes": "Custom trip to Japan & South Korea submitted by traveler with arrival 4 December 2026 and departure 14 December 2026. Dispatched to Elvoy Bennett & Zachary Buchanan.",
+      "lastUpdated": "2026-11-04T00:25:29.850Z"
+    },
+    {
+      "id": "order-inq-1793751920276",
+      "orderRef": "INQ-74975",
+      "receivedAt": "2026-11-04T00:25:20.273Z",
+      "orderType": "Booking Inquiry",
+      "customerName": "Kadeen Campbell",
+      "email": "kadeen@example.com",
+      "phone": "(876) 555-0199",
+      "parishOrCountry": "St. Andrew",
+      "tripOrDestination": "Panama Explorer 2026",
+      "travelDates": "November 2026",
+      "adultsCount": 1,
+      "childrenCount": 0,
+      "budget": "Standard Package",
+      "numericalBudget": 0,
+      "totalPrice": 0,
+      "depositPaid": 0,
+      "currency": "JMD",
+      "paymentStatus": "Unpaid",
+      "orderStatus": "New",
+      "preferredContact": "whatsapp",
+      "assignedAdmin": "Zachary Buchanan",
+      "specialRequests": "Looking for 2 spots in October. Can I pay via bank deposit?",
+      "inclusions": "Standard package inclusions",
+      "adminNotes": "Online booking inquiry received on 2026-11-04T00:25:20.273Z. Dispatched to zacpremacc12@gmail.com, zbuchanan.smeltravels@gmail.com, smeltravels876@gmail.com.",
+      "lastUpdated": "2026-11-04T00:25:20.273Z"
+    },
+    {
+      "id": "order-inbox-test-1793751914445",
+      "orderRef": "TEST-21162",
+      "receivedAt": "2026-11-04T00:25:14.445Z",
+      "orderType": "Booking Inquiry",
+      "customerName": "SMEL Travels Test Admin",
+      "email": "zacpremacc12@gmail.com",
+      "phone": "(876) 848-9772",
+      "parishOrCountry": "Kingston, Jamaica",
+      "tripOrDestination": "Admin Delivery Test Package",
+      "travelDates": "November 2026",
+      "adultsCount": 2,
+      "childrenCount": 0,
+      "budget": "Test Inquiry",
+      "numericalBudget": 0,
+      "totalPrice": 0,
+      "depositPaid": 0,
+      "currency": "JMD",
+      "paymentStatus": "Unpaid",
+      "orderStatus": "New",
+      "preferredContact": "WhatsApp",
+      "assignedAdmin": "Zachary Buchanan",
+      "specialRequests": "Diagnostic delivery test from Admin Inbox.",
+      "inclusions": "System Verification",
+      "adminNotes": "Test inquiry generated on 2026-11-04T00:25:14.445Z to verify notifications.",
+      "lastUpdated": "2026-11-04T00:25:14.445Z"
+    },
+    {
       "id": "order-shanice-54311",
       "orderRef": "INQ-54311",
       "receivedAt": "2026-09-10T22:54:00.000Z",
@@ -4913,6 +5028,85 @@
   ],
   "bookings": [
     {
+      "id": "booking-contact-1793751935583",
+      "referenceNumber": "CONT-57292",
+      "tripId": "general-contact",
+      "tripName": "General Inquiries & Travel Planning",
+      "customerName": "Romaine Edwards",
+      "email": "romaine@example.com",
+      "phone": "(876) 777-1234",
+      "countryOrParish": "Montego Bay",
+      "adultsCount": 1,
+      "childrenCount": 0,
+      "preferredTravelDate": "Flexible",
+      "travelInterestType": "general_inquiry",
+      "specialRequests": "Do you assist with German visa appointment scheduling?",
+      "preferredContactMethod": "whatsapp",
+      "status": "New Contact Inquiry",
+      "depositPaid": 0,
+      "totalPrice": 0,
+      "currency": "JMD",
+      "ambassadorName": "Zachary Buchanan",
+      "internalNotes": [
+        "Contact form submitted on 2026-11-04T00:25:35.581Z. Dispatched to zacpremacc12@gmail.com, zbuchanan.smeltravels@gmail.com, smeltravels876@gmail.com."
+      ],
+      "createdAt": "2026-11-04T00:25:35.581Z",
+      "updatedAt": "2026-11-04T00:25:35.581Z"
+    },
+    {
+      "id": "booking-custom-1793751929851",
+      "referenceNumber": "CUSTOM-20578",
+      "tripId": "custom-japan",
+      "tripName": "Custom Trip: Japan & South Korea",
+      "customerName": "Shanice Miller",
+      "email": "shanice@example.com",
+      "phone": "(876) 888-2345",
+      "countryOrParish": "Jamaica",
+      "adultsCount": 2,
+      "childrenCount": 0,
+      "preferredTravelDate": "Flexible: Spring 2027 (4 December 2026 - 14 December 2026)",
+      "arrivalDate": "2026-12-04",
+      "departureDate": "2026-12-14",
+      "travelInterestType": "ready_to_book",
+      "specialRequests": "[Custom Trip Request]\nDestination: Japan & South Korea (Japan)\nArrival Date: 4 December 2026\nDeparture Date: 14 December 2026 (10 Days)\nVibe: Cherry Blossom Luxury Tour\nStyle: Luxury\nBudget: $4,000 USD\nInclusions: Bullet Train Pass, 5-Star Tokyo Hotel\nNotes: None",
+      "preferredContactMethod": "whatsapp",
+      "status": "Custom Trip Request",
+      "depositPaid": 0,
+      "totalPrice": 0,
+      "currency": "JMD",
+      "internalNotes": [
+        "Custom trip submitted by traveler on 2026-11-04T00:25:29.850Z with arrival 4 December 2026 and departure 14 December 2026. Dispatched to Elvoy Bennett & Zachary Buchanan."
+      ],
+      "createdAt": "2026-11-04T00:25:29.850Z",
+      "updatedAt": "2026-11-04T00:25:29.850Z"
+    },
+    {
+      "id": "booking-inq-1793751920276",
+      "referenceNumber": "INQ-74975",
+      "tripId": "package-inquiry",
+      "tripName": "Panama Explorer 2026",
+      "customerName": "Kadeen Campbell",
+      "email": "kadeen@example.com",
+      "phone": "(876) 555-0199",
+      "countryOrParish": "St. Andrew",
+      "adultsCount": 1,
+      "childrenCount": 0,
+      "preferredTravelDate": "November 2026",
+      "travelInterestType": "more_info",
+      "specialRequests": "Looking for 2 spots in October. Can I pay via bank deposit?",
+      "preferredContactMethod": "whatsapp",
+      "status": "New",
+      "depositPaid": 0,
+      "totalPrice": 0,
+      "currency": "JMD",
+      "ambassadorName": "Zachary Buchanan",
+      "internalNotes": [
+        "Booking inquiry received on 2026-11-04T00:25:20.273Z. Dispatched to zacpremacc12@gmail.com, zbuchanan.smeltravels@gmail.com, smeltravels876@gmail.com."
+      ],
+      "createdAt": "2026-11-04T00:25:20.273Z",
+      "updatedAt": "2026-11-04T00:25:20.273Z"
+    },
+    {
       "id": "book-shanice-54311",
       "referenceNumber": "INQ-54311",
       "tripId": "panama-2026",
@@ -5080,6 +5274,110 @@
     }
   ],
   "adminInbox": [
+    {
+      "id": "inbox-msg-1793751935583-111",
+      "type": "message",
+      "title": "Contact Message: Schengen Visa Question (Romaine Edwards)",
+      "senderName": "Romaine Edwards",
+      "senderEmail": "romaine@example.com",
+      "senderPhone": "(876) 777-1234",
+      "location": "Montego Bay",
+      "summary": "Message from Romaine Edwards (Montego Bay). Dispatched to zacpremacc12@gmail.com, zbuchanan.smeltravels@gmail.com, smeltravels876@gmail.com.",
+      "details": "Customer: Romaine Edwards\nEmail: romaine@example.com\nPhone: (876) 777-1234\nParish: Montego Bay\nSubject: Schengen Visa Question\nMessage: Do you assist with German visa appointment scheduling?\nPreferred Contact: whatsapp\nAdmins: Zachary Buchanan & Elvoy Bennett",
+      "tripName": "General Inquiries & Travel Planning",
+      "referenceNumber": "CONT-57292",
+      "timestamp": "2026-11-04T00:25:35.581Z",
+      "isRead": false,
+      "adminRecipients": [
+        "Zachary Buchanan",
+        "Elvoy Bennett"
+      ],
+      "recipientEmails": [
+        "zacpremacc12@gmail.com",
+        "zbuchanan.smeltravels@gmail.com",
+        "smeltravels876@gmail.com"
+      ],
+      "emailStatus": "Delivered"
+    },
+    {
+      "id": "inbox-custom-1793751929851-1",
+      "type": "custom_trip",
+      "title": "Custom Trip Request: Japan & South Korea (Shanice Miller)",
+      "senderName": "Shanice Miller",
+      "senderEmail": "shanice@example.com",
+      "senderPhone": "(876) 888-2345",
+      "arrivalDate": "2026-12-04",
+      "departureDate": "2026-12-14",
+      "travelDates": "Flexible: Spring 2027 (4 December 2026 - 14 December 2026)",
+      "travelersCount": "2 Adult(s)",
+      "location": "Jamaica",
+      "preferredContact": "whatsapp",
+      "customerMessage": "Custom vacation itinerary request to Japan & South Korea.",
+      "summary": "Custom trip to Japan & South Korea (Flexible: Spring 2027 (4 December 2026 - 14 December 2026), 2 Adult(s)). Style: Luxury. Sent to Elvoy Bennett & Zachary Buchanan.",
+      "details": "CUSTOM TRIP DETAILS:\nDestination: Japan & South Korea (Japan)\nArrival Date: 4 December 2026\nDeparture Date: 14 December 2026\nDuration: 10 Days\nTravelers: 2 Adult(s)\nStyle: Luxury\nVibe: Cherry Blossom Luxury Tour\nBudget: $4,000 USD\nInclusions: Bullet Train Pass, 5-Star Tokyo Hotel\nSpecial Notes: None\n\nTRAVELER:\nName: Shanice Miller\nEmail: shanice@example.com\nPhone: (876) 888-2345\nParish/Region: Jamaica\nPreferred Contact: whatsapp\nAmbassador: Executive Desk\nDispatched to: zacpremacc12@gmail.com, zbuchanan.smeltravels@gmail.com, smeltravels876@gmail.com",
+      "tripName": "Custom: Japan & South Korea",
+      "referenceNumber": "CUSTOM-20578",
+      "timestamp": "2026-11-04T00:25:29.850Z",
+      "isRead": false,
+      "adminRecipients": [
+        "Zachary Buchanan",
+        "Elvoy Bennett"
+      ],
+      "recipientEmails": [
+        "zacpremacc12@gmail.com",
+        "zbuchanan.smeltravels@gmail.com",
+        "smeltravels876@gmail.com"
+      ],
+      "emailStatus": "Delivered"
+    },
+    {
+      "id": "inbox-inq-1793751920276-660",
+      "type": "inquiry",
+      "title": "Trip Inquiry: Panama Explorer 2026 (Wants More Information)",
+      "senderName": "Kadeen Campbell",
+      "senderEmail": "kadeen@example.com",
+      "senderPhone": "(876) 555-0199",
+      "summary": "Inquiry from Kadeen Campbell (St. Andrew). Notified Admins: Zachary Buchanan & Elvoy Bennett. Dispatched to zacpremacc12@gmail.com, zbuchanan.smeltravels@gmail.com, smeltravels876@gmail.com.",
+      "details": "Customer: Kadeen Campbell\nEmail: kadeen@example.com\nPhone: (876) 555-0199\nParish: St. Andrew\nStage: Wants More Information\nTrip: Panama Explorer 2026\nInquiry: Looking for 2 spots in October. Can I pay via bank deposit?\nPreferred Contact: whatsapp\nDesignated Admins: Zachary Buchanan (zacpremacc12@gmail.com / zbuchanan.smeltravels@gmail.com) & Elvoy Bennett (smeltravels876@gmail.com)\nAuto-Dispatched Emails: zacpremacc12@gmail.com, zbuchanan.smeltravels@gmail.com, smeltravels876@gmail.com",
+      "tripName": "Panama Explorer 2026",
+      "referenceNumber": "INQ-74975",
+      "timestamp": "2026-11-04T00:25:20.273Z",
+      "isRead": false,
+      "adminRecipients": [
+        "Zachary Buchanan",
+        "Elvoy Bennett"
+      ],
+      "recipientEmails": [
+        "zacpremacc12@gmail.com",
+        "zbuchanan.smeltravels@gmail.com",
+        "smeltravels876@gmail.com"
+      ],
+      "emailStatus": "Delivered"
+    },
+    {
+      "id": "inbox-test-1793751914445",
+      "type": "inquiry",
+      "title": "⚡ Live Test Inquiry (Delivery Verification)",
+      "senderName": "SMEL Travels System Diagnostics",
+      "senderEmail": "zacpremacc12@gmail.com",
+      "senderPhone": "(876) 848-9772",
+      "summary": "Live delivery verification test inquiry. Dispatched to all administrators: zacpremacc12@gmail.com, zbuchanan.smeltravels@gmail.com, smeltravels876@gmail.com.",
+      "details": "This is an automated delivery test initiated from the Admin Central Inbox.\nTarget Admin: zacpremacc12@gmail.com\nAll Active Recipients: zacpremacc12@gmail.com, zbuchanan.smeltravels@gmail.com, smeltravels876@gmail.com\nTimestamp: 2026-11-04T00:25:14.445Z\nReference: TEST-21162\n\nIf you see this in your inbox, real-time sync and admin notification delivery are working flawlessly!",
+      "tripName": "Live Admin Verification Test",
+      "referenceNumber": "TEST-21162",
+      "timestamp": "2026-11-04T00:25:14.445Z",
+      "isRead": false,
+      "adminRecipients": [
+        "Zachary Buchanan",
+        "Elvoy Bennett"
+      ],
+      "recipientEmails": [
+        "zacpremacc12@gmail.com",
+        "zbuchanan.smeltravels@gmail.com",
+        "smeltravels876@gmail.com"
+      ],
+      "emailStatus": "Delivered"
+    },
     {
       "id": "inbox-shanice-54311",
       "type": "inquiry",
@@ -5257,8 +5555,98 @@
       "emailStatus": "Delivered"
     }
   ],
-  "contacts": [],
+  "contacts": [
+    {
+      "id": "contact-1793751935583",
+      "referenceNumber": "CONT-57292",
+      "name": "Romaine Edwards",
+      "email": "romaine@example.com",
+      "phone": "(876) 777-1234",
+      "countryOrParish": "Montego Bay",
+      "tripName": "General Inquiries & Travel Planning",
+      "subject": "Schengen Visa Question",
+      "message": "Do you assist with German visa appointment scheduling?",
+      "preferredContactMethod": "whatsapp",
+      "status": "New",
+      "createdAt": "2026-11-04T00:25:35.581Z"
+    },
+    {
+      "id": "contact-1793751920276",
+      "referenceNumber": "INQ-74975",
+      "name": "Kadeen Campbell",
+      "email": "kadeen@example.com",
+      "phone": "(876) 555-0199",
+      "countryOrParish": "St. Andrew",
+      "tripId": "",
+      "tripName": "Panama Explorer 2026",
+      "subject": "[Trip Inquiry] Panama Explorer 2026 - Wants More Information",
+      "message": "Looking for 2 spots in October. Can I pay via bank deposit?",
+      "preferredContactMethod": "whatsapp",
+      "status": "New",
+      "createdAt": "2026-11-04T00:25:20.273Z"
+    }
+  ],
   "dispatchedEmails": [
+    {
+      "templateType": "custom_trip_admin",
+      "sender": "SMELTRAVELS876 Bookings <bookings@smeltravels876.com>",
+      "recipient": [
+        "zacpremacc12@gmail.com",
+        "zbuchanan.smeltravels@gmail.com",
+        "smeltravels876@gmail.com"
+      ],
+      "subject": "[ADMIN ALERT] New Custom Trip Request: Japan & South Korea — Shanice Miller (#CUSTOM-20578)",
+      "status": "Delivered",
+      "messageId": "01a1a3f2-5469-7617-996f-5a1e420b60c6",
+      "htmlContent": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>[ADMIN ALERT] New Custom Trip Request: Japan & South Korea — Shanice Miller (#CUSTOM-20578)</title>\n  <style>\n    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FAF9F6; margin: 0; padding: 20px; color: #1E293B; }\n    .wrapper { max-width: 620px; margin: 0 auto; background: #FFFFFF; border-radius: 18px; overflow: hidden; border: 1px solid #E2E8F0; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); }\n    .header { background: linear-gradient(135deg, #2E0249 0%, #190028 100%); padding: 32px 28px; text-align: center; color: #FFFFFF; position: relative; }\n    .logo-badge { display: inline-block; background: rgba(255, 199, 44, 0.15); border: 1px solid rgba(255, 199, 44, 0.4); color: #FFC72C; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; padding: 4px 14px; border-radius: 9999px; margin-bottom: 12px; }\n    .brand-title { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: 0.5px; color: #FFC72C; }\n    .brand-tagline { margin: 8px 0 0 0; font-size: 13px; color: #E2E8F0; font-weight: 500; }\n    .sender-ribbon { background-color: #F1F5F9; padding: 10px 24px; border-bottom: 1px solid #E2E8F0; font-size: 11px; font-weight: 600; color: #475569; display: flex; justify-content: space-between; }\n    .content { padding: 32px 28px; }\n    .card { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 14px; padding: 20px; margin: 20px 0; }\n    .table-details { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }\n    .table-details td { padding: 8px 0; border-bottom: 1px dashed #E2E8F0; }\n    .table-details td:last-child { text-align: right; font-weight: 700; color: #1E293B; }\n    .table-details td:first-child { color: #64748B; }\n    .btn { display: inline-block; background: #2E0249; color: #FFC72C !important; font-size: 14px; font-weight: 800; text-decoration: none; padding: 14px 28px; border-radius: 12px; margin: 16px 0; text-align: center; letter-spacing: 0.3px; border: 1px solid rgba(255,199,44,0.3); }\n    .footer { background-color: #0F172A; padding: 26px 24px; text-align: center; font-size: 12px; color: #94A3B8; line-height: 1.6; }\n    .footer a { color: #FFC72C; text-decoration: none; }\n  </style>\n</head>\n<body>\n  <!-- Preheader text for inbox preview -->\n  <div style=\"display:none;font-size:1px;color:#333333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;\">\n    Custom itinerary request for Japan & South Korea from Shanice Miller.\n  </div>\n\n  <div class=\"wrapper\">\n    <!-- Header -->\n    <div class=\"header\">\n      <div class=\"logo-badge\">Official Transactional Notification</div>\n      <h1 class=\"brand-title\">SMELTRAVELS876</h1>\n      <p class=\"brand-tagline\">Luxury Group Travel & Curated Jamaican Experiences</p>\n    </div>\n\n    <!-- Sender Channel Ribbon -->\n    <div class=\"sender-ribbon\">\n      <span>Official Sender: <strong>bookings@smeltravels876.com</strong></span>\n      <span>Verified Domain: <strong>smeltravels876.com</strong></span>\n    </div>\n\n    <!-- Main Content Body -->\n    <div class=\"content\">\n      \n        <div style=\"display: inline-block; background-color: #EDE9FE; color: #5B21B6; font-size: 11px; font-weight: bold; padding: 4px 12px; border-radius: 9999px; margin-bottom: 12px;\">\n          Custom Trip Alert • Ref #CUSTOM-20578\n        </div>\n        <h2 style=\"margin: 0 0 10px 0; font-size: 20px; color: #2E0249; font-weight: 800;\">\n          New Custom Itinerary Request\n        </h2>\n        <p style=\"font-size: 13px; color: #64748B; margin: 0 0 16px 0;\">\n          A customer has designed a custom trip proposal. Review specifications below:\n        </p>\n\n        <div class=\"card\">\n          <table class=\"table-details\">\n            <tr><td>Reference:</td><td><strong>#CUSTOM-20578</strong></td></tr>\n            <tr><td>Customer:</td><td>Shanice Miller</td></tr>\n            <tr><td>Email:</td><td><a href=\"mailto:shanice@example.com\">shanice@example.com</a></td></tr>\n            <tr><td>Phone / WhatsApp:</td><td><a href=\"https://wa.me/8768882345\">(876) 888-2345</a></td></tr>\n            <tr><td>Destination:</td><td>Japan & South Korea (Japan)</td></tr>\n            <tr><td>Travel Dates:</td><td>Flexible: Spring 2027 (4 December 2026 - 14 December 2026)</td></tr>\n            <tr><td>Party Size:</td><td>2 Adult(s)</td></tr>\n            <tr><td>Travel Style:</td><td>Luxury</td></tr>\n            <tr><td>Trip Vibe:</td><td>Cherry Blossom Luxury Tour</td></tr>\n            <tr><td>Budget:</td><td>$4,000 USD</td></tr>\n          </table>\n        </div>\n\n        \n\n        <div style=\"text-align: center;\">\n          <a href=\"https://smeltravels876.com\" class=\"btn\">Configure in Admin Portal &rarr;</a>\n        </div>\n      \n    </div>\n\n    <!-- Footer -->\n    <div class=\"footer\">\n      <p style=\"margin: 0 0 8px 0; color: #F1F5F9; font-weight: 700;\">\n        SMELTRAVELS876 LIMITED • Kingston, Jamaica\n      </p>\n      <p style=\"margin: 0 0 12px 0;\">\n        Direct Assistance: <a href=\"tel:(876) 834-1537\">(876) 834-1537</a> | \n        WhatsApp Concierge: <a href=\"https://wa.me/18768341537\">Chat on WhatsApp</a> | \n        Web: <a href=\"https://smeltravels876.com\">smeltravels876.com</a>\n      </p>\n      <p style=\"margin: 0; font-size: 11px; color: #64748B;\">\n        This automated transactional notification was delivered by the official Resend API on behalf of SMELTRAVELS876.<br/>\n        &copy; 2026 SMELTRAVELS876. All rights reserved.\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
+      "referenceNumber": "CUSTOM-20578",
+      "customerName": "Shanice Miller",
+      "id": "email-1793751930069-130",
+      "timestamp": "2026-11-04T00:25:30.069Z"
+    },
+    {
+      "templateType": "custom_trip_customer",
+      "sender": "SMELTRAVELS876 Bookings <bookings@smeltravels876.com>",
+      "recipient": "shanice@example.com",
+      "subject": "Custom Trip Request Received: Japan & South Korea (Ref: #CUSTOM-20578) — SMELTRAVELS876",
+      "status": "Failed",
+      "error": "Invalid `to` field. Please use our testing email address instead of domains like `example.com`. See our documentation for more information.",
+      "htmlContent": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>Custom Trip Request Received: Japan & South Korea (Ref: #CUSTOM-20578) — SMELTRAVELS876</title>\n  <style>\n    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FAF9F6; margin: 0; padding: 20px; color: #1E293B; }\n    .wrapper { max-width: 620px; margin: 0 auto; background: #FFFFFF; border-radius: 18px; overflow: hidden; border: 1px solid #E2E8F0; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); }\n    .header { background: linear-gradient(135deg, #2E0249 0%, #190028 100%); padding: 32px 28px; text-align: center; color: #FFFFFF; position: relative; }\n    .logo-badge { display: inline-block; background: rgba(255, 199, 44, 0.15); border: 1px solid rgba(255, 199, 44, 0.4); color: #FFC72C; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; padding: 4px 14px; border-radius: 9999px; margin-bottom: 12px; }\n    .brand-title { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: 0.5px; color: #FFC72C; }\n    .brand-tagline { margin: 8px 0 0 0; font-size: 13px; color: #E2E8F0; font-weight: 500; }\n    .sender-ribbon { background-color: #F1F5F9; padding: 10px 24px; border-bottom: 1px solid #E2E8F0; font-size: 11px; font-weight: 600; color: #475569; display: flex; justify-content: space-between; }\n    .content { padding: 32px 28px; }\n    .card { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 14px; padding: 20px; margin: 20px 0; }\n    .table-details { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }\n    .table-details td { padding: 8px 0; border-bottom: 1px dashed #E2E8F0; }\n    .table-details td:last-child { text-align: right; font-weight: 700; color: #1E293B; }\n    .table-details td:first-child { color: #64748B; }\n    .btn { display: inline-block; background: #2E0249; color: #FFC72C !important; font-size: 14px; font-weight: 800; text-decoration: none; padding: 14px 28px; border-radius: 12px; margin: 16px 0; text-align: center; letter-spacing: 0.3px; border: 1px solid rgba(255,199,44,0.3); }\n    .footer { background-color: #0F172A; padding: 26px 24px; text-align: center; font-size: 12px; color: #94A3B8; line-height: 1.6; }\n    .footer a { color: #FFC72C; text-decoration: none; }\n  </style>\n</head>\n<body>\n  <!-- Preheader text for inbox preview -->\n  <div style=\"display:none;font-size:1px;color:#333333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;\">\n    We received your custom itinerary request #CUSTOM-20578 for Japan & South Korea.\n  </div>\n\n  <div class=\"wrapper\">\n    <!-- Header -->\n    <div class=\"header\">\n      <div class=\"logo-badge\">Official Transactional Notification</div>\n      <h1 class=\"brand-title\">SMELTRAVELS876</h1>\n      <p class=\"brand-tagline\">Luxury Group Travel & Curated Jamaican Experiences</p>\n    </div>\n\n    <!-- Sender Channel Ribbon -->\n    <div class=\"sender-ribbon\">\n      <span>Official Sender: <strong>bookings@smeltravels876.com</strong></span>\n      <span>Verified Domain: <strong>smeltravels876.com</strong></span>\n    </div>\n\n    <!-- Main Content Body -->\n    <div class=\"content\">\n      \n        <div style=\"display: inline-block; background-color: #FEF3C7; color: #92400E; font-size: 11px; font-weight: bold; padding: 4px 12px; border-radius: 9999px; margin-bottom: 12px;\">\n          Custom Itinerary Request • Ref #CUSTOM-20578\n        </div>\n        <h2 style=\"margin: 0 0 10px 0; font-size: 22px; color: #2E0249; font-weight: 800;\">\n          Dream Trip Received, Shanice Miller!\n        </h2>\n        <p style=\"font-size: 14px; line-height: 1.6; color: #1E293B; margin: 0 0 16px 0;\">\n          Thank you for trusting SMELTRAVELS876 to design your personalized itinerary to <strong>Japan & South Korea</strong>. Our senior itinerary planners are preparing flight routes and hotel options.\n        </p>\n\n        <div class=\"card\">\n          <div style=\"font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #64748B; margin-bottom: 8px;\">\n            Requested Specifications\n          </div>\n          <table class=\"table-details\">\n            <tr><td>Reference:</td><td>#CUSTOM-20578</td></tr>\n            <tr><td>Destination:</td><td>Japan & South Korea (Japan)</td></tr>\n            <tr><td>Travel Dates:</td><td>Flexible: Spring 2027 (4 December 2026 - 14 December 2026)</td></tr>\n            <tr><td>Duration:</td><td>10 Days</td></tr>\n            <tr><td>Travelers:</td><td>2 Adult(s)</td></tr>\n            <tr><td>Vibe & Style:</td><td>Cherry Blossom Luxury Tour • Luxury</td></tr>\n            <tr><td>Budget Preference:</td><td>$4,000 USD</td></tr>\n          </table>\n        </div>\n\n        <div style=\"text-align: center;\">\n          <a href=\"https://smeltravels876.com\" class=\"btn\">View Website Concierge &rarr;</a>\n        </div>\n      \n    </div>\n\n    <!-- Footer -->\n    <div class=\"footer\">\n      <p style=\"margin: 0 0 8px 0; color: #F1F5F9; font-weight: 700;\">\n        SMELTRAVELS876 LIMITED • Kingston, Jamaica\n      </p>\n      <p style=\"margin: 0 0 12px 0;\">\n        Direct Assistance: <a href=\"tel:(876) 834-1537\">(876) 834-1537</a> | \n        WhatsApp Concierge: <a href=\"https://wa.me/18768341537\">Chat on WhatsApp</a> | \n        Web: <a href=\"https://smeltravels876.com\">smeltravels876.com</a>\n      </p>\n      <p style=\"margin: 0; font-size: 11px; color: #64748B;\">\n        This automated transactional notification was delivered by the official Resend API on behalf of SMELTRAVELS876.<br/>\n        &copy; 2026 SMELTRAVELS876. All rights reserved.\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
+      "referenceNumber": "CUSTOM-20578",
+      "customerName": "Shanice Miller",
+      "id": "email-1793751929970-766",
+      "timestamp": "2026-11-04T00:25:29.970Z"
+    },
+    {
+      "templateType": "inquiry_admin",
+      "sender": "SMELTRAVELS876 Bookings <bookings@smeltravels876.com>",
+      "recipient": [
+        "zacpremacc12@gmail.com",
+        "zbuchanan.smeltravels@gmail.com",
+        "smeltravels876@gmail.com"
+      ],
+      "subject": "[ADMIN ALERT] New Customer Inquiry: Panama Explorer 2026 — Kadeen Campbell (#INQ-74975)",
+      "status": "Delivered",
+      "messageId": "01a1a3f2-2eec-7bd6-a4d9-fbaa9292a2c5",
+      "htmlContent": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>[ADMIN ALERT] New Customer Inquiry: Panama Explorer 2026 — Kadeen Campbell (#INQ-74975)</title>\n  <style>\n    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FAF9F6; margin: 0; padding: 20px; color: #1E293B; }\n    .wrapper { max-width: 620px; margin: 0 auto; background: #FFFFFF; border-radius: 18px; overflow: hidden; border: 1px solid #E2E8F0; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); }\n    .header { background: linear-gradient(135deg, #2E0249 0%, #190028 100%); padding: 32px 28px; text-align: center; color: #FFFFFF; position: relative; }\n    .logo-badge { display: inline-block; background: rgba(255, 199, 44, 0.15); border: 1px solid rgba(255, 199, 44, 0.4); color: #FFC72C; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; padding: 4px 14px; border-radius: 9999px; margin-bottom: 12px; }\n    .brand-title { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: 0.5px; color: #FFC72C; }\n    .brand-tagline { margin: 8px 0 0 0; font-size: 13px; color: #E2E8F0; font-weight: 500; }\n    .sender-ribbon { background-color: #F1F5F9; padding: 10px 24px; border-bottom: 1px solid #E2E8F0; font-size: 11px; font-weight: 600; color: #475569; display: flex; justify-content: space-between; }\n    .content { padding: 32px 28px; }\n    .card { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 14px; padding: 20px; margin: 20px 0; }\n    .table-details { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }\n    .table-details td { padding: 8px 0; border-bottom: 1px dashed #E2E8F0; }\n    .table-details td:last-child { text-align: right; font-weight: 700; color: #1E293B; }\n    .table-details td:first-child { color: #64748B; }\n    .btn { display: inline-block; background: #2E0249; color: #FFC72C !important; font-size: 14px; font-weight: 800; text-decoration: none; padding: 14px 28px; border-radius: 12px; margin: 16px 0; text-align: center; letter-spacing: 0.3px; border: 1px solid rgba(255,199,44,0.3); }\n    .footer { background-color: #0F172A; padding: 26px 24px; text-align: center; font-size: 12px; color: #94A3B8; line-height: 1.6; }\n    .footer a { color: #FFC72C; text-decoration: none; }\n  </style>\n</head>\n<body>\n  <!-- Preheader text for inbox preview -->\n  <div style=\"display:none;font-size:1px;color:#333333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;\">\n    New inquiry received from Kadeen Campbell (kadeen@example.com) for Panama Explorer 2026.\n  </div>\n\n  <div class=\"wrapper\">\n    <!-- Header -->\n    <div class=\"header\">\n      <div class=\"logo-badge\">Official Transactional Notification</div>\n      <h1 class=\"brand-title\">SMELTRAVELS876</h1>\n      <p class=\"brand-tagline\">Luxury Group Travel & Curated Jamaican Experiences</p>\n    </div>\n\n    <!-- Sender Channel Ribbon -->\n    <div class=\"sender-ribbon\">\n      <span>Official Sender: <strong>bookings@smeltravels876.com</strong></span>\n      <span>Verified Domain: <strong>smeltravels876.com</strong></span>\n    </div>\n\n    <!-- Main Content Body -->\n    <div class=\"content\">\n      \n        <div style=\"display: inline-block; background-color: #FEF3C7; color: #92400E; font-size: 11px; font-weight: bold; padding: 4px 12px; border-radius: 9999px; margin-bottom: 12px;\">\n          Urgent Staff Notification • Ref #INQ-74975\n        </div>\n        <h2 style=\"margin: 0 0 10px 0; font-size: 20px; color: #2E0249; font-weight: 800;\">\n          New Traveler Inquiry Received\n        </h2>\n        <p style=\"font-size: 13px; color: #64748B; margin: 0 0 16px 0;\">\n          A customer has submitted a trip inquiry. Please review details below and follow up via WhatsApp or email.\n        </p>\n\n        <div class=\"card\">\n          <table class=\"table-details\">\n            <tr><td>Customer:</td><td>Kadeen Campbell</td></tr>\n            <tr><td>Email:</td><td><a href=\"mailto:kadeen@example.com\" style=\"color: #2563EB;\">kadeen@example.com</a></td></tr>\n            <tr><td>Phone / WhatsApp:</td><td><a href=\"https://wa.me/8765550199\" style=\"color: #059669; font-weight: 800;\">(876) 555-0199</a></td></tr>\n            <tr><td>Location:</td><td>St. Andrew</td></tr>\n            <tr><td>Trip / Tour:</td><td>Panama Explorer 2026</td></tr>\n            <tr><td>Dates:</td><td>Flexible</td></tr>\n            <tr><td>Travelers:</td><td>1 Adult(s)</td></tr>\n            <tr><td>Preferred Contact:</td><td style=\"text-transform: capitalize;\">whatsapp</td></tr>\n          </table>\n        </div>\n\n        \n        <div style=\"background: #F1F5F9; border-left: 4px solid #2E0249; padding: 14px; border-radius: 8px; margin-bottom: 20px;\">\n          <div style=\"font-size: 11px; font-weight: bold; color: #64748B; text-transform: uppercase;\">Customer's Inquiry Message:</div>\n          <div style=\"font-size: 13px; color: #1E293B; margin-top: 4px; line-height: 1.5;\">\"Looking for 2 spots in October. Can I pay via bank deposit?\"</div>\n        </div>\n        \n\n        <div style=\"text-align: center;\">\n          <a href=\"https://smeltravels876.com\" class=\"btn\">Open Admin Dashboard &rarr;</a>\n        </div>\n      \n    </div>\n\n    <!-- Footer -->\n    <div class=\"footer\">\n      <p style=\"margin: 0 0 8px 0; color: #F1F5F9; font-weight: 700;\">\n        SMELTRAVELS876 LIMITED • Kingston, Jamaica\n      </p>\n      <p style=\"margin: 0 0 12px 0;\">\n        Direct Assistance: <a href=\"tel:(876) 834-1537\">(876) 834-1537</a> | \n        WhatsApp Concierge: <a href=\"https://wa.me/18768341537\">Chat on WhatsApp</a> | \n        Web: <a href=\"https://smeltravels876.com\">smeltravels876.com</a>\n      </p>\n      <p style=\"margin: 0; font-size: 11px; color: #64748B;\">\n        This automated transactional notification was delivered by the official Resend API on behalf of SMELTRAVELS876.<br/>\n        &copy; 2026 SMELTRAVELS876. All rights reserved.\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
+      "referenceNumber": "INQ-74975",
+      "customerName": "Kadeen Campbell",
+      "id": "email-1793751920452-299",
+      "timestamp": "2026-11-04T00:25:20.452Z"
+    },
+    {
+      "templateType": "inquiry_customer",
+      "sender": "SMELTRAVELS876 Bookings <bookings@smeltravels876.com>",
+      "recipient": "kadeen@example.com",
+      "subject": "Inquiry Confirmed: Panama Explorer 2026 (Ref: INQ-74975) — SMELTRAVELS876",
+      "status": "Failed",
+      "error": "Invalid `to` field. Please use our testing email address instead of domains like `example.com`. See our documentation for more information.",
+      "htmlContent": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>Inquiry Confirmed: Panama Explorer 2026 (Ref: INQ-74975) — SMELTRAVELS876</title>\n  <style>\n    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FAF9F6; margin: 0; padding: 20px; color: #1E293B; }\n    .wrapper { max-width: 620px; margin: 0 auto; background: #FFFFFF; border-radius: 18px; overflow: hidden; border: 1px solid #E2E8F0; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); }\n    .header { background: linear-gradient(135deg, #2E0249 0%, #190028 100%); padding: 32px 28px; text-align: center; color: #FFFFFF; position: relative; }\n    .logo-badge { display: inline-block; background: rgba(255, 199, 44, 0.15); border: 1px solid rgba(255, 199, 44, 0.4); color: #FFC72C; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; padding: 4px 14px; border-radius: 9999px; margin-bottom: 12px; }\n    .brand-title { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: 0.5px; color: #FFC72C; }\n    .brand-tagline { margin: 8px 0 0 0; font-size: 13px; color: #E2E8F0; font-weight: 500; }\n    .sender-ribbon { background-color: #F1F5F9; padding: 10px 24px; border-bottom: 1px solid #E2E8F0; font-size: 11px; font-weight: 600; color: #475569; display: flex; justify-content: space-between; }\n    .content { padding: 32px 28px; }\n    .card { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 14px; padding: 20px; margin: 20px 0; }\n    .table-details { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }\n    .table-details td { padding: 8px 0; border-bottom: 1px dashed #E2E8F0; }\n    .table-details td:last-child { text-align: right; font-weight: 700; color: #1E293B; }\n    .table-details td:first-child { color: #64748B; }\n    .btn { display: inline-block; background: #2E0249; color: #FFC72C !important; font-size: 14px; font-weight: 800; text-decoration: none; padding: 14px 28px; border-radius: 12px; margin: 16px 0; text-align: center; letter-spacing: 0.3px; border: 1px solid rgba(255,199,44,0.3); }\n    .footer { background-color: #0F172A; padding: 26px 24px; text-align: center; font-size: 12px; color: #94A3B8; line-height: 1.6; }\n    .footer a { color: #FFC72C; text-decoration: none; }\n  </style>\n</head>\n<body>\n  <!-- Preheader text for inbox preview -->\n  <div style=\"display:none;font-size:1px;color:#333333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;\">\n    We received your inquiry #INQ-74975 for Panama Explorer 2026. A travel ambassador is reviewing your request.\n  </div>\n\n  <div class=\"wrapper\">\n    <!-- Header -->\n    <div class=\"header\">\n      <div class=\"logo-badge\">Official Transactional Notification</div>\n      <h1 class=\"brand-title\">SMELTRAVELS876</h1>\n      <p class=\"brand-tagline\">Luxury Group Travel & Curated Jamaican Experiences</p>\n    </div>\n\n    <!-- Sender Channel Ribbon -->\n    <div class=\"sender-ribbon\">\n      <span>Official Sender: <strong>bookings@smeltravels876.com</strong></span>\n      <span>Verified Domain: <strong>smeltravels876.com</strong></span>\n    </div>\n\n    <!-- Main Content Body -->\n    <div class=\"content\">\n      \n        <h2 style=\"margin: 0 0 10px 0; font-size: 20px; color: #2E0249; font-weight: 800;\">\n          Thank You, Kadeen Campbell!\n        </h2>\n        <p style=\"font-size: 14px; line-height: 1.6; color: #1E293B; margin: 0 0 16px 0;\">\n          We have received your travel inquiry for <strong>Panama Explorer 2026</strong>. Your assigned travel ambassador has been notified and will reach out with complete package details and dates.\n        </p>\n\n        <div class=\"card\">\n          <div style=\"font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #64748B; margin-bottom: 8px;\">\n            Inquiry Summary\n          </div>\n          <table class=\"table-details\">\n            <tr>\n              <td>Reference Code:</td>\n              <td><span style=\"font-family: monospace; background: #E2E8F0; padding: 2px 8px; border-radius: 6px;\">#INQ-74975</span></td>\n            </tr>\n            <tr>\n              <td>Package / Tour:</td>\n              <td>Panama Explorer 2026</td>\n            </tr>\n            <tr>\n              <td>Preferred Travel Window:</td>\n              <td>Flexible 2026/2027</td>\n            </tr>\n            <tr>\n              <td>Travelers:</td>\n              <td>1 Adult(s)</td>\n            </tr>\n            <tr>\n              <td>Preferred Contact:</td>\n              <td style=\"text-transform: capitalize;\">whatsapp</td>\n            </tr>\n            \n            <tr>\n              <td>Your Message:</td>\n              <td style=\"font-weight: normal; font-style: italic;\">\"Looking for 2 spots in October. Can I pay via bank deposit?\"</td>\n            </tr>\n            \n          </table>\n        </div>\n\n        <div style=\"background: #FEF9C3; border: 1px solid #FDE047; border-radius: 12px; padding: 16px; margin-bottom: 20px;\">\n          <h4 style=\"margin: 0 0 6px 0; color: #854D0E; font-size: 13px; font-weight: 800;\">What Happens Next?</h4>\n          <p style=\"margin: 0; font-size: 12px; color: #713F12; line-height: 1.5;\">\n            Our reservations team will review airline availability and resort allotments for your requested travel dates. You can also track your inquiry status anytime on our website using reference code <strong>#INQ-74975</strong>.\n          </p>\n        </div>\n\n        <div style=\"text-align: center;\">\n          <a href=\"https://smeltravels876.com\" class=\"btn\">Track Your Inquiry on Website &rarr;</a>\n        </div>\n      \n    </div>\n\n    <!-- Footer -->\n    <div class=\"footer\">\n      <p style=\"margin: 0 0 8px 0; color: #F1F5F9; font-weight: 700;\">\n        SMELTRAVELS876 LIMITED • Kingston, Jamaica\n      </p>\n      <p style=\"margin: 0 0 12px 0;\">\n        Direct Assistance: <a href=\"tel:(876) 834-1537\">(876) 834-1537</a> | \n        WhatsApp Concierge: <a href=\"https://wa.me/18768341537\">Chat on WhatsApp</a> | \n        Web: <a href=\"https://smeltravels876.com\">smeltravels876.com</a>\n      </p>\n      <p style=\"margin: 0; font-size: 11px; color: #64748B;\">\n        This automated transactional notification was delivered by the official Resend API on behalf of SMELTRAVELS876.<br/>\n        &copy; 2026 SMELTRAVELS876. All rights reserved.\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
+      "referenceNumber": "INQ-74975",
+      "customerName": "Kadeen Campbell",
+      "id": "email-1793751920384-673",
+      "timestamp": "2026-11-04T00:25:20.384Z"
+    },
     {
       "templateType": "custom_trip_admin",
       "sender": "SMELTRAVELS876 Bookings <bookings@smeltravels876.com>",
@@ -5289,5 +5677,5 @@
       "timestamp": "2026-10-29T01:29:22.361Z"
     }
   ],
-  "lastUpdated": "2026-10-29T01:29:35.776Z"
+  "lastUpdated": "2026-11-04T00:25:35.581Z"
 }

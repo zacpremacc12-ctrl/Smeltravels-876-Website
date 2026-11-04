@@ -482,16 +482,21 @@ export const AdminDashboard: React.FC = () => {
     showNotification('Primary Ambassador Set', `${amb.name} is now designated as the primary agency ambassador.`);
   };
 
-  // Filter bookings
+  // Filter bookings with safe-null checks to prevent search crashes
   const filteredBookings = bookings.filter((b) => {
     const matchesStatus = inquiryFilterStatus === 'All' || b.status === inquiryFilterStatus;
+    const q = inquirySearch.trim().toLowerCase();
+    if (!q) return matchesStatus;
+
     const matchesSearch =
-      inquirySearch.trim() === '' ||
-      b.referenceNumber.toLowerCase().includes(inquirySearch.toLowerCase()) ||
-      b.customerName.toLowerCase().includes(inquirySearch.toLowerCase()) ||
-      b.email.toLowerCase().includes(inquirySearch.toLowerCase()) ||
-      b.phone.includes(inquirySearch) ||
-      b.tripName.toLowerCase().includes(inquirySearch.toLowerCase());
+      (b.referenceNumber ? b.referenceNumber.toLowerCase().includes(q) : false) ||
+      (b.customerName ? b.customerName.toLowerCase().includes(q) : false) ||
+      (b.email ? b.email.toLowerCase().includes(q) : false) ||
+      (b.phone ? b.phone.toLowerCase().includes(q) : false) ||
+      (b.tripName ? b.tripName.toLowerCase().includes(q) : false) ||
+      (b.countryOrParish ? b.countryOrParish.toLowerCase().includes(q) : false) ||
+      (b.specialRequests ? b.specialRequests.toLowerCase().includes(q) : false);
+
     return matchesStatus && matchesSearch;
   });
 

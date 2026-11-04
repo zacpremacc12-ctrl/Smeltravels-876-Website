@@ -66,6 +66,11 @@ export const INITIAL_SETTINGS: SiteSettings = {
     },
   ],
   requireAmbassadorSelection: true,
+  adminNotificationEmails: [
+    'zacpremacc12@gmail.com',
+    'zbuchanan.smeltravels@gmail.com',
+    'smeltravels876@gmail.com',
+  ],
   ambassadorDiscountPercentage: 10,
   whatsappNumber: '18768341537',
   whatsappMessageTemplate: 'Hi SMELTRAVELS876! I am interested in exploring upcoming group trips and travel packages.',

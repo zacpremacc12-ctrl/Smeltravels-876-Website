@@ -23,6 +23,7 @@ import {
   DateOptionEvaluation,
 } from '../../types';
 import { DEFAULT_CHEAPEST_DATE_FINDER_SETTINGS } from '../../data/cheapestDateFinderDefaults';
+import { safeFetchJson } from '../../lib/apiClient';
 import { findCheapestDateOptions } from '../../lib/seasonalPricing';
 
 export const CheapestDateFinderManager: React.FC = () => {
@@ -55,14 +56,14 @@ export const CheapestDateFinderManager: React.FC = () => {
   });
 
   useEffect(() => {
-    fetch('/api/skyscanner/status')
-      .then((res) => res.json())
-      .then((data) => {
+    safeFetchJson<any>('/api/skyscanner/status')
+      .then((res) => {
+        const data = res.data;
         setSkyscannerStatus({
-          configured: !!data.configured,
-          provider: data.provider || 'Skyscanner Travel API',
-          market: data.market || 'JM',
-          currency: data.currency || 'USD',
+          configured: !!data?.configured,
+          provider: data?.provider || 'Skyscanner Travel API',
+          market: data?.market || 'JM',
+          currency: data?.currency || 'USD',
           loading: false,
         });
       })

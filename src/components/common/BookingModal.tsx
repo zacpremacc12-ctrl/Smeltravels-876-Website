@@ -281,7 +281,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
       travelInterestType === 'more_info'
         ? 'Wants More Information'
         : 'Interested But Needs Help';
-    const recipients = ['zbuchanan.smeltravels@gmail.com', 'smeltravels876@gmail.com'];
+    const recipients = ['zacpremacc12@gmail.com', 'zbuchanan.smeltravels@gmail.com', 'smeltravels876@gmail.com'];
 
     // 1. Dispatch to server backend endpoint (dispatches notifications & updates server inbox/email logs)
     try {
@@ -289,6 +289,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          referenceNumber: ref,
           tripId: activeTrip.id,
           tripName: activeTrip.name,
           customerName: customerName.trim(),
@@ -317,10 +318,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
       tripId: activeTrip.id,
       tripName: activeTrip.name,
       referenceNumber: ref,
+      adminRecipients: ['Zachary Buchanan', 'Elvoy Bennett'],
+      recipientEmails: recipients,
     });
 
-    // 3. Register as contact lead (no sign up required)
+    // 3. Register as contact lead (auto-syncs to master excel orders & bookings with consistent ref)
     submitContactForm({
+      referenceNumber: ref,
       name: customerName.trim(),
       email: email.trim(),
       phone: phone.trim(),
@@ -330,27 +334,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trip, onClose }) => 
       subject: `[Trip Inquiry] ${activeTrip.name} - ${stageLabel}`,
       message: inquiryText.trim(),
       preferredContactMethod,
-    });
-
-    // 4. Record booking lead with deposit = 0
-    createBooking({
-      tripId: activeTrip.id,
-      tripName: activeTrip.name,
-      customerName: customerName.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
-      countryOrParish: countryOrParish.trim(),
-      adultsCount,
-      childrenCount: 0,
-      preferredTravelDate: preferredTravelDate || activeTrip.dates,
-      travelInterestType,
-      specialRequests: inquiryText.trim(),
-      preferredContactMethod,
-      status: 'New',
-      depositPaid: 0,
-      totalPrice: activeTrip.price * adultsCount,
-      currency: 'JMD',
-      ambassadorId: selectedAmbassadorId || undefined,
     });
 
     setIsSubmitting(false);

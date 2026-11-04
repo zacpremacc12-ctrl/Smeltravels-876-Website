@@ -120,7 +120,7 @@ interface AppContextType {
   ) => boolean;
   
   contactSubmissions: ContactSubmission[];
-  submitContactForm: (sub: Omit<ContactSubmission, 'id' | 'referenceNumber' | 'createdAt' | 'status'>) => string;
+  submitContactForm: (sub: Omit<ContactSubmission, 'id' | 'referenceNumber' | 'createdAt' | 'status'> & { referenceNumber?: string }) => string;
   
   customers: CustomerRecord[];
   addCustomerNote: (id: string, note: string) => void;
@@ -400,6 +400,13 @@ export function formatUrlHash(page: string, param?: string | null): string {
   }
   return `#${page}`;
 }
+
+// All designated administrator notification recipient email addresses
+export const DEFAULT_ADMIN_RECIPIENT_EMAILS = [
+  'zacpremacc12@gmail.com',
+  'zbuchanan.smeltravels@gmail.com',
+  'smeltravels876@gmail.com',
+];
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<SiteSettings>(() => {
@@ -1555,8 +1562,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addInboxItem = (itemData: Omit<AdminInboxItem, 'id' | 'timestamp' | 'isRead'>) => {
     const newItem: AdminInboxItem = {
       ...itemData,
-      adminRecipients: itemData.adminRecipients || ['Elvoy Bennett', 'Zachary Buchanan'],
-      recipientEmails: itemData.recipientEmails || ['zbuchanan.smeltravels@gmail.com', 'smeltravels876@gmail.com'],
+      adminRecipients: itemData.adminRecipients || ['Zachary Buchanan', 'Elvoy Bennett'],
+      recipientEmails: itemData.recipientEmails && itemData.recipientEmails.length > 0
+        ? itemData.recipientEmails
+        : DEFAULT_ADMIN_RECIPIENT_EMAILS,
       emailStatus: itemData.emailStatus || 'Delivered',
       id: `inbox-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       timestamp: new Date().toISOString(),
@@ -2298,22 +2307,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       senderName: data.customerName,
       senderEmail: data.email,
       senderPhone: data.phone,
-      summary: `Inquiry submitted for ${data.adultsCount} traveler(s). Interest: ${data.travelInterestType === 'ready_to_book' ? 'Ready to Book & Lock In Spot' : 'General Inquiry'}. Routed to Elvoy Bennett & Zachary Buchanan.`,
+      summary: `Inquiry submitted for ${data.adultsCount} traveler(s). Interest: ${data.travelInterestType === 'ready_to_book' ? 'Ready to Book & Lock In Spot' : 'General Inquiry'}. Routed to Zachary Buchanan & Elvoy Bennett.`,
       details: data.specialRequests || `Travel Date: ${data.preferredTravelDate}. Preferred Contact: ${data.preferredContactMethod}. Total: $${data.totalPrice?.toLocaleString()} JMD.`,
       tripId: data.tripId,
       tripName: data.tripName,
       referenceNumber: ref,
-      adminRecipients: ['Elvoy Bennett', 'Zachary Buchanan'],
-      recipientEmails: ['zbuchanan.smeltravels@gmail.com', 'smeltravels876@gmail.com'],
+      adminRecipients: ['Zachary Buchanan', 'Elvoy Bennett'],
+      recipientEmails: DEFAULT_ADMIN_RECIPIENT_EMAILS,
       emailStatus: 'Delivered',
     });
 
-    // Automated backend email dispatch to zbuchanan.smeltravels@gmail.com & smeltravels876@gmail.com
+    // Automated backend email dispatch to all admins (including zacpremacc12@gmail.com)
     try {
       fetch('/api/trip-inquiry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          referenceNumber: ref,
           tripId: data.tripId,
           tripName: data.tripName,
           customerName: data.customerName,
@@ -3065,14 +3075,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Contacts
-  const submitContactForm = (subData: Omit<ContactSubmission, 'id' | 'referenceNumber' | 'createdAt' | 'status'>): string => {
-    const ref = `INQ-${Math.floor(10000 + Math.random() * 90000)}`;
+  const submitContactForm = (subData: Omit<ContactSubmission, 'id' | 'referenceNumber' | 'createdAt' | 'status'> & { referenceNumber?: string }): string => {
+    const ref = subData.referenceNumber || `CONT-${Math.floor(10000 + Math.random() * 90000)}`;
+    const now = new Date().toISOString();
     const newContact: ContactSubmission = {
       ...subData,
       id: `contact-${Date.now()}`,
       referenceNumber: ref,
       status: 'New',
-      createdAt: new Date().toISOString(),
+      createdAt: now,
     };
     setContactSubmissions(prev => {
       const updated = [newContact, ...prev];
@@ -3083,14 +3094,101 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Notify Admin Inbox: Message!
     addInboxItem({
       type: 'message',
-      title: `New Contact Message: ${subData.subject || 'Website Inquiry'}`,
+      title: `New Contact Message: ${subData.subject || subData.interestedTrip || 'Website Inquiry'}`,
       senderName: subData.name,
       senderEmail: subData.email,
       senderPhone: subData.phone,
       summary: `Inquiry from ${subData.name}: "${(subData.message || '').slice(0, 100)}..."`,
       details: subData.message,
+      tripName: subData.interestedTrip,
       referenceNumber: ref,
+      adminRecipients: ['Zachary Buchanan', 'Elvoy Bennett'],
+      recipientEmails: DEFAULT_ADMIN_RECIPIENT_EMAILS,
     });
+
+    // Also record in Bookings (so it's visible in Admin Dashboard "Website Inquiries" tab)
+    const newBookingSubmission: BookingSubmission = {
+      id: `booking-contact-${Date.now()}`,
+      referenceNumber: ref,
+      tripId: subData.tripId || 'general-contact',
+      tripName: subData.interestedTrip || subData.subject || 'General Inquiry',
+      customerName: subData.name,
+      email: subData.email,
+      phone: subData.phone || '',
+      countryOrParish: subData.countryOrParish || 'Jamaica',
+      adultsCount: 1,
+      childrenCount: 0,
+      preferredTravelDate: 'Flexible',
+      travelInterestType: 'general_inquiry',
+      specialRequests: subData.message,
+      preferredContactMethod: subData.preferredContactMethod || 'whatsapp',
+      status: 'New Contact Inquiry' as any,
+      depositPaid: 0,
+      totalPrice: 0,
+      currency: 'JMD',
+      ambassadorName: 'Zachary Buchanan',
+      internalNotes: [`Contact form inquiry logged on ${now}.`],
+      createdAt: now,
+      updatedAt: now,
+    };
+    setBookings(prev => {
+      const updated = [newBookingSubmission, ...prev.filter(b => b.referenceNumber !== ref)];
+      syncToLiveServer({ bookings: updated });
+      return updated;
+    });
+
+    // Also record in Excel database
+    const excelOrder: AdminOrderExcelRecord = {
+      id: `order-contact-${Date.now()}`,
+      orderRef: ref,
+      receivedAt: now,
+      orderType: 'Contact Order',
+      customerName: subData.name,
+      email: subData.email,
+      phone: subData.phone || '',
+      parishOrCountry: subData.countryOrParish || 'Jamaica',
+      tripOrDestination: subData.interestedTrip || subData.subject || 'General Inquiry',
+      travelDates: 'Flexible',
+      adultsCount: 1,
+      childrenCount: 0,
+      budget: 'General Inquiry',
+      numericalBudget: 0,
+      totalPrice: 0,
+      depositPaid: 0,
+      currency: 'JMD',
+      paymentStatus: 'Unpaid',
+      orderStatus: 'New',
+      preferredContact: (subData.preferredContactMethod ? (subData.preferredContactMethod.charAt(0).toUpperCase() + subData.preferredContactMethod.slice(1)) : 'WhatsApp') as any,
+      assignedAdmin: 'Zachary Buchanan',
+      specialRequests: subData.message,
+      inclusions: 'General Communication',
+      adminNotes: `Website contact message received on ${now}.`,
+      lastUpdated: now,
+    };
+    setAdminOrdersExcel(prev => {
+      const updated = [excelOrder, ...prev.filter(o => o.orderRef !== ref)];
+      syncToLiveServer({ adminOrdersExcel: updated });
+      return updated;
+    });
+
+    // Dispatch to server backend endpoint (/api/contact) to notify all admins and execute email dispatches
+    try {
+      fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          referenceNumber: ref,
+          name: subData.name,
+          email: subData.email,
+          phone: subData.phone,
+          countryOrParish: subData.countryOrParish,
+          subject: subData.subject,
+          message: subData.message,
+          interestedTrip: subData.interestedTrip,
+          preferredContactMethod: subData.preferredContactMethod,
+        }),
+      }).catch((e) => console.warn('[submitContactForm] live server notification notice', e));
+    } catch (e) {}
 
     return ref;
   };

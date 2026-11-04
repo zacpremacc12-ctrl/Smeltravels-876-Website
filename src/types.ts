@@ -84,7 +84,7 @@ export interface Destination {
   featured: boolean;
 }
 
-export type TravelInterestType = 'ready_to_book' | 'more_info' | 'need_help';
+export type TravelInterestType = 'ready_to_book' | 'more_info' | 'need_help' | 'general_inquiry';
 
 export type BookingStatus =
   | 'New'
@@ -409,6 +409,7 @@ export interface SiteSettings {
   ambassadorTitle: string;
   ambassadorPhone: string;
   ambassadorEmail: string;
+  adminNotificationEmails?: string[];
   ambassadors: Ambassador[];
   requireAmbassadorSelection: boolean;
   ambassadorDiscountPercentage?: number;

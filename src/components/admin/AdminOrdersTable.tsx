@@ -161,14 +161,14 @@ export const AdminOrdersTable: React.FC = () => {
         if (!searchQuery.trim()) return true;
         const q = searchQuery.toLowerCase().trim();
         return (
-          o.orderRef.toLowerCase().includes(q) ||
-          o.customerName.toLowerCase().includes(q) ||
-          o.email.toLowerCase().includes(q) ||
-          o.phone.includes(q) ||
-          o.tripOrDestination.toLowerCase().includes(q) ||
-          (o.parishOrCountry && o.parishOrCountry.toLowerCase().includes(q)) ||
-          (o.adminNotes && o.adminNotes.toLowerCase().includes(q)) ||
-          (o.ambassadorCode && o.ambassadorCode.toLowerCase().includes(q))
+          (o.orderRef ? o.orderRef.toLowerCase().includes(q) : false) ||
+          (o.customerName ? o.customerName.toLowerCase().includes(q) : false) ||
+          (o.email ? o.email.toLowerCase().includes(q) : false) ||
+          (o.phone ? o.phone.includes(q) : false) ||
+          (o.tripOrDestination ? o.tripOrDestination.toLowerCase().includes(q) : false) ||
+          (o.parishOrCountry ? o.parishOrCountry.toLowerCase().includes(q) : false) ||
+          (o.adminNotes ? o.adminNotes.toLowerCase().includes(q) : false) ||
+          (o.ambassadorCode ? o.ambassadorCode.toLowerCase().includes(q) : false)
         );
       })
       .sort((a, b) => {

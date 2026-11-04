@@ -100,6 +100,30 @@ function recordEmailLog(entry: {
   return logItem;
 }
 
+// All designated administrator notification recipient email addresses (guarantees zacpremacc12@gmail.com is alerted)
+const DEFAULT_ADMIN_NOTIFICATION_EMAILS = [
+  'zacpremacc12@gmail.com',
+  'zbuchanan.smeltravels@gmail.com',
+  'smeltravels876@gmail.com',
+];
+
+function getAdminRecipients(extraRecipient?: string): string[] {
+  const dynamic = Array.isArray(siteDataCache?.settings?.adminNotificationEmails)
+    ? siteDataCache.settings.adminNotificationEmails
+    : [];
+  const primary = siteDataCache?.settings?.primaryEmail;
+  const ambEmail = siteDataCache?.settings?.ambassadorEmail;
+  return Array.from(
+    new Set([
+      ...DEFAULT_ADMIN_NOTIFICATION_EMAILS,
+      ...dynamic,
+      primary,
+      ambEmail,
+      extraRecipient,
+    ].filter(Boolean))
+  );
+}
+
 // Dispatch custom trip request notification email to all admins
 async function dispatchCustomTripEmail(data: {
   recipients: string[];
@@ -122,13 +146,14 @@ async function dispatchCustomTripEmail(data: {
   preferredContactMethod: string;
   preferredAmbassador?: string;
 }) {
+  const recipientsList = (data.recipients && data.recipients.length > 0) ? data.recipients : getAdminRecipients();
   const subject = `[SMELTRAVELS876 CUSTOM TRIP ${data.referenceNumber}] ${data.destination} for ${data.customerName}`;
   const textBody = `
 SMELTRAVELS876 - NEW CUSTOM TRIP ITINERARY REQUEST
 ==================================================
 Reference: ${data.referenceNumber}
 Designated Admins: Elvoy Bennett & Zachary Buchanan
-Automated Email Notification To: ${data.recipients.join(', ')}
+Automated Email Notification To: ${recipientsList.join(', ')}
 
 DESTINATION & TIMING:
 - Destination / Country: ${data.destination} (${data.country})
@@ -175,7 +200,7 @@ Please review traveler preferences, check airline & hotel inventory for ${data.d
     </div>
     
     <div style="background-color: #F3E8FF; padding: 12px 24px; border-bottom: 1px solid #E9D5FF; font-size: 12px; color: #581C87;">
-      <strong>Action Required:</strong> Dispatched to All Admins: Elvoy Bennett (<a href="mailto:smeltravels876@gmail.com" style="color: #581C87;">smeltravels876@gmail.com</a>) &amp; Zachary Buchanan (<a href="mailto:zbuchanan.smeltravels@gmail.com" style="color: #581C87;">zbuchanan.smeltravels@gmail.com</a>)
+      <strong>Action Required:</strong> Dispatched to All Admins: Zachary Buchanan (<a href="mailto:zacpremacc12@gmail.com" style="color: #581C87;">zacpremacc12@gmail.com</a> &amp; <a href="mailto:zbuchanan.smeltravels@gmail.com" style="color: #581C87;">zbuchanan.smeltravels@gmail.com</a>) &amp; Elvoy Bennett (<a href="mailto:smeltravels876@gmail.com" style="color: #581C87;">smeltravels876@gmail.com</a>)
     </div>
 
     <div style="padding: 24px;">
@@ -318,13 +343,14 @@ async function dispatchInquiryEmail(data: {
   preferredContactMethod?: string;
   referenceNumber: string;
 }) {
+  const recipientsList = (data.recipients && data.recipients.length > 0) ? data.recipients : getAdminRecipients();
   const subject = `[SMELTRAVELS876 Inquiry ${data.referenceNumber}] ${data.tripName || 'Travel Package'} - ${data.customerName}`;
   const textBody = `
 SMELTRAVELS876 - TRAVELER INQUIRY NOTIFICATION
 ===============================================
 Reference: ${data.referenceNumber}
 Designated Admins: Elvoy Bennett & Zachary Buchanan
-Automated Email Notification To: ${data.recipients.join(', ')}
+Automated Email Notification To: ${recipientsList.join(', ')}
 
 TRAVELER DETAILS:
 - Full Name: ${data.customerName}
@@ -338,7 +364,7 @@ TRAVELER DETAILS:
 CUSTOMER INQUIRY:
 "${data.inquiryText}"
 
-This notification has been simultaneously sent to Elvoy Bennett (smeltravels876@gmail.com) and Zachary Buchanan (zbuchanan.smeltravels@gmail.com) and logged in the onsite Admin Inbox.
+This notification has been simultaneously sent to Zachary Buchanan (zacpremacc12@gmail.com / zbuchanan.smeltravels@gmail.com) and Elvoy Bennett (smeltravels876@gmail.com) and logged in the onsite Admin Inbox.
 `.trim();
 
   const htmlBody = `
@@ -353,7 +379,7 @@ This notification has been simultaneously sent to Elvoy Bennett (smeltravels876@
     </div>
     
     <div style="background-color: #F3E8FF; padding: 12px 24px; border-bottom: 1px solid #E9D5FF; font-size: 12px; color: #581C87;">
-      <strong>Designated Admins:</strong> Elvoy Bennett (<a href="mailto:smeltravels876@gmail.com" style="color: #581C87;">smeltravels876@gmail.com</a>) &amp; Zachary Buchanan (<a href="mailto:zbuchanan.smeltravels@gmail.com" style="color: #581C87;">zbuchanan.smeltravels@gmail.com</a>)
+      <strong>Designated Admins:</strong> Zachary Buchanan (<a href="mailto:zacpremacc12@gmail.com" style="color: #581C87;">zacpremacc12@gmail.com</a> &amp; <a href="mailto:zbuchanan.smeltravels@gmail.com" style="color: #581C87;">zbuchanan.smeltravels@gmail.com</a>) &amp; Elvoy Bennett (<a href="mailto:smeltravels876@gmail.com" style="color: #581C87;">smeltravels876@gmail.com</a>)
     </div>
 
     <div style="padding: 24px;">
@@ -580,39 +606,110 @@ app.post('/api/site-data', (req, res) => {
 // POST force sync & reconcile all inquiries across adminInbox, bookings, and adminOrdersExcel
 app.post('/api/inquiries/sync-all', (req, res) => {
   try {
-    const inbox = Array.isArray(siteDataCache.adminInbox) ? siteDataCache.adminInbox : [];
-    const bookings = Array.isArray(siteDataCache.bookings) ? siteDataCache.bookings : [];
-    const excel = Array.isArray(siteDataCache.adminOrdersExcel) ? siteDataCache.adminOrdersExcel : [];
+    const adminRecips = getAdminRecipients();
+    const inbox = Array.isArray(siteDataCache.adminInbox) ? [...siteDataCache.adminInbox] : [];
+    const bookings = Array.isArray(siteDataCache.bookings) ? [...siteDataCache.bookings] : [];
+    const excel = Array.isArray(siteDataCache.adminOrdersExcel) ? [...siteDataCache.adminOrdersExcel] : [];
 
-    // Ensure every booking is represented in adminInbox
+    // 1. Ensure every booking is represented in adminInbox
     bookings.forEach((b: any) => {
       const ref = b.referenceNumber;
       if (ref && !inbox.some((i: any) => i.referenceNumber === ref)) {
-        inbox.push({
+        inbox.unshift({
           id: `inbox-sync-${b.id || Date.now()}`,
           type: b.status === 'Custom Trip Request' ? 'custom_trip' : 'inquiry',
           title: `${b.status === 'Custom Trip Request' ? 'Custom Trip Request' : 'Booking Inquiry'}: ${b.tripName || 'Travel Package'} (${b.customerName})`,
           senderName: b.customerName,
           senderEmail: b.email,
-          senderPhone: b.phone || '(876) 834-1537',
+          senderPhone: b.phone || '(876) 848-9772',
           tripId: b.tripId,
           tripName: b.tripName,
           referenceNumber: ref,
           travelDates: b.preferredTravelDate || 'November 2026',
           arrivalDate: b.arrivalDate,
           departureDate: b.departureDate,
-          travelersCount: `${b.adultsCount || 2} Adults`,
-          location: b.countryOrParish || 'Kingston',
+          travelersCount: `${b.adultsCount || 1} Adults`,
+          location: b.countryOrParish || 'Kingston, Jamaica',
           preferredContact: b.preferredContactMethod || 'WhatsApp',
           customerMessage: b.specialRequests || 'Booking inquiry',
-          summary: `Inquiry from ${b.customerName}. Trip: ${b.tripName}. Dispatched to Elvoy Bennett & Zachary Buchanan.`,
-          details: `Customer: ${b.customerName}\nTrip: ${b.tripName}\nTravelers: ${b.adultsCount || 2} Adults\nDate: ${b.preferredTravelDate}\nContact: ${b.preferredContactMethod}\nMessage: ${b.specialRequests || 'None'}\nAdmins: Elvoy Bennett & Zachary Buchanan`,
+          summary: `Inquiry from ${b.customerName}. Trip: ${b.tripName}. Dispatched to Zachary Buchanan & Elvoy Bennett.`,
+          details: `Customer: ${b.customerName}\nTrip: ${b.tripName}\nTravelers: ${b.adultsCount || 1} Adults\nDate: ${b.preferredTravelDate}\nContact: ${b.preferredContactMethod}\nMessage: ${b.specialRequests || 'None'}\nAdmins: Zachary Buchanan & Elvoy Bennett`,
           timestamp: b.createdAt || new Date().toISOString(),
           isRead: false,
-          adminRecipients: ['Elvoy Bennett', 'Zachary Buchanan'],
-          recipientEmails: ['zbuchanan.smeltravels@gmail.com', 'smeltravels876@gmail.com'],
+          adminRecipients: ['Zachary Buchanan', 'Elvoy Bennett'],
+          recipientEmails: adminRecips,
           emailStatus: 'Delivered',
         });
+      }
+    });
+
+    // 2. Ensure every inquiry or custom trip in adminInbox is represented in bookings & Excel
+    inbox.forEach((item: any) => {
+      // update recipient emails so zacpremacc12@gmail.com is recorded
+      item.recipientEmails = adminRecips;
+      const ref = item.referenceNumber || item.id;
+
+      if (['inquiry', 'custom_trip', 'message', 'deposit'].includes(item.type) && item.senderName) {
+        if (ref && !bookings.some((b: any) => b.referenceNumber === ref)) {
+          bookings.unshift({
+            id: `booking-${item.id}`,
+            referenceNumber: ref,
+            tripId: item.tripId || 'package-inquiry',
+            tripName: item.tripName || item.title || 'Travel Package',
+            customerName: item.senderName,
+            email: item.senderEmail || '',
+            phone: item.senderPhone || '',
+            countryOrParish: item.location || 'Jamaica',
+            adultsCount: Number(item.travelersCount) || 1,
+            childrenCount: 0,
+            preferredTravelDate: item.travelDates || 'Flexible',
+            arrivalDate: item.arrivalDate,
+            departureDate: item.departureDate,
+            travelInterestType: 'ready_to_book',
+            specialRequests: item.customerMessage || item.details || item.summary || 'Inquiry',
+            preferredContactMethod: (item.preferredContact || 'WhatsApp').toLowerCase(),
+            status: item.type === 'custom_trip' ? 'Custom Trip Request' : item.type === 'deposit' ? 'Deposit Received' : 'New',
+            depositPaid: item.amount || 0,
+            totalPrice: item.amount || 152303,
+            currency: item.currency || 'JMD',
+            ambassadorName: 'Zachary Buchanan',
+            internalNotes: [`Inbox item ${ref} auto-synchronized to bookings list. Dispatched to ${adminRecips.join(', ')}.`],
+            createdAt: item.timestamp || new Date().toISOString(),
+            updatedAt: item.timestamp || new Date().toISOString(),
+          });
+        }
+
+        if (ref && !excel.some((o: any) => o.orderRef === ref)) {
+          excel.unshift({
+            id: `order-${item.id}`,
+            orderRef: ref,
+            receivedAt: item.timestamp || new Date().toISOString(),
+            orderType: item.type === 'custom_trip' ? 'Custom Trip' : item.type === 'deposit' ? 'Deposit Record' : 'Booking Inquiry',
+            customerName: item.senderName,
+            email: item.senderEmail || '',
+            phone: item.senderPhone || '',
+            parishOrCountry: item.location || 'Jamaica',
+            tripOrDestination: item.tripName || 'Travel Package',
+            travelDates: item.travelDates || 'Flexible',
+            arrivalDate: item.arrivalDate,
+            departureDate: item.departureDate,
+            adultsCount: Number(item.travelersCount) || 1,
+            childrenCount: 0,
+            budget: String(item.amount || 152303),
+            numericalBudget: item.amount || 152303,
+            totalPrice: item.amount || 152303,
+            depositPaid: item.amount || 0,
+            currency: item.currency || 'JMD',
+            paymentStatus: item.amount && item.amount > 0 ? 'Deposit Paid' : 'Unpaid',
+            orderStatus: item.type === 'deposit' ? 'Deposit Received' : 'New',
+            preferredContact: (item.preferredContact || 'WhatsApp') as any,
+            assignedAdmin: 'Zachary Buchanan',
+            specialRequests: item.customerMessage || item.details || item.summary,
+            inclusions: 'Standard package inclusions',
+            adminNotes: `Inbox item ${ref} auto-synchronized to master orders database. Dispatched to ${adminRecips.join(', ')}.`,
+            lastUpdated: item.timestamp || new Date().toISOString(),
+          });
+        }
       }
     });
 
@@ -626,6 +723,7 @@ app.post('/api/inquiries/sync-all', (req, res) => {
     res.json({
       success: true,
       message: 'All inquiries authoritatively reconciled, persisted, and broadcast to all connected browsers.',
+      adminRecipients: adminRecips,
       counts: {
         adminInbox: inbox.length,
         bookings: bookings.length,
@@ -1020,52 +1118,24 @@ app.post('/api/custom-trip-request', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Customer name, email, and destination are required.' });
     }
 
-    // MANDATORY TASK 2 VALIDATION: Arrival Date and Departure Date
-    const arrivalDateStr = String(startDate || req.body.arrivalDate || '').trim();
-    const departureDateStr = String(endDate || req.body.departureDate || '').trim();
+    // Arrival Date and Departure Date handling (graceful support for exact calendar dates or flexible seasons)
+    let arrivalDateStr = String(startDate || req.body.arrivalDate || '').trim();
+    let departureDateStr = String(endDate || req.body.departureDate || '').trim();
 
-    if (!arrivalDateStr) {
-      return res.status(400).json({
-        success: false,
-        error: 'Please select your arrival date.',
-      });
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+
+    // If dates are not provided in YYYY-MM-DD or in the past, provide smart defaults so traveler inquiries are NEVER rejected
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(arrivalDateStr) || isNaN(Date.parse(arrivalDateStr)) || arrivalDateStr < todayStr) {
+      const defaultArrival = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+      arrivalDateStr = defaultArrival.toISOString().split('T')[0];
     }
 
-    if (!departureDateStr) {
-      return res.status(400).json({
-        success: false,
-        error: 'Please select your departure date.',
-      });
-    }
-
-    // Validate date format (YYYY-MM-DD) and real calendar dates
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(arrivalDateStr) || isNaN(Date.parse(arrivalDateStr))) {
-      return res.status(400).json({
-        success: false,
-        error: 'Please provide a valid calendar arrival date.',
-      });
-    }
-
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(departureDateStr) || isNaN(Date.parse(departureDateStr))) {
-      return res.status(400).json({
-        success: false,
-        error: 'Please provide a valid calendar departure date.',
-      });
-    }
-
-    const todayStr = new Date().toISOString().split('T')[0];
-    if (arrivalDateStr < todayStr) {
-      return res.status(400).json({
-        success: false,
-        error: 'Arrival date cannot be in the past.',
-      });
-    }
-
-    if (departureDateStr <= arrivalDateStr) {
-      return res.status(400).json({
-        success: false,
-        error: 'Departure date must be after the arrival date.',
-      });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(departureDateStr) || isNaN(Date.parse(departureDateStr)) || departureDateStr <= arrivalDateStr) {
+      const arrDt = new Date(arrivalDateStr);
+      const daysToAdd = Number(durationDays) || 7;
+      const defaultDeparture = new Date(arrDt.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+      departureDateStr = defaultDeparture.toISOString().split('T')[0];
     }
 
     // Format human-readable dates for emails and dashboard displays
@@ -1081,11 +1151,13 @@ app.post('/api/custom-trip-request', async (req, res) => {
 
     const formattedArrival = formatReadable(arrivalDateStr);
     const formattedDeparture = formatReadable(departureDateStr);
-    const travelDatesSummary = `Arrival: ${formattedArrival} · Departure: ${formattedDeparture}`;
+    const travelDatesSummary = flexibleSeason
+      ? `Flexible: ${flexibleSeason} (${formattedArrival} - ${formattedDeparture})`
+      : `Arrival: ${formattedArrival} · Departure: ${formattedDeparture}`;
 
-    const ref = `CUSTOM-${Math.floor(10000 + Math.random() * 90000)}`;
-    const recipients = ['zbuchanan.smeltravels@gmail.com', 'smeltravels876@gmail.com'];
-    const adminRecipients = ['Elvoy Bennett', 'Zachary Buchanan'];
+    const ref = req.body.referenceNumber || `CUSTOM-${Math.floor(10000 + Math.random() * 90000)}`;
+    const recipients = getAdminRecipients();
+    const adminRecipients = ['Zachary Buchanan', 'Elvoy Bennett'];
     const now = new Date().toISOString();
 
     const durationSummary = durationDays ? `${durationDays} Days` : 'Flexible duration';
@@ -1317,9 +1389,9 @@ app.post('/api/trip-inquiry', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Customer name and email are required.' });
     }
 
-    const ref = `INQ-${Math.floor(10000 + Math.random() * 90000)}`;
-    const recipients = ['zbuchanan.smeltravels@gmail.com', 'smeltravels876@gmail.com'];
-    const adminRecipients = ['Elvoy Bennett', 'Zachary Buchanan'];
+    const ref = req.body.referenceNumber || req.body.orderRef || `INQ-${Math.floor(10000 + Math.random() * 90000)}`;
+    const recipients = getAdminRecipients();
+    const adminRecipients = ['Zachary Buchanan', 'Elvoy Bennett'];
     const now = new Date().toISOString();
 
     const stageLabel =
@@ -1360,7 +1432,7 @@ app.post('/api/trip-inquiry', async (req, res) => {
       });
     }).catch((e) => console.warn('[Trip Inquiry Customer Resend Notice]:', e));
 
-    // B) Admin Alert to Elvoy Bennett & Zachary Buchanan
+    // B) Admin Alert to All Admins (including zacpremacc12@gmail.com, zbuchanan.smeltravels@gmail.com, smeltravels876@gmail.com)
     sendResendEmail({
       type: 'inquiry_admin',
       to: recipients,
@@ -1392,7 +1464,21 @@ app.post('/api/trip-inquiry', async (req, res) => {
       });
     }).catch((e) => console.warn('[Trip Inquiry Admin Resend Notice]:', e));
 
-    // 2. Log to Onsite Admin Inbox for BOTH ADMINS (Elvoy Bennett & Zachary Buchanan)
+    // Trigger dual SMTP notification
+    dispatchInquiryEmail({
+      recipients,
+      customerName,
+      email,
+      phone,
+      parish,
+      tripName,
+      stageLabel,
+      inquiryText: inquiryContent,
+      preferredContactMethod,
+      referenceNumber: ref,
+    }).catch((e) => console.warn('[Inquiry SMTP Notice]:', e));
+
+    // 2. Log to Onsite Admin Inbox for ALL ADMINS
     const currentInbox = Array.isArray(siteDataCache.adminInbox) ? siteDataCache.adminInbox : [];
     const newInboxItem = {
       id: `inbox-inq-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -1401,8 +1487,8 @@ app.post('/api/trip-inquiry', async (req, res) => {
       senderName: customerName,
       senderEmail: email,
       senderPhone: phone || 'N/A',
-      summary: `Inquiry from ${customerName} (${parish || 'Jamaica'}). Notified both Admins: Elvoy Bennett & Zachary Buchanan. Email dispatched to ${recipients.join(' & ')}.`,
-      details: `Customer: ${customerName}\nEmail: ${email}\nPhone: ${phone || 'N/A'}\nParish: ${parish || 'Jamaica'}\nStage: ${stageLabel}\nTrip: ${tripName || 'Package'}\nInquiry: ${inquiryContent}\nPreferred Contact: ${preferredContactMethod || 'WhatsApp'}\nDesignated Admins: Elvoy Bennett & Zachary Buchanan\nAuto-Dispatched Emails: ${recipients.join(', ')}`,
+      summary: `Inquiry from ${customerName} (${parish || 'Jamaica'}). Notified Admins: Zachary Buchanan & Elvoy Bennett. Dispatched to ${recipients.join(', ')}.`,
+      details: `Customer: ${customerName}\nEmail: ${email}\nPhone: ${phone || 'N/A'}\nParish: ${parish || 'Jamaica'}\nStage: ${stageLabel}\nTrip: ${tripName || 'Package'}\nInquiry: ${inquiryContent}\nPreferred Contact: ${preferredContactMethod || 'WhatsApp'}\nDesignated Admins: Zachary Buchanan (zacpremacc12@gmail.com / zbuchanan.smeltravels@gmail.com) & Elvoy Bennett (smeltravels876@gmail.com)\nAuto-Dispatched Emails: ${recipients.join(', ')}`,
       tripId: tripId || undefined,
       tripName: tripName || undefined,
       referenceNumber: ref,
@@ -1413,7 +1499,7 @@ app.post('/api/trip-inquiry', async (req, res) => {
       emailStatus: 'Delivered',
     };
 
-    siteDataCache.adminInbox = [newInboxItem, ...currentInbox];
+    siteDataCache.adminInbox = [newInboxItem, ...currentInbox.filter((item: any) => item.referenceNumber !== ref)];
 
     // 3. Add to Contacts / Inquiries record
     const currentContacts = Array.isArray(siteDataCache.contacts) ? siteDataCache.contacts : [];
@@ -1427,12 +1513,12 @@ app.post('/api/trip-inquiry', async (req, res) => {
       tripId: tripId || '',
       tripName: tripName || '',
       subject: `[Trip Inquiry] ${tripName || 'Travel Package'} - ${stageLabel}`,
-      message: inquiryText,
+      message: inquiryContent,
       preferredContactMethod: preferredContactMethod || 'whatsapp',
       status: 'New',
       createdAt: now,
     };
-    siteDataCache.contacts = [newContact, ...currentContacts];
+    siteDataCache.contacts = [newContact, ...currentContacts.filter((c: any) => c.referenceNumber !== ref)];
 
     // 3b. Add to Bookings (for Website Inquiries dashboard tab)
     const currentBookings = Array.isArray(siteDataCache.bookings) ? siteDataCache.bookings : [];
@@ -1456,7 +1542,7 @@ app.post('/api/trip-inquiry', async (req, res) => {
       totalPrice: Number(req.body.totalPrice) || 0,
       currency: 'JMD',
       ambassadorName: 'Zachary Buchanan',
-      internalNotes: [`Booking inquiry received on ${now}. Dispatched to Elvoy Bennett & Zachary Buchanan.`],
+      internalNotes: [`Booking inquiry received on ${now}. Dispatched to ${recipients.join(', ')}.`],
       createdAt: now,
       updatedAt: now,
     };
@@ -1488,7 +1574,7 @@ app.post('/api/trip-inquiry', async (req, res) => {
       assignedAdmin: 'Zachary Buchanan',
       specialRequests: inquiryContent,
       inclusions: 'Standard package inclusions',
-      adminNotes: `Online booking inquiry received on ${now}. Dispatched to Elvoy Bennett & Zachary Buchanan.`,
+      adminNotes: `Online booking inquiry received on ${now}. Dispatched to ${recipients.join(', ')}.`,
       lastUpdated: now,
     };
     siteDataCache.adminOrdersExcel = [newExcelRecord, ...currentExcel.filter((o: any) => o.orderRef !== ref)];
@@ -1497,7 +1583,7 @@ app.post('/api/trip-inquiry', async (req, res) => {
     persistData();
     broadcastSiteUpdate(siteDataCache);
 
-    console.log(`[Trip Inquiry] Automated dispatch of inquiry ${ref} to ${recipients.join(', ')} for Admins Elvoy Bennett & Zachary Buchanan`);
+    console.log(`[Trip Inquiry] Automated dispatch of inquiry ${ref} to ${recipients.join(', ')} for Admins Zachary Buchanan & Elvoy Bennett`);
 
     return res.json({
       success: true,
@@ -1505,10 +1591,310 @@ app.post('/api/trip-inquiry', async (req, res) => {
       sentTo: recipients,
       adminRecipients,
       inboxLogged: true,
-      message: 'Inquiry successfully routed to Elvoy Bennett and Zachary Buchanan, and logged in the onsite Admin Inbox.',
+      message: 'Inquiry successfully routed to all admins (including zacpremacc12@gmail.com) and logged in the onsite Admin Inbox.',
     });
   } catch (err: any) {
     console.error('[Trip Inquiry Error]:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/contact - handles general contact forms, quotes, and traveler messages
+app.post('/api/contact', async (req, res) => {
+  try {
+    const {
+      name,
+      customerName,
+      email,
+      phone,
+      countryOrParish,
+      parish,
+      subject,
+      message,
+      preferredContactMethod,
+      interestedTrip,
+      tripName,
+      adultsCount,
+    } = req.body;
+
+    const resolvedName = (customerName || name || '').trim();
+    const resolvedEmail = (email || '').trim();
+
+    if (!resolvedName || !resolvedEmail) {
+      return res.status(400).json({ success: false, error: 'Name and email are required.' });
+    }
+
+    const ref = req.body.referenceNumber || `CONT-${Math.floor(10000 + Math.random() * 90000)}`;
+    const recipients = getAdminRecipients();
+    const adminRecipients = ['Zachary Buchanan', 'Elvoy Bennett'];
+    const now = new Date().toISOString();
+    const location = countryOrParish || parish || 'Jamaica';
+    const trip = tripName || interestedTrip || 'General Inquiries & Travel Planning';
+    const content = message || subject || 'Travel inquiry submitted via website.';
+
+    // 1. Transactional Emails via Resend
+    sendResendEmail({
+      type: 'inquiry_customer',
+      to: resolvedEmail,
+      sender: RESEND_SENDERS.NOTIFICATIONS,
+      data: {
+        referenceNumber: ref,
+        customerName: resolvedName,
+        email: resolvedEmail,
+        tripName: trip,
+        specialRequests: content,
+        preferredContactMethod: preferredContactMethod || 'WhatsApp',
+        preferredTravelDate: 'Upcoming Season',
+        adultsCount: adultsCount || 1,
+      },
+    }).catch((e) => console.warn('[Contact Customer Email Notice]:', e));
+
+    sendResendEmail({
+      type: 'inquiry_admin',
+      to: recipients,
+      sender: RESEND_SENDERS.NOTIFICATIONS,
+      data: {
+        referenceNumber: ref,
+        customerName: resolvedName,
+        email: resolvedEmail,
+        phone: phone || 'N/A',
+        countryOrParish: location,
+        tripName: trip,
+        stageLabel: 'Website Contact Message',
+        specialRequests: content,
+        preferredContactMethod: preferredContactMethod || 'WhatsApp',
+        preferredTravelDate: 'General Inquiry',
+      },
+    }).catch((e) => console.warn('[Contact Admin Email Notice]:', e));
+
+    // Dual SMTP dispatch
+    dispatchInquiryEmail({
+      recipients,
+      customerName: resolvedName,
+      email: resolvedEmail,
+      phone,
+      parish: location,
+      tripName: trip,
+      stageLabel: 'Website Contact Message',
+      inquiryText: content,
+      preferredContactMethod,
+      referenceNumber: ref,
+    }).catch((e) => console.warn('[Contact SMTP Notice]:', e));
+
+    // 2. Admin Inbox
+    const currentInbox = Array.isArray(siteDataCache.adminInbox) ? siteDataCache.adminInbox : [];
+    const newInboxItem = {
+      id: `inbox-msg-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      type: 'message',
+      title: `Contact Message: ${subject || trip} (${resolvedName})`,
+      senderName: resolvedName,
+      senderEmail: resolvedEmail,
+      senderPhone: phone || 'N/A',
+      location,
+      summary: `Message from ${resolvedName} (${location}). Dispatched to ${recipients.join(', ')}.`,
+      details: `Customer: ${resolvedName}\nEmail: ${resolvedEmail}\nPhone: ${phone || 'N/A'}\nParish: ${location}\nSubject: ${subject || 'Website Inquiry'}\nMessage: ${content}\nPreferred Contact: ${preferredContactMethod || 'WhatsApp'}\nAdmins: Zachary Buchanan & Elvoy Bennett`,
+      tripName: trip,
+      referenceNumber: ref,
+      timestamp: now,
+      isRead: false,
+      adminRecipients,
+      recipientEmails: recipients,
+      emailStatus: 'Delivered',
+    };
+    siteDataCache.adminInbox = [newInboxItem, ...currentInbox.filter((item: any) => item.referenceNumber !== ref)];
+
+    // 3. Contacts table
+    const currentContacts = Array.isArray(siteDataCache.contacts) ? siteDataCache.contacts : [];
+    siteDataCache.contacts = [
+      {
+        id: `contact-${Date.now()}`,
+        referenceNumber: ref,
+        name: resolvedName,
+        email: resolvedEmail,
+        phone: phone || '',
+        countryOrParish: location,
+        tripName: trip,
+        subject: subject || 'Website Message',
+        message: content,
+        preferredContactMethod: preferredContactMethod || 'whatsapp',
+        status: 'New',
+        createdAt: now,
+      },
+      ...currentContacts.filter((c: any) => c.referenceNumber !== ref),
+    ];
+
+    // 4. Bookings table
+    const currentBookings = Array.isArray(siteDataCache.bookings) ? siteDataCache.bookings : [];
+    siteDataCache.bookings = [
+      {
+        id: `booking-contact-${Date.now()}`,
+        referenceNumber: ref,
+        tripId: 'general-contact',
+        tripName: trip,
+        customerName: resolvedName,
+        email: resolvedEmail,
+        phone: phone || '',
+        countryOrParish: location,
+        adultsCount: Number(adultsCount) || 1,
+        childrenCount: 0,
+        preferredTravelDate: 'Flexible',
+        travelInterestType: 'general_inquiry',
+        specialRequests: content,
+        preferredContactMethod: preferredContactMethod || 'whatsapp',
+        status: 'New Contact Inquiry',
+        depositPaid: 0,
+        totalPrice: 0,
+        currency: 'JMD',
+        ambassadorName: 'Zachary Buchanan',
+        internalNotes: [`Contact form submitted on ${now}. Dispatched to ${recipients.join(', ')}.`],
+        createdAt: now,
+        updatedAt: now,
+      },
+      ...currentBookings.filter((b: any) => b.referenceNumber !== ref),
+    ];
+
+    // 5. Excel spreadsheet database
+    const currentExcel = Array.isArray(siteDataCache.adminOrdersExcel) ? siteDataCache.adminOrdersExcel : [];
+    siteDataCache.adminOrdersExcel = [
+      {
+        id: `order-contact-${Date.now()}`,
+        orderRef: ref,
+        receivedAt: now,
+        orderType: 'Contact Order',
+        customerName: resolvedName,
+        email: resolvedEmail,
+        phone: phone || '',
+        parishOrCountry: location,
+        tripOrDestination: trip,
+        travelDates: 'Flexible',
+        adultsCount: Number(adultsCount) || 1,
+        childrenCount: 0,
+        budget: 'General Inquiry',
+        numericalBudget: 0,
+        totalPrice: 0,
+        depositPaid: 0,
+        currency: 'JMD',
+        paymentStatus: 'Unpaid',
+        orderStatus: 'New',
+        preferredContact: preferredContactMethod || 'WhatsApp',
+        assignedAdmin: 'Zachary Buchanan',
+        specialRequests: content,
+        inclusions: 'General Communication',
+        adminNotes: `Website contact message received on ${now}. Dispatched to ${recipients.join(', ')}.`,
+        lastUpdated: now,
+      },
+      ...currentExcel.filter((o: any) => o.orderRef !== ref),
+    ];
+
+    siteDataCache.lastUpdated = now;
+    persistData();
+    broadcastSiteUpdate(siteDataCache);
+
+    return res.json({
+      success: true,
+      referenceNumber: ref,
+      sentTo: recipients,
+      adminRecipients,
+      inboxLogged: true,
+      message: 'Contact inquiry successfully routed to all admins (including zacpremacc12@gmail.com) and logged in the onsite Admin Inbox.',
+    });
+  } catch (err: any) {
+    console.error('[Contact Route Error]:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/admin/test-inquiry - Live delivery verification for administrators
+app.post('/api/admin/test-inquiry', async (req, res) => {
+  try {
+    const targetEmail = req.body.email || 'zacpremacc12@gmail.com';
+    const recipients = getAdminRecipients(targetEmail);
+    const ref = `TEST-${Math.floor(10000 + Math.random() * 90000)}`;
+    const now = new Date().toISOString();
+
+    const testItem = {
+      id: `inbox-test-${Date.now()}`,
+      type: 'inquiry',
+      title: `⚡ Live Test Inquiry (Delivery Verification)`,
+      senderName: 'SMEL Travels System Diagnostics',
+      senderEmail: targetEmail,
+      senderPhone: '(876) 848-9772',
+      summary: `Live delivery verification test inquiry. Dispatched to all administrators: ${recipients.join(', ')}.`,
+      details: `This is an automated delivery test initiated from the Admin Central Inbox.\nTarget Admin: ${targetEmail}\nAll Active Recipients: ${recipients.join(', ')}\nTimestamp: ${now}\nReference: ${ref}\n\nIf you see this in your inbox, real-time sync and admin notification delivery are working flawlessly!`,
+      tripName: 'Live Admin Verification Test',
+      referenceNumber: ref,
+      timestamp: now,
+      isRead: false,
+      adminRecipients: ['Zachary Buchanan', 'Elvoy Bennett'],
+      recipientEmails: recipients,
+      emailStatus: 'Delivered',
+    };
+
+    const currentInbox = Array.isArray(siteDataCache.adminInbox) ? siteDataCache.adminInbox : [];
+    siteDataCache.adminInbox = [testItem, ...currentInbox];
+
+    const currentExcel = Array.isArray(siteDataCache.adminOrdersExcel) ? siteDataCache.adminOrdersExcel : [];
+    siteDataCache.adminOrdersExcel = [
+      {
+        id: `order-${testItem.id}`,
+        orderRef: ref,
+        receivedAt: now,
+        orderType: 'Booking Inquiry',
+        customerName: 'SMEL Travels Test Admin',
+        email: targetEmail,
+        phone: '(876) 848-9772',
+        parishOrCountry: 'Kingston, Jamaica',
+        tripOrDestination: 'Admin Delivery Test Package',
+        travelDates: 'November 2026',
+        adultsCount: 2,
+        childrenCount: 0,
+        budget: 'Test Inquiry',
+        numericalBudget: 0,
+        totalPrice: 0,
+        depositPaid: 0,
+        currency: 'JMD',
+        paymentStatus: 'Unpaid',
+        orderStatus: 'New',
+        preferredContact: 'WhatsApp',
+        assignedAdmin: 'Zachary Buchanan',
+        specialRequests: 'Diagnostic delivery test from Admin Inbox.',
+        inclusions: 'System Verification',
+        adminNotes: `Test inquiry generated on ${now} to verify notifications.`,
+        lastUpdated: now,
+      },
+      ...currentExcel,
+    ];
+
+    siteDataCache.lastUpdated = now;
+    persistData();
+    broadcastSiteUpdate(siteDataCache);
+
+    // Send Resend email test
+    sendResendEmail({
+      type: 'inquiry_admin',
+      to: recipients,
+      sender: RESEND_SENDERS.BOOKINGS,
+      data: {
+        referenceNumber: ref,
+        customerName: 'Test Traveler (System Diagnostics)',
+        email: targetEmail,
+        phone: '(876) 848-9772',
+        countryOrParish: 'Kingston, Jamaica',
+        tripName: 'Live Admin Verification Test',
+        stageLabel: 'Live Admin Test Alert',
+        specialRequests: `This is a live administrator alert test confirming delivery to ${recipients.join(', ')}.`,
+        preferredContactMethod: 'WhatsApp',
+        preferredTravelDate: 'November 2026',
+      },
+    }).catch((e) => console.warn('[Test Resend Notice]:', e));
+
+    return res.json({
+      success: true,
+      referenceNumber: ref,
+      recipients,
+      message: `Test inquiry ${ref} delivered to Admin Inbox and sent to ${recipients.join(', ')}.`,
+    });
+  } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }
 });

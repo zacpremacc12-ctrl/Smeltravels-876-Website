@@ -26,7 +26,6 @@ import {
   createWiPayPaymentRequest,
   formatJMD,
   WIPAY_ACCOUNT_NUMBER,
-  WIPAY_API_KEY,
   WIPAY_MASTER_LINK,
   verifyWiPayTransactionStatus,
 } from '../../utils/wipay';

@@ -32,6 +32,7 @@ export const ContactPage: React.FC = () => {
     updateSettings,
     trips,
     createBooking,
+    submitContactForm,
     showNotification,
     isAdminLoggedIn,
     currentUser,
@@ -292,10 +293,23 @@ export const ContactPage: React.FC = () => {
       currency: 'JMD',
     });
 
+    submitContactForm({
+      referenceNumber: ref,
+      name: customerName.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      countryOrParish: countryOrParish.trim(),
+      tripId: activeTrip?.id || '',
+      interestedTrip: activeTrip?.name || 'General Inquiry',
+      subject: `[Website Contact] ${activeTrip?.name || 'General Inquiry'}`,
+      message: message.trim(),
+      preferredContactMethod,
+    });
+
     setTimeout(() => {
       setIsSubmitting(false);
       setSubmittedRef(ref);
-      showNotification('Inquiry Registered', `Reference code ${ref} generated.`);
+      showNotification('Inquiry Registered', `Reference code ${ref} generated. Dispatched to all administrators.`);
     }, 400);
   };
 

@@ -60,6 +60,33 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
   const [expandedNotifications, setExpandedNotifications] = useState<Record<string, boolean>>({});
   const [expandedMessages, setExpandedMessages] = useState<Record<string, boolean>>({});
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [isSendingTest, setIsSendingTest] = useState(false);
+
+  const handleSendTestInquiry = async () => {
+    setIsSendingTest(true);
+    try {
+      const res = await fetch('/api/admin/test-inquiry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'zacpremacc12@gmail.com' }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await refreshSiteData();
+        showNotification(
+          'Test Alert Dispatched! 🚀',
+          `Reference #${data.referenceNumber} created. Live notification logged in Admin Inbox and sent to zacpremacc12@gmail.com, zbuchanan.smeltravels@gmail.com, and smeltravels876@gmail.com.`,
+          'success'
+        );
+      } else {
+        showNotification('Delivery Notice', data.error || 'Failed to dispatch test inquiry.', 'warning');
+      }
+    } catch (err: any) {
+      showNotification('Delivery Notice', err.message || 'Network notice sending test.', 'warning');
+    } finally {
+      setIsSendingTest(false);
+    }
+  };
 
   // Unadded orders count (eligible items that are not yet in the Excel spreadsheet database)
   const unaddedOrdersCount = adminInbox.filter(
@@ -202,7 +229,30 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={handleSendTestInquiry}
+              disabled={isSendingTest}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs ${
+                isSendingTest
+                  ? 'bg-amber-100 text-amber-900 border border-amber-300 opacity-80 cursor-wait'
+                  : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-neutral-900 border border-amber-400 hover:scale-[1.02]'
+              }`}
+              title="Send a real live test inquiry to verify admin delivery instantly"
+            >
+              {isSendingTest ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-neutral-900" />
+                  <span>Sending Test...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5 text-neutral-900" />
+                  <span>Send Test Admin Alert</span>
+                </>
+              )}
+            </button>
+
             <button
               onClick={async () => {
                 try {
@@ -236,13 +286,13 @@ export const AdminInboxView: React.FC<AdminInboxViewProps> = ({ onNavigateToTab 
         <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-900/10 via-amber-500/10 to-emerald-500/10 border border-purple-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2.5">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-            <span className="text-neutral-800 font-medium">
-              <strong>Dual Admin Notification Active:</strong> Inquiries notify both <strong className="text-purple-900">Elvoy Bennett</strong> and <strong className="text-purple-900">Zachary Buchanan</strong> with automated email dispatches to <span className="font-mono text-[11px] text-purple-800 bg-purple-100/70 px-1.5 py-0.5 rounded">zbuchanan.smeltravels@gmail.com</span> & <span className="font-mono text-[11px] text-purple-800 bg-purple-100/70 px-1.5 py-0.5 rounded">smeltravels876@gmail.com</span>.
+            <span className="text-neutral-800 font-medium leading-relaxed">
+              <strong>All-Admin Notification Active:</strong> Inquiries notify <strong className="text-purple-900">Zachary Buchanan</strong> and <strong className="text-purple-900">Elvoy Bennett</strong> with automated email dispatches to <span className="font-mono text-[11px] text-purple-900 bg-purple-100 font-bold px-1.5 py-0.5 rounded">zacpremacc12@gmail.com</span>, <span className="font-mono text-[11px] text-purple-900 bg-purple-100 font-bold px-1.5 py-0.5 rounded">zbuchanan.smeltravels@gmail.com</span> & <span className="font-mono text-[11px] text-purple-900 bg-purple-100 font-bold px-1.5 py-0.5 rounded">smeltravels876@gmail.com</span>.
             </span>
           </div>
           <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-xl shrink-0">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-            Synchronized
+            Active & Verified
           </span>
         </div>
 
